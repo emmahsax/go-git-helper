@@ -10,13 +10,13 @@ func TestAskMultipleChoice(t *testing.T) {
 	testCases := []struct {
 		question string
 		expected string
-		input string
+		input    string
 		choices  []string
 	}{
 		{
 			question: "What is your favorite color?",
 			expected: "Blue",
-			input: "2\n",
+			input:    "2\n",
 			choices:  []string{"Red", "Blue", "Green"},
 		},
 	}
@@ -51,13 +51,13 @@ func TestAskOpenEndedQuestion(t *testing.T) {
 	testCases := []struct {
 		question string
 		expected string
-		input string
+		input    string
 		secret   bool
 	}{
 		{
 			question: "What is your favorite animal?",
 			expected: "Lion",
-			input: "Lion\n",
+			input:    "Lion\n",
 			secret:   false,
 		},
 	}
@@ -90,24 +90,24 @@ func TestAskOpenEndedQuestion(t *testing.T) {
 
 func TestAskYesNoQuestion(t *testing.T) {
 	testCases := []struct {
-		question   string
-		expected   bool
-		input      string
+		question string
+		expected bool
+		input    string
 	}{
 		{
-			question:   "Do you like purple?",
-			expected:   true,
-			input:      "yes\n",
+			question: "Do you like purple?",
+			expected: true,
+			input:    "yes\n",
 		},
 		{
-			question:   "Do you prefer green?",
-			expected:   false,
-			input:      "no\n",
+			question: "Do you prefer green?",
+			expected: false,
+			input:    "no\n",
 		},
 		{
-			question:   "What about orange?",
-			expected:   true,
-			input:      "\n",
+			question: "What about orange?",
+			expected: true,
+			input:    "\n",
 		},
 	}
 

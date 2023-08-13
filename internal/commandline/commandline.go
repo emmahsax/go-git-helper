@@ -15,7 +15,7 @@ func AskMultipleChoice(question string, choices []string) string {
 	fmt.Println(question)
 
 	for i, choice := range choices {
-		fmt.Printf("%d. %s\n", i + 1, choice)
+		fmt.Printf("%d. %s\n", i+1, choice)
 	}
 
 	fmt.Print("Enter choice number: ")
@@ -30,7 +30,7 @@ func AskMultipleChoice(question string, choices []string) string {
 		AskMultipleChoice(question, choices)
 	}
 
-	return choices[choiceNum - 1]
+	return choices[choiceNum-1]
 }
 
 func AskOpenEndedQuestion(question string, secret bool) string {
