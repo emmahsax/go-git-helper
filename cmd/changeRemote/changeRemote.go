@@ -19,10 +19,10 @@ type ChangeRemote struct {
 
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "change-remote [oldOwner] [newOwner]",
-		Short: "Change the git remote owners for multiple cloned git repositories",
-		Args:  cobra.ExactArgs(2),
-		DisableFlagParsing: true,
+		Use:                   "change-remote [oldOwner] [newOwner]",
+		Short:                 "Change the git remote owners for multiple cloned git repositories",
+		Args:                  cobra.ExactArgs(2),
+		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			newChangeRemote(args[0], args[1]).execute()

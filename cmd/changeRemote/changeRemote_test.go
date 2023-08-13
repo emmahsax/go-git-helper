@@ -20,10 +20,10 @@ func TestExecute(t *testing.T) {
 }
 
 func TestRemoteInfo(t *testing.T) {
-    remote := "git@github.com:oldOwner/repo.git"
+	remote := "git@github.com:oldOwner/repo.git"
 	cr := newChangeRemote("oldOwner", "newOwner")
 	cr.execute()
-    host, owner, repo := remoteInfo(remote)
+	host, owner, repo := remoteInfo(remote)
 
 	if host != "git@github.com" {
 		t.Fatalf(`Host should match %s, was %s`, "git@github.com", host)
@@ -40,7 +40,7 @@ func TestRemoteInfo(t *testing.T) {
 	remote = "https://gitlab.com/oldOwner/repo"
 	cr = newChangeRemote("oldOwner", "newOwner")
 	cr.execute()
-    host, owner, repo = remoteInfo(remote)
+	host, owner, repo = remoteInfo(remote)
 
 	if host != "https://gitlab.com" {
 		t.Fatalf(`Host should match %s, was %s`, "https://gitlab.com", host)
