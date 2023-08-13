@@ -1,0 +1,37 @@
+name: Test & Release
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+    tags: [ '*' ]
+
+jobs:
+  setup:
+    if: github.event_name == 'pull_request' || !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    outputs:
+      branch: ${{ steps.set_branch_variable.outputs.branch }}
+    runs-on: ubuntu-latest
+    steps:
+      - id: set_branch_variable
+        name: Set Branch Variable
+        uses: emmahsax/github-actions/set-branch-variable@main
+
+  gitleaks:
+    uses: emmahsax/github-actions/.github/workflows/gitleaks.yml@main
+
+  go-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    uses: emmahsax/github-actions/.github/workflows/go-release.yml@main
+    with:
+      files: |
+        go-git-helper
+      tag_name: ${{ github.ref_name }}
+      upload: true
+
+  go-test:
+    if: github.event_name == 'pull_request' || !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: [setup]
+    uses: emmahsax/github-actions/.github/workflows/go-test.yml@main
+    with:
+      branch: ${{ needs.setup.outputs.branch }}
