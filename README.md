@@ -22,6 +22,20 @@ This command will go through every directory in a directory, and see if it is a 
 git-helper change-remote [oldOwner] [newOwner]
 ```
 
+### `checkout-default`
+
+This command will check out the default branch of whatever repository you're currently in. It looks at what branch the `origin/HEAD` remote is pointed to on your local machine, versus querying GitHub/GitLab for that, so if your local machine's remotes aren't up to date or aren't formatted as expected, then this command won't work as expected. To run this command, run:
+
+```bash
+git-helper checkout-default
+```
+
+If your local branches formatted correctly (run `git branch --remote` to see), then run:
+
+```bash
+git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/CORRECT-DEFAULT-BRANCH-GOES-HERE
+```
+
 ## Migrating from the Ruby version of Git Helper
 
 ---
