@@ -3,7 +3,6 @@ package changeRemote
 import (
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -80,28 +79,33 @@ func processGitRepository(cr *ChangeRemote) {
 	remotes := strings.Split(string(output), "\n")
 
 	for _, remote := range remotes {
-		if strings.Contains(remote, cr.OldOwner) {
-			processRemote(remote, cr)
+		if remote == "" {
+			continue
+		}
+
+		plainRemote := strings.Fields(remote)[1]
+		remoteName := strings.Fields(remote)[0]
+		host, owner, repo := remoteInfo(plainRemote)
+
+		if owner == cr.OldOwner {
+			processRemote(plainRemote, host, repo, remoteName, cr)
 		} else {
-			fmt.Printf("  Found remote is not pointing to %s.\n", cr.OldOwner)
+			fmt.Printf("  Found remote (%s) is not pointing to %s.\n", plainRemote, cr.OldOwner)
 		}
 	}
 	fmt.Println()
 }
 
-func processRemote(remote string, cr *ChangeRemote) {
-	remoteName := strings.Split(remote, " ")[0]
+func processRemote(remote, host, repo, remoteName string, cr *ChangeRemote) {
 	var newRemote string
 
 	if strings.Contains(remote, "git@") {
-		host, _, repo := remote_info(remote)
-		newRemote = fmt.Sprintf("git@%s:%s/%s.git", host, cr.NewOwner, repo)
+		newRemote = fmt.Sprintf("%s:%s/%s", host, cr.NewOwner, repo)
 	} else if strings.Contains(remote, "https://") {
-		host, _, repo := remote_info(remote)
-		newRemote = fmt.Sprintf("https://%s/%s/%s.git", host, cr.NewOwner, repo)
+		newRemote = fmt.Sprintf("%s/%s/%s", host, cr.NewOwner, repo)
 	}
 
-	fmt.Printf("  Changing the remote URL %s to be '%s'.\n", remote, newRemote)
+	fmt.Printf("  Changing the remote URL '%s' to be '%s'.\n", remote, newRemote)
 	cmd := exec.Command("git", "remote", "set-url", remoteName, newRemote)
 	_, err := cmd.Output()
 	if err != nil {
@@ -109,33 +113,24 @@ func processRemote(remote string, cr *ChangeRemote) {
 	}
 }
 
-func remote_info(remote string) (string, string, string) {
+func remoteInfo(remote string) (string, string, string) {
 	if strings.Contains(remote, "git@") {
-		hostAndOrgRepo := strings.SplitN(remote, ":", 2)
-		if len(hostAndOrgRepo) != 2 {
+		remoteSplit := strings.SplitN(remote, ":", 2)
+		if len(remoteSplit) != 2 {
 			log.Fatal("Invalid remote URL format")
 		}
 
-		parts := strings.SplitN(hostAndOrgRepo[1], "/", 2)
+		parts := strings.SplitN(remoteSplit[1], "/", 2)
 		if len(parts) != 2 {
 			log.Fatal("Invalid remote URL format")
 		}
 
-		return parts[0], strings.Split(parts[1], "/")[0], strings.Split(parts[1], "/")[1]
+		return remoteSplit[0], parts[0], parts[1]
 	} else if strings.Contains(remote, "https://") {
-			parsedURL, err := url.Parse(remote)
-		if err != nil {
-			log.Fatal("Error parsing URL:", err)
-		}
+		remoteSplit := strings.SplitN(remote, "/", -1)
+		host := remoteSplit[0] + "//" + remoteSplit[2]
 
-		path := filepath.Clean(parsedURL.Path)
-		pathParts := strings.Split(path, "/")
-
-		if len(pathParts) < 2 {
-			log.Fatal("Invalid remote URL format")
-		}
-
-		return parsedURL.Host, pathParts[1], strings.TrimSuffix(pathParts[len(pathParts)-1], ".git")
+		return host, remoteSplit[3], remoteSplit[4]
 	} else {
 		log.Fatal("Invalid remote URL format")
 		return "", "", ""
