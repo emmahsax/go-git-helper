@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/emmahsax/go-git-helper/cmd/changeRemote"
+	"github.com/emmahsax/go-git-helper/cmd/checkoutDefault"
 	"github.com/spf13/cobra"
 )
 
@@ -28,6 +29,7 @@ func newCommand() *cobra.Command {
 	cmd.DisableFlagsInUseLine = true
 
 	cmd.AddCommand(changeRemote.NewCommand())
+	cmd.AddCommand(checkoutDefault.NewCommand())
 
 	return cmd
 }

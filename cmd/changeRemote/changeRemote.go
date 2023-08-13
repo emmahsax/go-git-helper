@@ -74,6 +74,7 @@ func processGitRepository(cr *ChangeRemote) {
 	output, err := cmd.Output()
 	if err != nil {
 		log.Fatal("Error:", err)
+		return
 	}
 
 	remotes := strings.Split(string(output), "\n")
@@ -110,6 +111,7 @@ func processRemote(remote, host, repo, remoteName string, cr *ChangeRemote) {
 	_, err := cmd.Output()
 	if err != nil {
 		log.Fatal("Error:", err)
+		return
 	}
 }
 
@@ -118,11 +120,13 @@ func remoteInfo(remote string) (string, string, string) {
 		remoteSplit := strings.SplitN(remote, ":", 2)
 		if len(remoteSplit) != 2 {
 			log.Fatal("Invalid remote URL format")
+			return "", "", ""
 		}
 
 		parts := strings.SplitN(remoteSplit[1], "/", 2)
 		if len(parts) != 2 {
 			log.Fatal("Invalid remote URL format")
+			return "", "", ""
 		}
 
 		return remoteSplit[0], parts[0], parts[1]
