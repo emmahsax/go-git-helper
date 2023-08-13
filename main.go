@@ -7,6 +7,9 @@ import (
 	"github.com/emmahsax/go-git-helper/cmd/changeRemote"
 	"github.com/emmahsax/go-git-helper/cmd/checkoutDefault"
 	"github.com/emmahsax/go-git-helper/cmd/cleanBranches"
+	"github.com/emmahsax/go-git-helper/cmd/emptyCommit"
+	"github.com/emmahsax/go-git-helper/cmd/forgetLocalChanges"
+	"github.com/emmahsax/go-git-helper/cmd/forgetLocalCommits"
 	"github.com/spf13/cobra"
 )
 
@@ -32,6 +35,9 @@ func newCommand() *cobra.Command {
 	cmd.AddCommand(changeRemote.NewCommand())
 	cmd.AddCommand(checkoutDefault.NewCommand())
 	cmd.AddCommand(cleanBranches.NewCommand())
+	cmd.AddCommand(emptyCommit.NewCommand())
+	cmd.AddCommand(forgetLocalChanges.NewCommand())
+	cmd.AddCommand(forgetLocalCommits.NewCommand())
 
 	return cmd
 }

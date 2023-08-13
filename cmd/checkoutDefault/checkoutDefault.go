@@ -29,21 +29,30 @@ func NewCommand() *cobra.Command {
 }
 
 func (cd *CheckoutDefault) execute() {
+	branch := getDefaultBranch()
+	gitCheckout(branch)
+}
+
+func getDefaultBranch() string {
 	cmd := exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatal(err)
-		return
+		return ""
 	}
 
 	branch := strings.SplitN(strings.TrimSpace(string(output)), "/", 4)
 	if len(branch) != 4 {
 		log.Fatal("Invalid branch format")
-		return
+		return ""
 	}
 
-	checkoutCmd := exec.Command("git", "checkout", branch[3])
-	output, err = checkoutCmd.CombinedOutput()
+	return branch[3]
+}
+
+func gitCheckout(branch string) {
+	cmd := exec.Command("git", "checkout", branch)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatal(err)
 		return

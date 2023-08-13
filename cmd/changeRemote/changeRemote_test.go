@@ -8,14 +8,11 @@ import (
 )
 
 func TestExecute(t *testing.T) {
-	// Create a temporary directory for testing
 	tmpDir := t.TempDir()
 	err := os.Chdir(tmpDir)
 	assert.NoError(t, err)
 
-	// Create a ChangeRemote instance
 	cr := newChangeRemote("oldOwner", "newOwner")
-
 	cr.execute()
 }
 

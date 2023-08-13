@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type CheckoutDefault struct{}
+type CleanBranches struct{}
 
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -20,8 +20,8 @@ func NewCommand() *cobra.Command {
 		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cd := &CheckoutDefault{}
-			cd.execute()
+			cb := &CleanBranches{}
+			cb.execute()
 			return nil
 		},
 	}
@@ -29,29 +29,34 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cd *CheckoutDefault) execute() {
-	switchBranches()
+func (cb *CleanBranches) execute() {
+	branch := getDefaultBranch()
+	gitCheckout(branch)
 	gitPull()
 	gitFetch()
 	cleanBranches()
 }
 
-func switchBranches() {
+func getDefaultBranch() string {
 	cmd := exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatal(err)
-		return
+		return ""
 	}
 
 	branch := strings.SplitN(strings.TrimSpace(string(output)), "/", 4)
 	if len(branch) != 4 {
 		log.Fatal("Invalid branch format")
-		return
+		return ""
 	}
 
-	checkoutCmd := exec.Command("git", "checkout", branch[3])
-	output, err = checkoutCmd.CombinedOutput()
+	return branch[3]
+}
+
+func gitCheckout(branch string) {
+	cmd := exec.Command("git", "checkout", branch)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -59,6 +64,7 @@ func switchBranches() {
 
 	fmt.Printf("%s", string(output))
 }
+
 
 func gitPull() {
 	cmd := exec.Command("git", "pull")

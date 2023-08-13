@@ -44,6 +44,30 @@ This command will bring you to the repository's default branch, `git pull`, `git
 git-helper clean-branches
 ```
 
+### `empty-commit`
+
+For some reason, I'm always forgetting the commands to create an empty commit. So with this command, it becomes easy. The commit message of this commit will be `Empty commit`. To run the command, run:
+
+```bash
+git-helper empty-commit
+```
+
+### `forget-local-changes`
+
+This command will quickly and easily get rid of any local changes that are not in a commit. This command does just a `git stash` and `git stash drop`. **Once you forget them, they're completely gone, so run carefully**. To test it out, run:
+
+```bash
+git-helper forget-local-changes
+```
+
+### `forget-local-commits`
+
+This command is handy if you locally have a bunch of commits you wish to completely get rid of. This command basically does a hard reset to `origin/HEAD`. **Once you forget them, they're completely gone, so run carefully**. To test it out, run:
+
+```bash
+git-helper forget-local-commits
+```
+
 ## Migrating from the Ruby version of Git Helper
 
 ---
