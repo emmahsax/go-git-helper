@@ -1,6 +1,7 @@
 package checkoutDefault
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 	"strings"
@@ -29,7 +30,7 @@ func NewCommand() *cobra.Command {
 
 func (cd *CheckoutDefault) execute() {
 	cmd := exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD")
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -42,10 +43,11 @@ func (cd *CheckoutDefault) execute() {
 	}
 
 	checkoutCmd := exec.Command("git", "checkout", branch[3])
-	err = checkoutCmd.Run()
-
+	output, err = checkoutCmd.CombinedOutput()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
+
+	fmt.Printf("%s", string(output))
 }

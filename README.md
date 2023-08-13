@@ -36,6 +36,14 @@ If your local branches formatted correctly (run `git branch --remote` to see), t
 git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/CORRECT-DEFAULT-BRANCH-GOES-HERE
 ```
 
+### `clean-branches`
+
+This command will bring you to the repository's default branch, `git pull`, `git fetch -p`, and will clean up your local branches on your machine by seeing which ones are existing on the remote, and updating yours accordingly. To clean your local branches, run:
+
+```bash
+git-helper clean-branches
+```
+
 ## Migrating from the Ruby version of Git Helper
 
 ---
