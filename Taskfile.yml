@@ -1,0 +1,13 @@
+version: "3"
+
+tasks:
+  build:
+    desc: Build git-helper
+    cmds:
+      - cmd: GOOS=darwin GOARCH=arm64 go build -o git-helper
+
+  build:test:
+    desc: Build go-git-helper for testing purposes
+    cmds:
+      - cmd: GOOS=darwin GOARCH=arm64 go build -o go-git-helper
+      - cmd: sudo mv go-git-helper /usr/local/bin/go-git-helper

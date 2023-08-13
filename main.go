@@ -2,17 +2,32 @@ package main
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/emmahsax/go-git-helper/internal/commandline"
+	"github.com/emmahsax/go-git-helper/cmd/changeRemote"
+	"github.com/spf13/cobra"
 )
 
 func main() {
-	fmt.Println("hello world")
+	rootCmd := newCommand()
 
-	// choices := []string{"Blue", "Yellow", "Orange", "Red"}
-	// fmt.Println(commandline.AskMultipleChoice("What's your favorite color?", choices))
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
 
-	fmt.Println(commandline.AskOpenEndedQuestion("What's your password?", true))
+func newCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "git-helper",
+		Short: "Making it easier to work with git on the command line",
+	}
 
-	// fmt.Println(commandline.AskYesNoQuestion("Is Go your new favorite language?"))
+	cmd.DisableAutoGenTag = true
+	cmd.DisableFlagParsing = true
+	cmd.DisableFlagsInUseLine = true
+
+	cmd.AddCommand(changeRemote.NewCommand())
+
+	return cmd
 }

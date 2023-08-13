@@ -12,6 +12,16 @@ Making it easier to work with Git on the command line.
 
 ## Commands
 
+### `change-remote`
+
+This can be used when switching the owners of a GitHub repo. When you switch a username, GitHub only makes some changes for you. With this command, you no longer have to manually walk through each local repo and switch the remotes from each one into a remote with the new username.
+
+This command will go through every directory in a directory, and see if it is a git directory. It will then ask the user if they wish to process the git directory in question. The command does not yet know if there's any changes to be made. If the user says 'yes', then it will check to see if the old username is included in the remote URL of that git directory. If it is, then the command will change the remote URL to instead point to the new username's remote URL. To run the command, run:
+
+```bash
+git-helper change-remote [oldOwner] [newOwner]
+```
+
 ## Migrating from the Ruby version of Git Helper
 
 ---
