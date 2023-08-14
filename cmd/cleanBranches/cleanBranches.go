@@ -1,12 +1,7 @@
 package cleanBranches
 
 import (
-	"fmt"
-	"log"
-	"os/exec"
-	"regexp"
-	"strings"
-
+	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/spf13/cobra"
 )
 
@@ -20,8 +15,7 @@ func NewCommand() *cobra.Command {
 		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cb := &CleanBranches{}
-			cb.execute()
+			cleanBranches().execute()
 			return nil
 		},
 	}
@@ -29,89 +23,14 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
+func cleanBranches() *CleanBranches {
+	return &CleanBranches{}
+}
+
 func (cb *CleanBranches) execute() {
-	branch := getDefaultBranch()
-	gitCheckout(branch)
-	gitPull()
-	gitFetch()
-	cleanBranches()
-}
-
-func getDefaultBranch() string {
-	cmd := exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-		return ""
-	}
-
-	branch := strings.SplitN(strings.TrimSpace(string(output)), "/", 4)
-	if len(branch) != 4 {
-		log.Fatal("Invalid branch format")
-		return ""
-	}
-
-	return branch[3]
-}
-
-func gitCheckout(branch string) {
-	cmd := exec.Command("git", "checkout", branch)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	fmt.Printf("%s", string(output))
-}
-
-
-func gitPull() {
-	cmd := exec.Command("git", "pull")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	fmt.Printf("%s", string(output))
-}
-
-func gitFetch() {
-	cmd := exec.Command("git", "fetch", "-p")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	fmt.Printf("%s", string(output))
-}
-
-func cleanBranches() {
-	cmd := exec.Command("git", "branch", "-vv")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	branches := strings.Split(string(output), "\n")
-	pattern := "origin/.*: gone"
-
-	for _, branch := range branches {
-		re := regexp.MustCompile(pattern)
-
-		if re.MatchString(branch) {
-			b := strings.Fields(branch)[0]
-			cmd = exec.Command("git", "branch", "-D", b)
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				log.Fatal(err)
-				return
-			}
-
-			fmt.Printf("%s", string(output))
-		}
-	}
+	branch := git.DefaultBranch()
+	git.Checkout(branch)
+	git.Pull()
+	git.Fetch()
+	git.CleanDeletedBranches()
 }

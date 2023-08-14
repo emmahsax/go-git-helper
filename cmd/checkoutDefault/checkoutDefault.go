@@ -1,11 +1,7 @@
 package checkoutDefault
 
 import (
-	"fmt"
-	"log"
-	"os/exec"
-	"strings"
-
+	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/spf13/cobra"
 )
 
@@ -19,8 +15,7 @@ func NewCommand() *cobra.Command {
 		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cd := &CheckoutDefault{}
-			cd.execute()
+			checkoutDefault().execute()
 			return nil
 		},
 	}
@@ -28,35 +23,11 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
+func checkoutDefault() *CheckoutDefault {
+	return &CheckoutDefault{}
+}
+
 func (cd *CheckoutDefault) execute() {
-	branch := getDefaultBranch()
-	gitCheckout(branch)
-}
-
-func getDefaultBranch() string {
-	cmd := exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-		return ""
-	}
-
-	branch := strings.SplitN(strings.TrimSpace(string(output)), "/", 4)
-	if len(branch) != 4 {
-		log.Fatal("Invalid branch format")
-		return ""
-	}
-
-	return branch[3]
-}
-
-func gitCheckout(branch string) {
-	cmd := exec.Command("git", "checkout", branch)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	fmt.Printf("%s", string(output))
+	branch := git.DefaultBranch()
+	git.Checkout(branch)
 }

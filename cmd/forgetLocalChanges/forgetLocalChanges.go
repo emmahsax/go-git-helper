@@ -1,10 +1,7 @@
 package forgetLocalChanges
 
 import (
-	"fmt"
-	"log"
-	"os/exec"
-
+	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/spf13/cobra"
 )
 
@@ -18,8 +15,7 @@ func NewCommand() *cobra.Command {
 		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			flc := &ForgetLocalChanges{}
-			flc.execute()
+			forgetLocalChanges().execute()
 			return nil
 		},
 	}
@@ -27,29 +23,11 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
+func forgetLocalChanges() *ForgetLocalChanges {
+	return &ForgetLocalChanges{}
+}
+
 func (flc *ForgetLocalChanges) execute() {
-	gitStash()
-	gitStashDrop()
-}
-
-func gitStash() {
-	cmd := exec.Command("git", "stash")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	fmt.Printf("%s", string(output))
-}
-
-func gitStashDrop() {
-	cmd := exec.Command("git", "stash", "drop")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	fmt.Printf("%s", string(output))
+	git.Stash()
+	git.StashDrop()
 }

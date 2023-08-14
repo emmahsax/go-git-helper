@@ -1,14 +1,127 @@
 # Git Helper (Go version)
 
-Making it easier to work with Git on the command line.
+Making it easier to work with Git on the command-line.
 
-## Installation & Setup
+## Installation
 
-## Usage
+> All builds and pre-built packages are built specifically using the flags `GOOS=darwin GOARCH=arm64`, only for Apple Silicon. To obtain any other build setups, either build your own or contact me at https://emmasax.com/contact-me/. Please note that I do not guarantee the performance of this package on any systems that are not Apple Silicon.
+
+### Building Locally
+
+You can build the binary locally by running this from the root directory of this repository:
+
+```bash
+task build
+```
+
+Then, you can move that to `/usr/local/bin`:
+
+```bash
+sudo mv git-helper /usr/local/bin/git-helper
+```
+
+### Downloading from GitHub Releases
+
+Alternatively, you can download pre-built binaries straight from [GitHub Releases](https://github.com/emmahsax/go-git-helper/releases). After downloading, move them into `/usr/local/bin` and change the permissions. The examples below assume the binaries downloaded to `~/Downlaods`:
+
+```bash
+sudo mv ~/Downloads/git-helper_darwin_amd64 /usr/local/bin/git-helper
+sudo chown root:wheel /usr/local/bin/git-helper
+sudo chmod +x /usr/local/bin/git-helper
+```
+
+When you run the binary for the first time, you may get a pop-up from Apple saying the binary can't be verified by Apple. If you wish to continue, follow these instructions to allow it to run:
+
+* Click `Show in Finder`
+* Right-click on the binary, and select `Open`
+* When you get another pop-up, select `Open`
+
+### Updating Git Helper
+
+TODO: Make an `update` command
+
+> This section assumes you already have Go's Git Helper installed.
+
+To auto-update your version of Git Helper, you can run:
+
+```bash
+git-helper update
+```
+
+Your `sudo` password may be required, and you may need to verify the package is runable as following the instructions above.
+
+## Setup
+
+Some of the commands can be used without any additional configuration. However, others utilize special GitHub or GitLab configuration. To set up access with GitHub/GitLab, run:
+
+```bash
+git-helper setup
+```
+
+This will give you the option to set up credentials at GitHub and/or GitLab, as well as give you the choice to set up Git Helper as a plugin or not (see below).
+
+The final result will be a `~/.git_helper/config.yml` file with the contents in this form:
+
+```
+:github_user:  GITHUB-USERNAME
+:github_token: GITHUB-TOKEN
+:gitlab_user:  GITLAB-USERNAME
+:gitlab_token: GITLAB-TOKEN
+```
+
+To create or see what access tokens you have, look [here for GitHub personal access tokens](https://github.com/settings/tokens) and [here for GitLab access tokens](https://gitlab.com/profile/personal_access_tokens). You could either have one set of tokens for each computer you use, or just have one set of tokens for all computers that you rotate periodically.
+
+## General Usage
+
+In general, all commands can be run straight from the command-line like this:
+
+```bash
+git-helper [command]
+```
+
+Please run with `help` to see more:
+
+```bash
+git-helper --help
+```
 
 ### With Plugins
 
+As an additional enhancement, you can set each of the following commands to be a git plugin, meaning you can call them in a way that feels more git-native:
+
+```bash
+# Without plugins
+git-helper clean-branches
+git-helper code-request
+
+# With plugins
+git clean-branches
+git code-request
+```
+
+Running the `git-helper setup` command will give you the option to set plugins up.
+
 ### With Aliases
+
+To make the commands even shorter, I recommend setting aliases. You can either set aliases through git itself, like this (only possible if you also use the plugin option):
+
+```bash
+git config --global alias.nb new-branch
+```
+
+And then running `git nb` maps to `git new-branch`, which through the plugin, maps to `git-helper new-branch`.
+
+Or you can set the alias through your `~/.zshrc` (which is my preferred method because it can make the command even shorter, and doesn't require the plugin usage). To do this, add lines like this to the `~/.zshrc` file and run `source ~/.zshrc`:
+
+```bash
+alias gnb="git new-branch"
+```
+
+And then, running `gnb` maps to `git new-branch`, which again routes to `git-helper new-branch`.
+
+For a full list of the git aliases I prefer to use, check out my [Git Aliases gist](https://gist.github.com/emmahsax/e8744fe253fba1f00a621c01a2bf68f5).
+
+Hopefully all these options makes working with git more seamless.
 
 ## Commands
 
@@ -68,7 +181,38 @@ This command is handy if you locally have a bunch of commits you wish to complet
 git-helper forget-local-commits
 ```
 
+### `new-branch`
+
+This command is useful for making new branches in a repository on the command-line. To run the command, run:
+
+```bash
+git-helper new-branch
+# OR
+git-helper new-branch [optionalBranch]
+```
+
+The command either accepts a branch name right away or it will ask you for the name of your new branch. Make sure your input does not contain any spaces or special characters.
+
 ## Migrating from the Ruby version of Git Helper
+
+1. Uninstall Ruby's Git Helper:
+    ```bash
+    # Uninstall the gem
+    gem uninstall git_helper
+
+    # Remove the executable
+    which git-helper
+    rm -rf PATH/FROM/ABOVE
+
+    # Verify it's gone by this command returning command not found
+    git-helper -v
+    ```
+2. Install Go's Git Helper by following the instructions at the top of this README
+3. Check Go's Git Helper is installed:
+    ```bash
+    git-helper version
+    ```
+4. Move forward with your day!
 
 ---
 

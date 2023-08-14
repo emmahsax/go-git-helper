@@ -1,10 +1,7 @@
 package forgetLocalCommits
 
 import (
-	"fmt"
-	"log"
-	"os/exec"
-
+	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/spf13/cobra"
 )
 
@@ -18,8 +15,7 @@ func NewCommand() *cobra.Command {
 		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			flc := &ForgetLocalCommits{}
-			flc.execute()
+			forgetLocalCommits().execute()
 			return nil
 		},
 	}
@@ -27,29 +23,11 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
+func forgetLocalCommits() *ForgetLocalCommits {
+	return &ForgetLocalCommits{}
+}
+
 func (flc *ForgetLocalCommits) execute() {
-	gitPull()
-	gitReset()
-}
-
-func gitPull() {
-	cmd := exec.Command("git", "pull")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	fmt.Printf("%s", string(output))
-}
-
-func gitReset() {
-	cmd := exec.Command("git", "reset", "--hard", "origin/HEAD")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	fmt.Printf("%s", string(output))
+	git.Pull()
+	git.Reset()
 }

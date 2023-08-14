@@ -1,11 +1,11 @@
-package cleanBranches
+package git
 
 import (
 	"testing"
 )
 
-func TestGetDefaultBranch(t *testing.T) {
-	branch := getDefaultBranch()
+func TestDefaultBranch(t *testing.T) {
+	branch := DefaultBranch()
 
 	if branch != "main" {
 		t.Fatalf(`Branch should match %s, was %s`, "main", branch)

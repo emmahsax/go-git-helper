@@ -1,10 +1,7 @@
 package emptyCommit
 
 import (
-	"fmt"
-	"log"
-	"os/exec"
-
+	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/spf13/cobra"
 )
 
@@ -18,8 +15,7 @@ func NewCommand() *cobra.Command {
 		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ec := &EmptyCommit{}
-			ec.execute()
+			emptyCommit().execute()
 			return nil
 		},
 	}
@@ -27,17 +23,10 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (ec *EmptyCommit) execute() {
-	gitEmptyCommit()
+func emptyCommit() *EmptyCommit {
+	return &EmptyCommit{}
 }
 
-func gitEmptyCommit() {
-	cmd := exec.Command("git", "commit", "--allow-empty", "-m", "Empty commit")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	fmt.Printf("%s", string(output))
+func (ec *EmptyCommit) execute() {
+	git.CreateEmptyCommit()
 }

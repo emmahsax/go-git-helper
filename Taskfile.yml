@@ -4,7 +4,7 @@ tasks:
   build:
     desc: Build git-helper
     cmds:
-      - cmd: GOOS=darwin GOARCH=arm64 go build -o git-helper
+      - cmd: GOOS=darwin GOARCH=arm64 go build -o git-helper_darwin_amd64
 
   build:test:
     desc: Build go-git-helper for testing purposes

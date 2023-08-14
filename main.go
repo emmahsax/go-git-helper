@@ -10,7 +10,15 @@ import (
 	"github.com/emmahsax/go-git-helper/cmd/emptyCommit"
 	"github.com/emmahsax/go-git-helper/cmd/forgetLocalChanges"
 	"github.com/emmahsax/go-git-helper/cmd/forgetLocalCommits"
+	"github.com/emmahsax/go-git-helper/cmd/newBranch"
+	"github.com/emmahsax/go-git-helper/cmd/setup"
+	"github.com/emmahsax/go-git-helper/cmd/update"
+	"github.com/emmahsax/go-git-helper/cmd/version"
 	"github.com/spf13/cobra"
+)
+
+var (
+	packageVersion = "0.0.1"
 )
 
 func main() {
@@ -25,7 +33,7 @@ func main() {
 func newCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "git-helper",
-		Short: "Making it easier to work with git on the command line",
+		Short: "Making it easier to work with git on the command-line",
 	}
 
 	cmd.DisableAutoGenTag = true
@@ -38,6 +46,10 @@ func newCommand() *cobra.Command {
 	cmd.AddCommand(emptyCommit.NewCommand())
 	cmd.AddCommand(forgetLocalChanges.NewCommand())
 	cmd.AddCommand(forgetLocalCommits.NewCommand())
+	cmd.AddCommand(newBranch.NewCommand())
+	cmd.AddCommand(setup.NewCommand())
+	cmd.AddCommand(update.NewCommand(packageVersion))
+	cmd.AddCommand(version.NewCommand(packageVersion))
 
 	return cmd
 }
