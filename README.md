@@ -17,7 +17,7 @@ task build
 Then, you can move that to `/usr/local/bin`:
 
 ```bash
-sudo mv git-helper /usr/local/bin/git-helper
+sudo mv git-helper_darwin_arm64 /usr/local/bin/git-helper
 ```
 
 ### Downloading from GitHub Releases
@@ -25,7 +25,7 @@ sudo mv git-helper /usr/local/bin/git-helper
 Alternatively, you can download pre-built binaries straight from [GitHub Releases](https://github.com/emmahsax/go-git-helper/releases). After downloading, move them into `/usr/local/bin` and change the permissions. The examples below assume the binaries downloaded to `~/Downlaods`:
 
 ```bash
-sudo mv ~/Downloads/git-helper_darwin_amd64 /usr/local/bin/git-helper
+sudo mv ~/Downloads/git-helper_darwin_arm64 /usr/local/bin/git-helper
 sudo chown root:wheel /usr/local/bin/git-helper
 sudo chmod +x /usr/local/bin/git-helper
 ```
@@ -38,11 +38,9 @@ When you run the binary for the first time, you may get a pop-up from Apple sayi
 
 ### Updating Git Helper
 
-TODO: Make an `update` command
-
 > This section assumes you already have Go's Git Helper installed.
 
-To auto-update your version of Git Helper, you can run:
+To update your version of Git Helper to the latest version available in GitHub, you can run:
 
 ```bash
 git-helper update
@@ -63,10 +61,10 @@ This will give you the option to set up credentials at GitHub and/or GitLab, as 
 The final result will be a `~/.git_helper/config.yml` file with the contents in this form:
 
 ```
-:github_user:  GITHUB-USERNAME
-:github_token: GITHUB-TOKEN
-:gitlab_user:  GITLAB-USERNAME
-:gitlab_token: GITLAB-TOKEN
+github_user:  GITHUB-USERNAME
+github_token: GITHUB-TOKEN
+gitlab_user:  GITLAB-USERNAME
+gitlab_token: GITLAB-TOKEN
 ```
 
 To create or see what access tokens you have, look [here for GitHub personal access tokens](https://github.com/settings/tokens) and [here for GitLab access tokens](https://gitlab.com/profile/personal_access_tokens). You could either have one set of tokens for each computer you use, or just have one set of tokens for all computers that you rotate periodically.
@@ -207,12 +205,16 @@ The command either accepts a branch name right away or it will ask you for the n
     # Verify it's gone by this command returning command not found
     git-helper -v
     ```
-2. Install Go's Git Helper by following the instructions at the top of this README
+2. Install Go's Git Helper by following the instructions in the beginning of this `README`
 3. Check Go's Git Helper is installed:
     ```bash
     git-helper version
     ```
-4. Move forward with your day!
+4. Run the setup command:
+    ```bash
+    git-helper setup
+    ```
+5. Move forward with your day!
 
 ---
 

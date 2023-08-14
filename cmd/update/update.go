@@ -17,7 +17,7 @@ import (
 type Update struct{}
 
 var (
-	asset      = "git-helper_darwin_amd64"
+	asset      = "git-helper_darwin_arm64"
 	owner      = "emmahsax"
 	repository = "go-git-helper"
 	newPath    = "/usr/local/bin/git-helper"
