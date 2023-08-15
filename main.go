@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	packageVersion = "beta-0.0.3"
+	packageVersion = "beta-0.0.4"
 )
 
 func main() {
@@ -50,7 +50,7 @@ func newCommand() *cobra.Command {
 	cmd.AddCommand(forgetLocalCommits.NewCommand())
 	cmd.AddCommand(newBranch.NewCommand())
 	cmd.AddCommand(setup.NewCommand())
-	cmd.AddCommand(update.NewCommand(packageVersion))
+	cmd.AddCommand(update.NewCommand())
 	cmd.AddCommand(version.NewCommand(packageVersion))
 
 	return cmd
