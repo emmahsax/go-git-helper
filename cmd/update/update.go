@@ -20,7 +20,7 @@ var (
 	asset      = "git-helper_darwin_arm64"
 	owner      = "emmahsax"
 	repository = "go-git-helper"
-	newPath    = "/usr/local/bin/git-helper"
+	newPath    = "/usr/local/bin/go-git-helper" // TODO: switch this to git-helper, it's leftover from the migration
 )
 
 func NewCommand(currentVersion string) *cobra.Command {
