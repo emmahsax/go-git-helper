@@ -141,10 +141,11 @@ This command will check out the default branch of whatever repository you're cur
 git-helper checkout-default
 ```
 
-If your local branches aren't formatted correctly (run `git branch --remote` to see), then run:
+If your local branches aren't formatted correctly (run `git branch --remote` to see), then run (assuming default branch is `main`):
 
 ```bash
-git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/CORRECT-DEFAULT-BRANCH-GOES-HERE
+git branch --set-upstream-to=origin/main main
+git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
 ```
 
 ### `clean-branches`
