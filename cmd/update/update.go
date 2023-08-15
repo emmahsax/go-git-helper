@@ -23,7 +23,7 @@ var (
 	newPath    = "/usr/local/bin/go-git-helper" // TODO: switch this to git-helper, it's leftover from the migration
 )
 
-func NewCommand(currentVersion string) *cobra.Command {
+func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   "update",
 		Short:                 "Updates Git Helper with the newest version on GitHub",
@@ -31,7 +31,7 @@ func NewCommand(currentVersion string) *cobra.Command {
 		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newUpdate().execute(currentVersion)
+			newUpdate().execute()
 			return nil
 		},
 	}
@@ -43,14 +43,15 @@ func newUpdate() *Update {
 	return &Update{}
 }
 
-func (u *Update) execute(currentVersion string) {
-	downloadGitHelper(currentVersion)
+func (u *Update) execute() {
+	downloadGitHelper()
 	moveGitHelper()
 	setPermissions()
+	outputNewVersion()
 }
 
-func downloadGitHelper(currentVersion string) {
-	fmt.Printf("Installing git-helper version %s\n", currentVersion)
+func downloadGitHelper() {
+	fmt.Println("Installing latest git-helper version")
 
 	releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repository)
 	resp, err := http.Get(releaseURL)
@@ -126,4 +127,14 @@ func setPermissions() {
 	}
 
 	fmt.Printf("%s", string(output))
+}
+
+func outputNewVersion() {
+	cmd := exec.Command("go-git-helper", "version") // TODO: make this command git-helper
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	fmt.Printf("Installed %s", string(output))
 }
