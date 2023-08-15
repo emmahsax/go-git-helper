@@ -260,7 +260,7 @@ func StashDrop() {
 
 	err = cmd.Wait()
 	if err != nil {
-		log.Fatal(err)
+		// The command output an error itself, so we can just be done
 		return
 	}
 }
