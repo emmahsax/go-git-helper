@@ -69,6 +69,24 @@ func CreateEmptyCommit() {
 	fmt.Printf("%s", string(output))
 }
 
+func CurrentBranch() string {
+	cmd := exec.Command("git", "branch")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Fatal(err)
+		return ""
+	}
+
+	re := regexp.MustCompile(`\*\s(\S*)`)
+	match := re.FindStringSubmatch(string(output))
+
+	if len(match) == 2 {
+		return match[1]
+	}
+
+	return ""
+}
+
 func DefaultBranch() string {
 	cmd := exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD")
 	output, err := cmd.CombinedOutput()
@@ -117,6 +135,37 @@ func PushBranch(branch string) {
 	}
 
 	fmt.Printf("%s", string(output))
+}
+
+func RepoName() string {
+	output, err := exec.Command("git", "remote", "-v").Output()
+	if err != nil {
+		log.Fatal(err)
+		return ""
+	}
+
+	remoteURL := string(output)
+	re := regexp.MustCompile(`\S\s*\S+.com\S{1}(\S*).git`)
+	match := re.FindStringSubmatch(remoteURL)
+	if len(match) >= 2 {
+		return match[1]
+	} else {
+		log.Fatal("No match found")
+	}
+
+	return ""
+}
+
+func Remotes() []string {
+	cmd := exec.Command("git", "remote", "-v")
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Fatal(err)
+		return []string{}
+	}
+
+	return strings.Split(string(output), "\n")
 }
 
 func Reset() {

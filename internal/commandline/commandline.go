@@ -18,8 +18,6 @@ func AskMultipleChoice(question string, choices []string) string {
 		fmt.Printf("%d. %s\n", i+1, choice)
 	}
 
-	fmt.Print("Enter choice number: ")
-
 	reader := bufio.NewReader(os.Stdin)
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(input)
@@ -35,7 +33,6 @@ func AskMultipleChoice(question string, choices []string) string {
 
 func AskOpenEndedQuestion(question string, secret bool) string {
 	fmt.Println(question)
-	fmt.Println("Enter response:")
 	var response string
 
 	if secret {

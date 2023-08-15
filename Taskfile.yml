@@ -2,7 +2,12 @@ version: "3"
 
 tasks:
   build:
-    desc: Build git-helper
+    desc: Build git-helper for all arches and OSes
+    cmds:
+      - task: build:darwin:arm64
+
+  build:darwin:arm64:
+    desc: Build git-helper for darwin arm64
     cmds:
       - cmd: GOOS=darwin GOARCH=arm64 go build -o git-helper_darwin_arm64
 
