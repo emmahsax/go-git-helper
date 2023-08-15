@@ -1,3 +1,5 @@
 #!/bin/sh
 
-git-helper empty-commit
+# TODO: switch this to plain git-helper, as that's leftover from ruby to go migration
+
+go-git-helper empty-commit

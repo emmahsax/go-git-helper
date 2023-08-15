@@ -37,24 +37,42 @@ func ConfigFileExists() bool {
 	return err == nil
 }
 
+// TODO: pull from the values w/o the : at the beginning, as that's leftover from ruby to go migration
+
 func GitHubUsername() string {
 	configFile := configFileContents()
-	return configFile["github_username"]
+	if configFile["github_username"] != "" {
+		return configFile["github_username"]
+	} else {
+		return configFile[":github_username"]
+	}
 }
 
 func GitLabUsername() string {
 	configFile := configFileContents()
-	return configFile["gitlab_username"]
+	if configFile["gitlab_username"] != "" {
+		return configFile["gitlab_username"]
+	} else {
+		return configFile[":gitlab_username"]
+	}
 }
 
 func GitHubToken() string {
 	configFile := configFileContents()
-	return configFile["github_token"]
+	if configFile["github_token"] != "" {
+		return configFile["github_token"]
+	} else {
+		return configFile[":github_token"]
+	}
 }
 
 func GitLabToken() string {
 	configFile := configFileContents()
-	return configFile["gitlab_token"]
+	if configFile["gitlab_token"] != "" {
+		return configFile["gitlab_token"]
+	} else {
+		return configFile[":gitlab_token"]
+	}
 }
 
 func configFileContents() map[string]string {

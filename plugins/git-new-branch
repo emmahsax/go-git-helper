@@ -1,3 +1,5 @@
 #!/bin/sh
 
-git-helper new-branch $1
+# TODO: switch this to plain git-helper, as that's leftover from ruby to go migration
+
+go-git-helper new-branch $1

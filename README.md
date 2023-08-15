@@ -4,14 +4,14 @@ Making it easier to work with Git on the command-line.
 
 ## Installation
 
-> All builds and pre-built packages are built specifically using the flags `GOOS=darwin GOARCH=arm64`, only for Apple Silicon. To obtain any other build setups, either build your own or contact me at https://emmasax.com/contact-me/. Please note that I do not guarantee the performance of this package on any systems that are not Apple Silicon.
+> All `task build`s and pre-built packages are built specifically using the flags `GOOS=darwin GOARCH=arm64`, only for Apple Silicon. To obtain any other build setups, either build your own or contact me at https://emmasax.com/contact-me/. I do not guarantee the performance of this package on any systems that are not Apple Silicon.
 
 ### Building Locally
 
 You can build the binary locally by running this from the root directory of this repository:
 
 ```bash
-task build:darwin:arm64
+task build
 ```
 
 Then, you can move that to `/usr/local/bin`:
@@ -67,7 +67,7 @@ gitlab_user:  GITLAB-USERNAME
 gitlab_token: GITLAB-TOKEN
 ```
 
-To create or see what access tokens you have, look [here for GitHub personal access tokens](https://github.com/settings/tokens) and [here for GitLab access tokens](https://gitlab.com/-/profile/personal_access_tokens). You could either have one set of tokens for each computer you use, or just have one set of tokens for all computers that you rotate periodically.
+To create or see what personal access tokens (PATs) you have, look [here for GitHub PATs](https://github.com/settings/tokens) and [here for GitLab PATs](https://gitlab.com/-/profile/personal_access_tokens). You could either have one set of tokens for each computer you use, or just have one set of tokens for all computers that you rotate periodically.
 
 ## General Usage
 
@@ -141,7 +141,7 @@ This command will check out the default branch of whatever repository you're cur
 git-helper checkout-default
 ```
 
-If your local branches formatted correctly (run `git branch --remote` to see), then run:
+If your local branches aren't formatted correctly (run `git branch --remote` to see), then run:
 
 ```bash
 git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/CORRECT-DEFAULT-BRANCH-GOES-HERE
@@ -228,7 +228,7 @@ The command either accepts a branch name right away or it will ask you for the n
     ```bash
     git-helper version
     ```
-4. Run the setup command:
+4. Run the setup command (optional for Beta modes, required when out of Beta):
     ```bash
     git-helper setup
     ```

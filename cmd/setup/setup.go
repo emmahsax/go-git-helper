@@ -108,7 +108,7 @@ func setupPlugins() {
 
 func createOrUpdatePlugins() {
 	pluginsDir := configfile.ConfigDir() + "/plugins"
-	pluginsURL := "https://api.github.com/repos/emmahsax/git_helper/contents/plugins" // TODO: change this git repo when ready
+	pluginsURL := "https://api.github.com/repos/emmahsax/go-git-helper/contents/plugins"
 
 	if err := os.MkdirAll(pluginsDir, 0755); err != nil {
 		log.Fatal(err)
