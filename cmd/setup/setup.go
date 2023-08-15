@@ -152,6 +152,12 @@ func createOrUpdatePlugins() {
 			log.Fatal(err)
 			continue
 		}
+
+		err = os.Chmod(pluginPath, 0755)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
 	}
 
 	fmt.Printf("\nDone setting up plugins at %s!\n", pluginsDir)
