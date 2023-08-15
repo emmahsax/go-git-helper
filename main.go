@@ -2,17 +2,56 @@ package main
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/emmahsax/go-git-helper/internal/commandline"
+	"github.com/emmahsax/go-git-helper/cmd/changeRemote"
+	"github.com/emmahsax/go-git-helper/cmd/checkoutDefault"
+	"github.com/emmahsax/go-git-helper/cmd/cleanBranches"
+	"github.com/emmahsax/go-git-helper/cmd/codeRequest"
+	"github.com/emmahsax/go-git-helper/cmd/emptyCommit"
+	"github.com/emmahsax/go-git-helper/cmd/forgetLocalChanges"
+	"github.com/emmahsax/go-git-helper/cmd/forgetLocalCommits"
+	"github.com/emmahsax/go-git-helper/cmd/newBranch"
+	"github.com/emmahsax/go-git-helper/cmd/setup"
+	"github.com/emmahsax/go-git-helper/cmd/update"
+	"github.com/emmahsax/go-git-helper/cmd/version"
+	"github.com/spf13/cobra"
+)
+
+var (
+	packageVersion = "beta-0.0.1"
 )
 
 func main() {
-	fmt.Println("hello world")
+	rootCmd := newCommand()
 
-	// choices := []string{"Blue", "Yellow", "Orange", "Red"}
-	// fmt.Println(commandline.AskMultipleChoice("What's your favorite color?", choices))
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
 
-	fmt.Println(commandline.AskOpenEndedQuestion("What's your password?", true))
+func newCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "git-helper",
+		Short: "Making it easier to work with git on the command-line",
+	}
 
-	// fmt.Println(commandline.AskYesNoQuestion("Is Go your new favorite language?"))
+	cmd.DisableAutoGenTag = true
+	cmd.DisableFlagParsing = true
+	cmd.DisableFlagsInUseLine = true
+
+	cmd.AddCommand(changeRemote.NewCommand())
+	cmd.AddCommand(checkoutDefault.NewCommand())
+	cmd.AddCommand(cleanBranches.NewCommand())
+	cmd.AddCommand(codeRequest.NewCommand())
+	cmd.AddCommand(emptyCommit.NewCommand())
+	cmd.AddCommand(forgetLocalChanges.NewCommand())
+	cmd.AddCommand(forgetLocalCommits.NewCommand())
+	cmd.AddCommand(newBranch.NewCommand())
+	cmd.AddCommand(setup.NewCommand())
+	cmd.AddCommand(update.NewCommand(packageVersion))
+	cmd.AddCommand(version.NewCommand(packageVersion))
+
+	return cmd
 }

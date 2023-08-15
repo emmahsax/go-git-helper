@@ -5,10 +5,11 @@ on:
   push:
     branches: [ main ]
     tags: [ '*' ]
+  workflow_dispatch:
 
 jobs:
   setup:
-    if: github.event_name == 'pull_request' || !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: startsWith(github.ref, 'refs/tags/v') != true && (github.event_name == 'pull_request' || !(github.event_name == 'push' && github.ref == 'refs/heads/main'))
     outputs:
       branch: ${{ steps.set_branch_variable.outputs.branch }}
     runs-on: ubuntu-latest
@@ -18,20 +19,23 @@ jobs:
         uses: emmahsax/github-actions/set-branch-variable@main
 
   gitleaks:
+    if: startsWith(github.ref, 'refs/tags/v') != true
     uses: emmahsax/github-actions/.github/workflows/gitleaks.yml@main
 
   go-release:
     if: startsWith(github.ref, 'refs/tags/v')
     uses: emmahsax/github-actions/.github/workflows/go-release.yml@main
     with:
+      build_command: task build
       files: |
-        go-git-helper
+        git-helper_darwin_arm64
       tag_name: ${{ github.ref_name }}
       upload: true
 
   go-test:
-    if: github.event_name == 'pull_request' || !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: startsWith(github.ref, 'refs/tags/v') != true && (github.event_name == 'pull_request' || !(github.event_name == 'push' && github.ref == 'refs/heads/main'))
     needs: [setup]
     uses: emmahsax/github-actions/.github/workflows/go-test.yml@main
     with:
       branch: ${{ needs.setup.outputs.branch }}
+      build_command: task build

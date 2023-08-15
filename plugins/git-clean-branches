@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# TODO: switch this to plain git-helper, as that's leftover from ruby to go migration
+
+go-git-helper clean-branches
