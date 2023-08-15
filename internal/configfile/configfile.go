@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func ConfigDir() string {
@@ -44,7 +44,7 @@ func GitHubUsername() string {
 	if configFile["github_username"] != "" {
 		return configFile["github_username"]
 	} else {
-		return configFile[":github_username"]
+		return configFile[":github_user"]
 	}
 }
 
@@ -53,7 +53,7 @@ func GitLabUsername() string {
 	if configFile["gitlab_username"] != "" {
 		return configFile["gitlab_username"]
 	} else {
-		return configFile[":gitlab_username"]
+		return configFile[":gitlab_user"]
 	}
 }
 
