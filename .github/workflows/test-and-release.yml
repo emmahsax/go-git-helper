@@ -8,11 +8,11 @@ on:
     inputs:
       release:
         default: false
-        description: Whether to complete a fresh release (ignored if not on 'main' branch)
+        description: Whether to create a GitHub Release (ignored if not on 'main' branch)
         required: true
         type: boolean
       tag_name:
-        description: The tag name to make a release for
+        description: The tag name to make a GitHub Release for
         required: false
         type: string
 
@@ -28,7 +28,6 @@ jobs:
         uses: emmahsax/github-actions/set-branch-variable@main
 
   gitleaks:
-    if: inputs.release == 'false'
     uses: emmahsax/github-actions/.github/workflows/gitleaks.yml@main
 
   go-release:
