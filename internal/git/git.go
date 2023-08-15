@@ -3,6 +3,7 @@ package git
 import (
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -10,13 +11,20 @@ import (
 
 func Checkout(branch string) {
 	cmd := exec.Command("git", "checkout", branch)
-	output, err := cmd.CombinedOutput()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	fmt.Printf("%s", string(output))
+	err = cmd.Wait()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 }
 
 func CleanDeletedBranches() {
@@ -49,24 +57,38 @@ func CleanDeletedBranches() {
 
 func CreateBranch(branch string) {
 	cmd := exec.Command("git", "branch", "--no-track", branch)
-	output, err := cmd.CombinedOutput()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	fmt.Printf("%s", string(output))
+	err = cmd.Wait()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 }
 
 func CreateEmptyCommit() {
 	cmd := exec.Command("git", "commit", "--allow-empty", "-m", "Empty commit")
-	output, err := cmd.CombinedOutput()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	fmt.Printf("%s", string(output))
+	err = cmd.Wait()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 }
 
 func CurrentBranch() string {
@@ -106,35 +128,56 @@ func DefaultBranch() string {
 
 func Fetch() {
 	cmd := exec.Command("git", "fetch", "-p")
-	output, err := cmd.CombinedOutput()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	fmt.Printf("%s", string(output))
+	err = cmd.Wait()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 }
 
 func Pull() {
 	cmd := exec.Command("git", "pull")
-	output, err := cmd.CombinedOutput()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	fmt.Printf("%s", string(output))
+	err = cmd.Wait()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 }
 
 func PushBranch(branch string) {
 	cmd := exec.Command("git", "push", "--set-upstream", "origin", branch)
-	output, err := cmd.CombinedOutput()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	fmt.Printf("%s", string(output))
+	err = cmd.Wait()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 }
 
 func RepoName() string {
@@ -170,33 +213,54 @@ func Remotes() []string {
 
 func Reset() {
 	cmd := exec.Command("git", "reset", "--hard", "origin/HEAD")
-	output, err := cmd.CombinedOutput()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	fmt.Printf("%s", string(output))
+	err = cmd.Wait()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 }
 
 func Stash() {
 	cmd := exec.Command("git", "stash")
-	output, err := cmd.CombinedOutput()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	fmt.Printf("%s", string(output))
+	err = cmd.Wait()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 }
 
 func StashDrop() {
 	cmd := exec.Command("git", "stash", "drop")
-	output, err := cmd.CombinedOutput()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	fmt.Printf("%s", string(output))
+	err = cmd.Wait()
+	if err != nil {
+		// The command output an error itself, so we can just be done
+		return
+	}
 }
