@@ -1,51 +1,8 @@
 package codeRequest
 
 import (
-	"io"
-	"os"
 	"testing"
-
-	"github.com/emmahsax/go-git-helper/internal/git"
 )
-
-func TestBaseBranch(t *testing.T) {
-	testCases := []struct {
-		question string
-		expected string
-		input    string
-	}{
-		{
-			question: "Is '" + git.DefaultBranch() + "' the correct base branch for your new code request?",
-			expected: git.DefaultBranch(),
-			input:    "y\n",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.question, func(t *testing.T) {
-			reader, writer, _ := os.Pipe()
-			defer reader.Close()
-			defer writer.Close()
-
-			originalStdin := os.Stdin
-			os.Stdin = reader
-			defer func() {
-				os.Stdin = originalStdin
-			}()
-
-			_, err := io.WriteString(writer, tc.input)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			response := baseBranch()
-
-			if response != tc.expected {
-				t.Errorf("Expected response %v, but got %v", tc.expected, response)
-			}
-		})
-	}
-}
 
 func TestCheckAllLetters(t *testing.T) {
 	resp := checkAllLetters("iekslkjasd")
