@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type SetHeadRef struct{
+type SetHeadRef struct {
 	defaultBranch string
 }
 

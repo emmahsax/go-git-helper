@@ -254,7 +254,7 @@ func Reset() {
 }
 
 func SetHeadRef(defaultBranch string) {
-	cmd := exec.Command("git", "branch", "--set-upstream-to=origin/" + defaultBranch, defaultBranch)
+	cmd := exec.Command("git", "branch", "--set-upstream-to=origin/"+defaultBranch, defaultBranch)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -272,7 +272,7 @@ func SetHeadRef(defaultBranch string) {
 		return
 	}
 
-	cmd = exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/" + defaultBranch)
+	cmd = exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/"+defaultBranch)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
