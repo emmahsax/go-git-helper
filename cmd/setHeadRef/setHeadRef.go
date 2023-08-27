@@ -14,7 +14,6 @@ func NewCommand() *cobra.Command {
 		Use:                   "set-head-ref [defaultBranch]",
 		Short:                 "Sets the HEAD ref as a symbolic ref",
 		Args:                  cobra.ExactArgs(1),
-		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			setHeadRef(args[0]).execute()

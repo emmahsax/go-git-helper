@@ -23,7 +23,6 @@ func NewCommand() *cobra.Command {
 		Use:                   "setup",
 		Short:                 "Creates a Git Helper config file at ~/.git_helper/config.yml",
 		Args:                  cobra.ExactArgs(0),
-		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			setup().execute()
@@ -86,14 +85,14 @@ func generateConfigFileContents() string {
 
 	if github {
 		contents = contents + "github_username: " + commandline.AskOpenEndedQuestion("GitHub username?", false) + "\n"
-		contents = contents + "github_token: " + commandline.AskOpenEndedQuestion("GitHub personal access token? (Navigatge to https://github.com/settings/tokens to create a new personal access token)", true) + "\n"
+		contents = contents + "github_token: " + commandline.AskOpenEndedQuestion("GitHub personal access token? (Navigate to https://github.com/settings/tokens to create a new personal access token)", true) + "\n"
 	}
 
 	gitlab := commandline.AskYesNoQuestion("Do you wish to set up GitLab credentials?")
 
 	if gitlab {
 		contents = contents + "gitlab_username: " + commandline.AskOpenEndedQuestion("GitLab username?", false) + "\n"
-		contents = contents + "gitlab_token: " + commandline.AskOpenEndedQuestion("GitLab personal access token? (Navigatge to https://gitlab.com/-/profile/personal_access_tokens to create a new personal access token)", true) + "\n"
+		contents = contents + "gitlab_token: " + commandline.AskOpenEndedQuestion("GitLab personal access token? (Navigate to https://gitlab.com/-/profile/personal_access_tokens to create a new personal access token)", true) + "\n"
 	}
 
 	contents = strings.TrimSpace(contents) + "\n"

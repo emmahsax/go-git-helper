@@ -12,7 +12,6 @@ func NewCommand() *cobra.Command {
 		Use:                   "empty-commit",
 		Short:                 "Creates an empty commit",
 		Args:                  cobra.ExactArgs(0),
-		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			emptyCommit().execute()

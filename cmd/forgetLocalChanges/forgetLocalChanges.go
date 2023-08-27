@@ -12,7 +12,6 @@ func NewCommand() *cobra.Command {
 		Use:                   "forget-local-changes",
 		Short:                 "Forget all changes that aren't committed",
 		Args:                  cobra.ExactArgs(0),
-		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			forgetLocalChanges().execute()

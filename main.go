@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	packageVersion = "beta-0.0.6"
+	packageVersion = "beta-0.0.7"
 )
 
 func main() {
@@ -37,10 +37,6 @@ func newCommand() *cobra.Command {
 		Use:   "git-helper",
 		Short: "Making it easier to work with git on the command-line",
 	}
-
-	cmd.DisableAutoGenTag = true
-	cmd.DisableFlagParsing = true
-	cmd.DisableFlagsInUseLine = true
 
 	cmd.AddCommand(changeRemote.NewCommand())
 	cmd.AddCommand(checkoutDefault.NewCommand())

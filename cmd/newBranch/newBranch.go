@@ -18,7 +18,6 @@ func NewCommand() *cobra.Command {
 		Use:                   "new-branch [optionalBranch]",
 		Short:                 "Creates a new local branch and pushes to the remote",
 		Args:                  cobra.MaximumNArgs(1),
-		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var branch string

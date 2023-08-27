@@ -12,7 +12,6 @@ func NewCommand() *cobra.Command {
 		Use:                   "checkout-default",
 		Short:                 "Switches to the default branch",
 		Args:                  cobra.ExactArgs(0),
-		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			checkoutDefault().execute()
