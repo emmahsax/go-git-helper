@@ -29,7 +29,6 @@ func NewCommand() *cobra.Command {
 		Use:                   "update",
 		Short:                 "Updates Git Helper with the newest version on GitHub",
 		Args:                  cobra.ExactArgs(0),
-		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			newUpdate().execute()

@@ -12,7 +12,6 @@ func NewCommand() *cobra.Command {
 		Use:                   "forget-local-commits",
 		Short:                 "Forget all commits that aren't pushed to remote",
 		Args:                  cobra.ExactArgs(0),
-		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			forgetLocalCommits().execute()

@@ -38,10 +38,6 @@ func newCommand() *cobra.Command {
 		Short: "Making it easier to work with git on the command-line",
 	}
 
-	cmd.DisableAutoGenTag = true
-	cmd.DisableFlagParsing = true
-	cmd.DisableFlagsInUseLine = true
-
 	cmd.AddCommand(changeRemote.NewCommand())
 	cmd.AddCommand(checkoutDefault.NewCommand())
 	cmd.AddCommand(cleanBranches.NewCommand())

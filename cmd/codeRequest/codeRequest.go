@@ -20,7 +20,6 @@ func NewCommand() *cobra.Command {
 		Use:                   "code-request",
 		Short:                 "Create either a GitHub pull request or a GitLab merge request",
 		Args:                  cobra.ExactArgs(0),
-		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			codeRequest().execute()

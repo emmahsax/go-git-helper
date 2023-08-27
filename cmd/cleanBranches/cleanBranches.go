@@ -12,7 +12,6 @@ func NewCommand() *cobra.Command {
 		Use:                   "clean-branches",
 		Short:                 "Switches to the default branch, git pulls, git fetches, and removes remote-deleted branches from your machine",
 		Args:                  cobra.ExactArgs(0),
-		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cleanBranches().execute()
