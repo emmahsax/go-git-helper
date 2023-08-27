@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/emmahsax/go-git-helper/internal/configfile"
 )
@@ -34,11 +35,13 @@ func (c *GitHubClient) run(username, requestType, curlURL string, payload map[st
 	var result Response
 	jsonBytes, err := json.Marshal(payload)
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return result
 	}
 	req, err := http.NewRequest(requestType, "https://api.github.com"+curlURL, bytes.NewBuffer(jsonBytes))
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return result
 	}
@@ -49,6 +52,7 @@ func (c *GitHubClient) run(username, requestType, curlURL string, payload map[st
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return result
 	}
@@ -56,6 +60,7 @@ func (c *GitHubClient) run(username, requestType, curlURL string, payload map[st
 
 	body, _ := io.ReadAll(resp.Body)
 	if err := json.Unmarshal(body, &result); err != nil {
+		debug.PrintStack()
 		log.Fatal("Cannot unmarshal JSON")
 		return err
 	}

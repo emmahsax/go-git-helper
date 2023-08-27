@@ -141,13 +141,6 @@ This command will check out the default branch of whatever repository you're cur
 git-helper checkout-default
 ```
 
-If your local branches aren't formatted correctly (run `git branch --remote` to see), then run (assuming default branch is `main`):
-
-```bash
-git branch --set-upstream-to=origin/main main
-git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
-```
-
 ### `clean-branches`
 
 This command will bring you to the repository's default branch, `git pull`, `git fetch -p`, and will clean up your local branches on your machine by seeing which ones are existing on the remote, and updating yours accordingly. To clean your local branches, run:

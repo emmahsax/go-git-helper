@@ -12,6 +12,7 @@ import (
 	"github.com/emmahsax/go-git-helper/cmd/forgetLocalChanges"
 	"github.com/emmahsax/go-git-helper/cmd/forgetLocalCommits"
 	"github.com/emmahsax/go-git-helper/cmd/newBranch"
+	"github.com/emmahsax/go-git-helper/cmd/setHeadRef"
 	"github.com/emmahsax/go-git-helper/cmd/setup"
 	"github.com/emmahsax/go-git-helper/cmd/update"
 	"github.com/emmahsax/go-git-helper/cmd/version"
@@ -50,6 +51,7 @@ func newCommand() *cobra.Command {
 	cmd.AddCommand(forgetLocalCommits.NewCommand())
 	cmd.AddCommand(newBranch.NewCommand())
 	cmd.AddCommand(setup.NewCommand())
+	cmd.AddCommand(setHeadRef.NewCommand())
 	cmd.AddCommand(update.NewCommand())
 	cmd.AddCommand(version.NewCommand(packageVersion))
 

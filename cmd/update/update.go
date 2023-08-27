@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"runtime/debug"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -56,6 +57,7 @@ func downloadGitHelper() {
 	releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repository)
 	resp, err := http.Get(releaseURL)
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -63,6 +65,7 @@ func downloadGitHelper() {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -79,6 +82,7 @@ func downloadGitHelper() {
 	binaryName := strings.Split(downloadURL, "/")[len(strings.Split(downloadURL, "/"))-1]
 	resp, err = http.Get(downloadURL)
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -86,6 +90,7 @@ func downloadGitHelper() {
 
 	out, err := os.Create(binaryName)
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -93,6 +98,7 @@ func downloadGitHelper() {
 
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -102,6 +108,7 @@ func moveGitHelper() {
 	cmd := exec.Command("sudo", "mv", "./"+asset, newPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -113,6 +120,7 @@ func setPermissions() {
 	cmdChown := exec.Command("sudo", "chown", "root:wheel", newPath)
 	output, err := cmdChown.CombinedOutput()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -122,6 +130,7 @@ func setPermissions() {
 	cmdChmod := exec.Command("sudo", "chmod", "+x", newPath)
 	output, err = cmdChmod.CombinedOutput()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -133,6 +142,7 @@ func outputNewVersion() {
 	cmd := exec.Command("go-git-helper", "version") // TODO: make this command git-helper
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}

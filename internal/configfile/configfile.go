@@ -3,14 +3,16 @@ package configfile
 import (
 	"log"
 	"os"
+	"runtime/debug"
 
-	"gopkg.in/yaml.v3"
+	yaml "gopkg.in/yaml.v3"
 )
 
 func ConfigDir() string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal("Error:", err)
+		debug.PrintStack()
+		log.Fatal(err)
 		return ""
 	}
 
