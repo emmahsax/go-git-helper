@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/github"
@@ -40,6 +41,7 @@ func (pr *GitHubPullRequest) Create() {
 
 	if prResponse.HtmlURL == "" {
 		errorMessage := prResponse.Errors[0].Message
+		debug.PrintStack()
 		log.Fatal("Could not create pull request: " + errorMessage)
 	} else {
 		fmt.Println("Pull request successfully created:", prResponse.HtmlURL)
@@ -51,6 +53,7 @@ func newPrBody() string {
 	if templateName != "" {
 		content, err := os.ReadFile(templateName)
 		if err != nil {
+			debug.PrintStack()
 			log.Fatal(err)
 		}
 

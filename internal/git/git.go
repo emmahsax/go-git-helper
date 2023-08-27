@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime/debug"
 	"strings"
 )
 
@@ -16,12 +17,14 @@ func Checkout(branch string) {
 
 	err := cmd.Start()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
 
 	err = cmd.Wait()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -31,6 +34,7 @@ func CleanDeletedBranches() {
 	cmd := exec.Command("git", "branch", "-vv")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -46,6 +50,7 @@ func CleanDeletedBranches() {
 			cmd = exec.Command("git", "branch", "-D", b)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
+				debug.PrintStack()
 				log.Fatal(err)
 				return
 			}
@@ -62,12 +67,14 @@ func CreateBranch(branch string) {
 
 	err := cmd.Start()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
 
 	err = cmd.Wait()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -80,12 +87,14 @@ func CreateEmptyCommit() {
 
 	err := cmd.Start()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
 
 	err = cmd.Wait()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -95,6 +104,7 @@ func CurrentBranch() string {
 	cmd := exec.Command("git", "branch")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return ""
 	}
@@ -113,6 +123,10 @@ func DefaultBranch() string {
 	cmd := exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		if string(output) == "fatal: ref refs/remotes/origin/HEAD is not a symbolic ref\n" {
+			fmt.Printf("\nYour symbolic ref is not set up properly. Please run:\n  git-helper set-head-ref [defaultBranch]\n\nAnd then try your command again.\n\n")
+		}
+		debug.PrintStack()
 		log.Fatal(err)
 		return ""
 	}
@@ -133,12 +147,14 @@ func Fetch() {
 
 	err := cmd.Start()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
 
 	err = cmd.Wait()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -151,12 +167,14 @@ func Pull() {
 
 	err := cmd.Start()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
 
 	err = cmd.Wait()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -169,12 +187,14 @@ func PushBranch(branch string) {
 
 	err := cmd.Start()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
 
 	err = cmd.Wait()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -193,6 +213,7 @@ func RepoName() string {
 	if len(match) >= 2 {
 		return match[1]
 	} else {
+		debug.PrintStack()
 		log.Fatal("No match found")
 	}
 
@@ -204,6 +225,7 @@ func Remotes() []string {
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return []string{}
 	}
@@ -218,12 +240,52 @@ func Reset() {
 
 	err := cmd.Start()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
 
 	err = cmd.Wait()
 	if err != nil {
+		debug.PrintStack()
+		log.Fatal(err)
+		return
+	}
+}
+
+func SetHeadRef(defaultBranch string) {
+	cmd := exec.Command("git", "branch", "--set-upstream-to=origin/"+defaultBranch, defaultBranch)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
+	if err != nil {
+		debug.PrintStack()
+		log.Fatal(err)
+		return
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		debug.PrintStack()
+		log.Fatal(err)
+		return
+	}
+
+	cmd = exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/"+defaultBranch)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Start()
+	if err != nil {
+		debug.PrintStack()
+		log.Fatal(err)
+		return
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -236,12 +298,14 @@ func Stash() {
 
 	err := cmd.Start()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
 
 	err = cmd.Wait()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -254,6 +318,7 @@ func StashDrop() {
 
 	err := cmd.Start()
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}

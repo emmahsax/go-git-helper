@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
@@ -73,7 +74,8 @@ func processGitRepository(cr *ChangeRemote) {
 	cmd := exec.Command("git", "remote", "-v")
 	output, err := cmd.Output()
 	if err != nil {
-		log.Fatal("Error:", err)
+		debug.PrintStack()
+		log.Fatal(err)
 		return
 	}
 
@@ -110,7 +112,8 @@ func processRemote(remote, host, repo, remoteName string, cr *ChangeRemote) {
 	cmd := exec.Command("git", "remote", "set-url", remoteName, newRemote)
 	_, err := cmd.Output()
 	if err != nil {
-		log.Fatal("Error:", err)
+		debug.PrintStack()
+		log.Fatal(err)
 		return
 	}
 }

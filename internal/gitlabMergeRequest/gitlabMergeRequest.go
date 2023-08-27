@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/gitlab"
@@ -42,6 +43,7 @@ func (mr *GitLabMergeRequest) Create() {
 
 	if mrResponse.WebURL == "" {
 		errorMessage := mrResponse.Message[0]
+		debug.PrintStack()
 		log.Fatal("Could not create merge request: " + errorMessage)
 	} else {
 		fmt.Println("Merge request successfully created:", mrResponse.WebURL)
@@ -53,6 +55,7 @@ func newMrBody() string {
 	if templateName != "" {
 		content, err := os.ReadFile(templateName)
 		if err != nil {
+			debug.PrintStack()
 			log.Fatal(err)
 		}
 

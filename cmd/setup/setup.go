@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
@@ -62,6 +63,7 @@ func createOrUpdateConfig() {
 	if !configfile.ConfigDirExists() {
 		err := os.Mkdir(configfile.ConfigDir(), 0755)
 		if err != nil {
+			debug.PrintStack()
 			log.Fatal(err)
 			return
 		}
@@ -69,6 +71,7 @@ func createOrUpdateConfig() {
 
 	err := os.WriteFile(configfile.ConfigFile(), []byte(content), 0644)
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -111,12 +114,14 @@ func createOrUpdatePlugins() {
 	pluginsURL := "https://api.github.com/repos/emmahsax/go-git-helper/contents/plugins"
 
 	if err := os.MkdirAll(pluginsDir, 0755); err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
 
 	resp, err := http.Get(pluginsURL)
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal("Error:", err)
 		return
 	}
@@ -124,6 +129,7 @@ func createOrUpdatePlugins() {
 
 	var allPlugins []map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&allPlugins); err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return
 	}
@@ -134,6 +140,7 @@ func createOrUpdatePlugins() {
 
 		resp, err := http.Get(pluginURL)
 		if err != nil {
+			debug.PrintStack()
 			log.Fatal(err)
 			continue
 		}
@@ -142,6 +149,7 @@ func createOrUpdatePlugins() {
 		pluginPath := filepath.Join(pluginsDir, pluginName)
 		file, err := os.Create(pluginPath)
 		if err != nil {
+			debug.PrintStack()
 			log.Fatal(err)
 			continue
 		}
@@ -149,6 +157,7 @@ func createOrUpdatePlugins() {
 
 		_, err = io.Copy(file, resp.Body)
 		if err != nil {
+			debug.PrintStack()
 			log.Fatal(err)
 			continue
 		}

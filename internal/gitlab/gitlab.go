@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/configfile"
@@ -31,6 +32,7 @@ func (c *GitLabClient) run(requestType, curlURL string) interface{} {
 	var result Response
 	req, err := http.NewRequest(requestType, fmt.Sprintf("https://gitlab.com/api/v4%s", curlURL), nil)
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return result
 	}
@@ -40,6 +42,7 @@ func (c *GitLabClient) run(requestType, curlURL string) interface{} {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		debug.PrintStack()
 		log.Fatal(err)
 		return result
 	}
@@ -47,6 +50,7 @@ func (c *GitLabClient) run(requestType, curlURL string) interface{} {
 
 	body, _ := io.ReadAll(resp.Body)
 	if err := json.Unmarshal(body, &result); err != nil {
+		debug.PrintStack()
 		log.Fatal("Cannot unmarshal JSON")
 		return err
 	}

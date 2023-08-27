@@ -141,13 +141,6 @@ This command will check out the default branch of whatever repository you're cur
 git-helper checkout-default
 ```
 
-If your local branches aren't formatted correctly (run `git branch --remote` to see), then run (assuming default branch is `main`):
-
-```bash
-git branch --set-upstream-to=origin/main main
-git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
-```
-
 ### `clean-branches`
 
 This command will bring you to the repository's default branch, `git pull`, `git fetch -p`, and will clean up your local branches on your machine by seeing which ones are existing on the remote, and updating yours accordingly. To clean your local branches, run:
@@ -210,6 +203,30 @@ git-helper new-branch [optionalBranch]
 
 The command either accepts a branch name right away or it will ask you for the name of your new branch. Make sure your input does not contain any spaces or special characters.
 
+### `set-head-ref`
+
+Sets the upstream and `HEAD` symbolic ref to the default branch passed in:
+
+```bash
+git-helper set-head-ref [defaultBranch]
+```
+
+### `setup`
+
+See [`Setup`](#setup).
+
+### `update`
+
+See [`Updating Git Helper`](#updating-git-helper).
+
+### `version`
+
+Show's the local version of Git Helper installed:
+
+```bash
+git-helper version
+```
+
 ## Migrating from the Ruby version of Git Helper
 
 1. Uninstall Ruby's Git Helper:
@@ -224,7 +241,7 @@ The command either accepts a branch name right away or it will ask you for the n
     # Verify it's gone by this command returning command not found
     git-helper -v
     ```
-2. Install Go's Git Helper by following the instructions in the beginning of this `README`
+2. Install Go's Git Helper by following the instructions in [`Installation`](#installation)
 3. Check Go's Git Helper is installed:
     ```bash
     git-helper version
