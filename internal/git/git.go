@@ -124,8 +124,7 @@ func DefaultBranch() string {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		if string(output) == "fatal: ref refs/remotes/origin/HEAD is not a symbolic ref\n" {
-			// TODO: switch this to git-helper, it's leftover from the migration
-			fmt.Printf("\nYour symbolic ref is not set up properly. Please run:\n  go-git-helper set-head-ref [defaultBranch]\n\nAnd then try your command again.\n\n")
+			fmt.Printf("\nYour symbolic ref is not set up properly. Please run:\n  git-helper set-head-ref [defaultBranch]\n\nAnd then try your command again.\n\n")
 		}
 		debug.PrintStack()
 		log.Fatal(err)
