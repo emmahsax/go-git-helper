@@ -14,6 +14,10 @@ type NewBranch struct {
 }
 
 func NewCommand() *cobra.Command {
+	var (
+		debug bool
+	)
+
 	cmd := &cobra.Command{
 		Use:                   "new-branch [optionalBranch]",
 		Short:                 "Creates a new local branch and pushes to the remote",
@@ -33,10 +37,12 @@ func NewCommand() *cobra.Command {
 				}
 			}
 
-			newBranch(branch).execute()
+			newBranch(branch).execute(debug)
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug mode")
 
 	return cmd
 }
@@ -63,10 +69,11 @@ func getValidBranch() string {
 	return branch
 }
 
-func (nb *NewBranch) execute() {
+func (nb *NewBranch) execute(debug bool) {
 	fmt.Println("Attempting to create a new branch:", nb.branch)
-	git.Pull()
-	git.CreateBranch(nb.branch)
-	git.Checkout(nb.branch)
-	git.PushBranch(nb.branch)
+	g := git.NewGitClient(debug)
+	g.Pull()
+	g.CreateBranch(nb.branch)
+	g.Checkout(nb.branch)
+	g.PushBranch(nb.branch)
 }

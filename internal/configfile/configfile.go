@@ -8,10 +8,22 @@ import (
 	yaml "gopkg.in/yaml.v3"
 )
 
-func ConfigDir() string {
+type ConfigFile struct {
+	Debug bool
+}
+
+func NewConfigFileClient(debug bool) *ConfigFile {
+	return &ConfigFile{
+		Debug: debug,
+	}
+}
+
+func (cf *ConfigFile) ConfigDir() string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		debug.PrintStack()
+		if cf.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return ""
 	}
@@ -19,8 +31,8 @@ func ConfigDir() string {
 	return homeDir + "/.git_helper"
 }
 
-func ConfigDirExists() bool {
-	info, err := os.Stat(ConfigDir())
+func (cf *ConfigFile) ConfigDirExists() bool {
+	info, err := os.Stat(cf.ConfigDir())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false
@@ -30,19 +42,19 @@ func ConfigDirExists() bool {
 	return info.IsDir()
 }
 
-func ConfigFile() string {
-	return ConfigDir() + "/config.yml"
+func (cf *ConfigFile) ConfigFile() string {
+	return cf.ConfigDir() + "/config.yml"
 }
 
-func ConfigFileExists() bool {
-	_, err := os.Stat(ConfigFile())
+func (cf *ConfigFile) ConfigFileExists() bool {
+	_, err := os.Stat(cf.ConfigFile())
 	return err == nil
 }
 
 // TODO: pull from the values w/o the : at the beginning, as that's leftover from ruby to go migration
 
-func GitHubUsername() string {
-	configFile := configFileContents()
+func (cf *ConfigFile) GitHubUsername() string {
+	configFile := cf.configFileContents()
 	if configFile["github_username"] != "" {
 		return configFile["github_username"]
 	} else {
@@ -50,8 +62,8 @@ func GitHubUsername() string {
 	}
 }
 
-func GitLabUsername() string {
-	configFile := configFileContents()
+func (cf *ConfigFile) GitLabUsername() string {
+	configFile := cf.configFileContents()
 	if configFile["gitlab_username"] != "" {
 		return configFile["gitlab_username"]
 	} else {
@@ -59,8 +71,8 @@ func GitLabUsername() string {
 	}
 }
 
-func GitHubToken() string {
-	configFile := configFileContents()
+func (cf *ConfigFile) GitHubToken() string {
+	configFile := cf.configFileContents()
 	if configFile["github_token"] != "" {
 		return configFile["github_token"]
 	} else {
@@ -68,8 +80,8 @@ func GitHubToken() string {
 	}
 }
 
-func GitLabToken() string {
-	configFile := configFileContents()
+func (cf *ConfigFile) GitLabToken() string {
+	configFile := cf.configFileContents()
 	if configFile["gitlab_token"] != "" {
 		return configFile["gitlab_token"]
 	} else {
@@ -77,8 +89,8 @@ func GitLabToken() string {
 	}
 }
 
-func configFileContents() map[string]string {
-	data, err := os.ReadFile(ConfigFile())
+func (cf *ConfigFile) configFileContents() map[string]string {
+	data, err := os.ReadFile(cf.ConfigFile())
 	if err != nil {
 		log.Fatalf("Error reading file: %v", err)
 	}

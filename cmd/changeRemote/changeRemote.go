@@ -14,27 +14,35 @@ import (
 )
 
 type ChangeRemote struct {
+	Debug    bool
 	OldOwner string
 	NewOwner string
 }
 
 func NewCommand() *cobra.Command {
+	var (
+		debug bool
+	)
+
 	cmd := &cobra.Command{
 		Use:                   "change-remote [oldOwner] [newOwner]",
 		Short:                 "Change the git remote owners for multiple cloned git repositories",
 		Args:                  cobra.ExactArgs(2),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newChangeRemote(args[0], args[1]).execute()
+			newChangeRemote(args[0], args[1], debug).execute()
 			return nil
 		},
 	}
 
+	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug mode")
+
 	return cmd
 }
 
-func newChangeRemote(oldOwner, newOwner string) *ChangeRemote {
+func newChangeRemote(oldOwner, newOwner string, debug bool) *ChangeRemote {
 	return &ChangeRemote{
+		Debug:    debug,
 		OldOwner: oldOwner,
 		NewOwner: newOwner,
 	}
@@ -73,7 +81,9 @@ func processGitRepository(cr *ChangeRemote) {
 	cmd := exec.Command("git", "remote", "-v")
 	output, err := cmd.Output()
 	if err != nil {
-		debug.PrintStack()
+		if cr.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
@@ -111,7 +121,9 @@ func processRemote(remote, host, repo, remoteName string, cr *ChangeRemote) {
 	cmd := exec.Command("git", "remote", "set-url", remoteName, newRemote)
 	_, err := cmd.Output()
 	if err != nil {
-		debug.PrintStack()
+		if cr.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}

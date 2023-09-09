@@ -12,50 +12,56 @@ import (
 )
 
 type GitLabMergeRequest struct {
-	baseBranch   string
-	localBranch  string
-	localProject string
-	newMrTitle   string
+	BaseBranch   string
+	Debug bool
+	LocalBranch  string
+	LocalProject string
+	NewMrTitle   string
 }
 
-func NewGitLabMergeRequest(options map[string]string) *GitLabMergeRequest {
+func NewGitLabMergeRequest(options map[string]string, debug bool) *GitLabMergeRequest {
 	return &GitLabMergeRequest{
-		baseBranch:   options["baseBranch"],
-		localBranch:  options["localBranch"],
-		localProject: options["localProject"],
-		newMrTitle:   options["newMrTitle"],
+		BaseBranch:   options["baseBranch"],
+		Debug: debug,
+		LocalBranch:  options["localBranch"],
+		LocalProject: options["localProject"],
+		NewMrTitle:   options["newMrTitle"],
 	}
 }
 
 func (mr *GitLabMergeRequest) Create() {
-	body := newMrBody()
+	body := newMrBody(mr)
 	optionsMap := map[string]string{
 		"description":          body,
 		"remove_source_branch": "true",
 		"squash":               "true",
-		"source_branch":        mr.localBranch,
-		"target_branch":        mr.baseBranch,
-		"title":                mr.newMrTitle,
+		"source_branch":        mr.LocalBranch,
+		"target_branch":        mr.BaseBranch,
+		"title":                mr.NewMrTitle,
 	}
 
-	fmt.Println("Creating merge request:", mr.newMrTitle)
-	mrResponse := gitlabClient().CreateMergeRequest(mr.localProject, optionsMap).(gitlab.Response)
+	fmt.Println("Creating merge request:", mr.NewMrTitle)
+	mrResponse := gitlabClient(mr).CreateMergeRequest(mr.LocalProject, optionsMap).(gitlab.Response)
 
 	if mrResponse.WebURL == "" {
 		errorMessage := mrResponse.Message[0]
-		debug.PrintStack()
+		if mr.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal("Could not create merge request: " + errorMessage)
 	} else {
 		fmt.Println("Merge request successfully created:", mrResponse.WebURL)
 	}
 }
 
-func newMrBody() string {
+func newMrBody(mr *GitLabMergeRequest) string {
 	templateName := templateNameToApply()
 	if templateName != "" {
 		content, err := os.ReadFile(templateName)
 		if err != nil {
-			debug.PrintStack()
+			if mr.Debug {
+				debug.PrintStack()
+			}
 			log.Fatal(err)
 		}
 
@@ -122,6 +128,6 @@ func mrTemplateOptions() []string {
 	return templateList
 }
 
-func gitlabClient() *gitlab.GitLabClient {
-	return gitlab.NewGitLabClient()
+func gitlabClient(mr *GitLabMergeRequest) *gitlab.GitLabClient {
+	return gitlab.NewGitLabClient(mr.Debug)
 }

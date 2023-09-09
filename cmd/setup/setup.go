@@ -16,66 +16,83 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type Setup struct{}
+type Setup struct {
+	Debug bool
+}
 
 func NewCommand() *cobra.Command {
+	var (
+		debug bool
+	)
+
 	cmd := &cobra.Command{
 		Use:                   "setup",
 		Short:                 "Creates a Git Helper config file at ~/.git_helper/config.yml",
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			setup().execute()
+			setup(debug).execute()
 			return nil
 		},
 	}
 
+	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug mode")
+
 	return cmd
 }
 
-func setup() *Setup {
-	return &Setup{}
+func setup(debug bool) *Setup {
+	return &Setup{
+		Debug: debug,
+	}
 }
 
 func (s *Setup) execute() {
-	createConfig()
-	setupPlugins()
+	createConfig(s)
+	setupPlugins(s)
 }
 
-func createConfig() {
+func createConfig(s *Setup) {
 	var create bool
 
-	if configfile.ConfigFileExists() {
-		create = commandline.AskYesNoQuestion("It looks like the " + configfile.ConfigFile() + " file already exists. Do you wish to replace it?")
+	cf := configfile.NewConfigFileClient(s.Debug)
+
+	if cf.ConfigFileExists() {
+		create = commandline.AskYesNoQuestion("It looks like the " + cf.ConfigFile() + " file already exists. Do you wish to replace it?")
 	} else {
 		create = true
 	}
 
 	if create {
-		createOrUpdateConfig()
+		createOrUpdateConfig(s)
 	}
 }
 
-func createOrUpdateConfig() {
+func createOrUpdateConfig(s *Setup) {
 	content := generateConfigFileContents()
+	cf := configfile.NewConfigFileClient(s.Debug)
 
-	if !configfile.ConfigDirExists() {
-		err := os.Mkdir(configfile.ConfigDir(), 0755)
+	if !cf.ConfigDirExists() {
+		err := os.Mkdir(cf.ConfigDir(), 0755)
 		if err != nil {
-			debug.PrintStack()
+			if s.Debug {
+				debug.PrintStack()
+			}
 			log.Fatal(err)
 			return
 		}
 	}
 
-	err := os.WriteFile(configfile.ConfigFile(), []byte(content), 0644)
+	err := os.WriteFile(cf.ConfigFile(), []byte(content), 0644)
 	if err != nil {
-		debug.PrintStack()
+		if s.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
 
-	fmt.Printf("\nDone setting up %s!\n\n", configfile.ConfigFile())
+	fmt.Printf("\nDone setting up %s!\n\n", cf.ConfigFile())
 }
 
 func generateConfigFileContents() string {
@@ -100,27 +117,32 @@ func generateConfigFileContents() string {
 	return contents
 }
 
-func setupPlugins() {
+func setupPlugins(s *Setup) {
 	setup := commandline.AskYesNoQuestion("Do you wish to set up the Git Helper plugins?")
 
 	if setup {
-		createOrUpdatePlugins()
+		createOrUpdatePlugins(s)
 	}
 }
 
-func createOrUpdatePlugins() {
-	pluginsDir := configfile.ConfigDir() + "/plugins"
+func createOrUpdatePlugins(s *Setup) {
+	cf := configfile.NewConfigFileClient(s.Debug)
+	pluginsDir := cf.ConfigDir() + "/plugins"
 	pluginsURL := "https://api.github.com/repos/emmahsax/go-git-helper/contents/plugins"
 
 	if err := os.MkdirAll(pluginsDir, 0755); err != nil {
-		debug.PrintStack()
+		if s.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
 
 	resp, err := http.Get(pluginsURL)
 	if err != nil {
-		debug.PrintStack()
+		if s.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal("Error:", err)
 		return
 	}
@@ -128,7 +150,9 @@ func createOrUpdatePlugins() {
 
 	var allPlugins []map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&allPlugins); err != nil {
-		debug.PrintStack()
+		if s.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
@@ -139,7 +163,9 @@ func createOrUpdatePlugins() {
 
 		resp, err := http.Get(pluginURL)
 		if err != nil {
-			debug.PrintStack()
+			if s.Debug {
+				debug.PrintStack()
+			}
 			log.Fatal(err)
 			continue
 		}
@@ -148,7 +174,9 @@ func createOrUpdatePlugins() {
 		pluginPath := filepath.Join(pluginsDir, pluginName)
 		file, err := os.Create(pluginPath)
 		if err != nil {
-			debug.PrintStack()
+			if s.Debug {
+				debug.PrintStack()
+			}
 			log.Fatal(err)
 			continue
 		}
@@ -156,7 +184,9 @@ func createOrUpdatePlugins() {
 
 		_, err = io.Copy(file, resp.Body)
 		if err != nil {
-			debug.PrintStack()
+			if s.Debug {
+				debug.PrintStack()
+			}
 			log.Fatal(err)
 			continue
 		}

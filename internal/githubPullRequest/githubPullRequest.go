@@ -12,48 +12,54 @@ import (
 )
 
 type GitHubPullRequest struct {
-	baseBranch  string
-	localBranch string
-	localRepo   string
-	newPrTitle  string
+	BaseBranch  string
+	Debug bool
+	LocalBranch string
+	LocalRepo   string
+	NewPrTitle  string
 }
 
-func NewGitHubPullRequest(options map[string]string) *GitHubPullRequest {
+func NewGitHubPullRequest(options map[string]string, debug bool) *GitHubPullRequest {
 	return &GitHubPullRequest{
-		baseBranch:  options["baseBranch"],
-		localBranch: options["localBranch"],
-		localRepo:   options["localRepo"],
-		newPrTitle:  options["newPrTitle"],
+		BaseBranch:  options["baseBranch"],
+		Debug: debug,
+		LocalBranch: options["localBranch"],
+		LocalRepo:   options["localRepo"],
+		NewPrTitle:  options["newPrTitle"],
 	}
 }
 
 func (pr *GitHubPullRequest) Create() {
-	body := newPrBody()
+	body := newPrBody(pr)
 	optionsMap := map[string]interface{}{
-		"base":  pr.baseBranch,
+		"base":  pr.BaseBranch,
 		"body":  body,
-		"head":  pr.localBranch,
-		"title": pr.newPrTitle,
+		"head":  pr.LocalBranch,
+		"title": pr.NewPrTitle,
 	}
 
-	fmt.Println("Creating pull request:", pr.newPrTitle)
-	prResponse := githubClient().CreatePullRequest(pr.localRepo, optionsMap).(github.Response)
+	fmt.Println("Creating pull request:", pr.NewPrTitle)
+	prResponse := githubClient(pr).CreatePullRequest(pr.LocalRepo, optionsMap).(github.Response)
 
 	if prResponse.HtmlURL == "" {
 		errorMessage := prResponse.Errors[0].Message
-		debug.PrintStack()
+		if pr.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal("Could not create pull request: " + errorMessage)
 	} else {
 		fmt.Println("Pull request successfully created:", prResponse.HtmlURL)
 	}
 }
 
-func newPrBody() string {
+func newPrBody(pr *GitHubPullRequest) string {
 	templateName := templateNameToApply()
 	if templateName != "" {
 		content, err := os.ReadFile(templateName)
 		if err != nil {
-			debug.PrintStack()
+			if pr.Debug {
+				debug.PrintStack()
+			}
 			log.Fatal(err)
 		}
 
@@ -120,6 +126,6 @@ func prTemplateOptions() []string {
 	return templateList
 }
 
-func githubClient() *github.GitHubClient {
-	return github.NewGitHubClient()
+func githubClient(pr *GitHubPullRequest) *github.GitHubClient {
+	return github.NewGitHubClient(pr.Debug)
 }
