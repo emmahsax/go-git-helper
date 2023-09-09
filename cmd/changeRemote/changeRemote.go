@@ -30,7 +30,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(2),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newChangeRemote(args[0], args[1], debug).execute()
+			newChangeRemoteClient(args[0], args[1], debug).execute()
 			return nil
 		},
 	}
@@ -40,7 +40,7 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newChangeRemote(oldOwner, newOwner string, debug bool) *ChangeRemote {
+func newChangeRemoteClient(oldOwner, newOwner string, debug bool) *ChangeRemote {
 	return &ChangeRemote{
 		Debug:    debug,
 		OldOwner: oldOwner,
@@ -54,12 +54,12 @@ func (cr *ChangeRemote) execute() {
 
 	for _, entry := range nestedDirs {
 		if entry.IsDir() && entry.Name() != "." && entry.Name() != ".." {
-			processDir(entry.Name(), originalDir, cr)
+			cr.processDir(entry.Name(), originalDir)
 		}
 	}
 }
 
-func processDir(currentDir, originalDir string, cr *ChangeRemote) {
+func (cr *ChangeRemote) processDir(currentDir, originalDir string) {
 	_ = os.Chdir(currentDir)
 	defer os.Chdir(originalDir)
 
@@ -72,12 +72,12 @@ func processDir(currentDir, originalDir string, cr *ChangeRemote) {
 		)
 
 		if answer {
-			processGitRepository(cr)
+			cr.processGitRepository()
 		}
 	}
 }
 
-func processGitRepository(cr *ChangeRemote) {
+func (cr *ChangeRemote) processGitRepository() {
 	cmd := exec.Command("git", "remote", "-v")
 	output, err := cmd.Output()
 	if err != nil {
@@ -97,10 +97,10 @@ func processGitRepository(cr *ChangeRemote) {
 
 		plainRemote := strings.Fields(remote)[1]
 		remoteName := strings.Fields(remote)[0]
-		host, owner, repo := remoteInfo(plainRemote)
+		host, owner, repo := cr.remoteInfo(plainRemote)
 
 		if owner == cr.OldOwner {
-			processRemote(plainRemote, host, repo, remoteName, cr)
+			cr.processRemote(plainRemote, host, repo, remoteName)
 		} else {
 			fmt.Printf("  Found remote (%s) is not pointing to %s.\n", plainRemote, cr.OldOwner)
 		}
@@ -108,7 +108,7 @@ func processGitRepository(cr *ChangeRemote) {
 	fmt.Println()
 }
 
-func processRemote(remote, host, repo, remoteName string, cr *ChangeRemote) {
+func (cr *ChangeRemote) processRemote(remote, host, repo, remoteName string) {
 	var newRemote string
 
 	if strings.Contains(remote, "git@") {
@@ -129,7 +129,7 @@ func processRemote(remote, host, repo, remoteName string, cr *ChangeRemote) {
 	}
 }
 
-func remoteInfo(remote string) (string, string, string) {
+func (cr *ChangeRemote) remoteInfo(remote string) (string, string, string) {
 	if strings.Contains(remote, "git@") {
 		remoteSplit := strings.SplitN(remote, ":", 2)
 		if len(remoteSplit) != 2 {

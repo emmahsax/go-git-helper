@@ -5,7 +5,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type ForgetLocalCommits struct{}
+type ForgetLocalCommits struct {
+	Debug bool
+}
 
 func NewCommand() *cobra.Command {
 	var (
@@ -18,7 +20,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			forgetLocalCommits().execute(debug)
+			newForgetLocalCommitsClient(debug).execute()
 			return nil
 		},
 	}
@@ -28,12 +30,14 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func forgetLocalCommits() *ForgetLocalCommits {
-	return &ForgetLocalCommits{}
+func newForgetLocalCommitsClient(debug bool) *ForgetLocalCommits {
+	return &ForgetLocalCommits{
+		Debug: debug,
+	}
 }
 
-func (flc *ForgetLocalCommits) execute(debug bool) {
-	g := git.NewGitClient(debug)
+func (flc *ForgetLocalCommits) execute() {
+	g := git.NewGitClient(flc.Debug)
 	g.Pull()
 	g.Reset()
 }

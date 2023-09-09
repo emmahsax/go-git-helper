@@ -5,7 +5,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type CheckoutDefault struct{}
+type CheckoutDefault struct {
+	Debug bool
+}
 
 func NewCommand() *cobra.Command {
 	var (
@@ -18,7 +20,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			checkoutDefault().execute(debug)
+			newCheckoutDefaultClient(debug).execute()
 			return nil
 		},
 	}
@@ -28,12 +30,14 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func checkoutDefault() *CheckoutDefault {
-	return &CheckoutDefault{}
+func newCheckoutDefaultClient(debug bool) *CheckoutDefault {
+	return &CheckoutDefault{
+		Debug: debug,
+	}
 }
 
-func (cd *CheckoutDefault) execute(debug bool) {
-	g := git.NewGitClient(debug)
+func (cd *CheckoutDefault) execute() {
+	g := git.NewGitClient(cd.Debug)
 	branch := g.DefaultBranch()
 	g.Checkout(branch)
 }

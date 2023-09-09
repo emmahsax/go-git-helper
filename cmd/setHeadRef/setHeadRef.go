@@ -6,7 +6,8 @@ import (
 )
 
 type SetHeadRef struct {
-	defaultBranch string
+	Debug         bool
+	DefaultBranch string
 }
 
 func NewCommand() *cobra.Command {
@@ -20,7 +21,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			setHeadRef(args[0]).execute(debug)
+			newSetHeadRefClient(args[0], debug).execute()
 			return nil
 		},
 	}
@@ -30,13 +31,14 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func setHeadRef(defaultBranch string) *SetHeadRef {
+func newSetHeadRefClient(defaultBranch string, debug bool) *SetHeadRef {
 	return &SetHeadRef{
-		defaultBranch: defaultBranch,
+		Debug:         debug,
+		DefaultBranch: defaultBranch,
 	}
 }
 
-func (shr *SetHeadRef) execute(debug bool) {
-	g := git.NewGitClient(debug)
-	g.SetHeadRef(shr.defaultBranch)
+func (shr *SetHeadRef) execute() {
+	g := git.NewGitClient(shr.Debug)
+	g.SetHeadRef(shr.DefaultBranch)
 }

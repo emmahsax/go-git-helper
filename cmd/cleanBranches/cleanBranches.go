@@ -5,7 +5,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type CleanBranches struct{}
+type CleanBranches struct {
+	Debug bool
+}
 
 func NewCommand() *cobra.Command {
 	var (
@@ -18,7 +20,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cleanBranches().execute(debug)
+			newCleanBranchesClient(debug).execute()
 			return nil
 		},
 	}
@@ -28,12 +30,14 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func cleanBranches() *CleanBranches {
-	return &CleanBranches{}
+func newCleanBranchesClient(debug bool) *CleanBranches {
+	return &CleanBranches{
+		Debug: debug,
+	}
 }
 
-func (cb *CleanBranches) execute(debug bool) {
-	g := git.NewGitClient(debug)
+func (cb *CleanBranches) execute() {
+	g := git.NewGitClient(cb.Debug)
 	branch := g.DefaultBranch()
 	g.Checkout(branch)
 	g.Pull()

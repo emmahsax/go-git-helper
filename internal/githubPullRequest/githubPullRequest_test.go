@@ -5,7 +5,13 @@ import (
 )
 
 func TestNewPrBody(t *testing.T) {
-	body := newPrBody()
+	options := make(map[string]string)
+	options["baseBranch"] = "main"
+	options["newPrTitle"] = "Example PR Title"
+	options["localBranch"] = "feature-branch"
+	options["localRepo"] = "test-repo"
+	pr := NewGitHubPullRequest(options, true)
+	body := pr.newPrBody()
 
 	if body != "" {
 		t.Fatalf(`Body was non-empty: %s`, body)
@@ -13,7 +19,13 @@ func TestNewPrBody(t *testing.T) {
 }
 
 func TestTemplateNameToApply(t *testing.T) {
-	template := templateNameToApply()
+	options := make(map[string]string)
+	options["baseBranch"] = "main"
+	options["newPrTitle"] = "Example PR Title"
+	options["localBranch"] = "feature-branch"
+	options["localRepo"] = "test-repo"
+	pr := NewGitHubPullRequest(options, true)
+	template := pr.templateNameToApply()
 
 	if template != "" {
 		t.Fatalf(`Template was non-empty: %s`, template)
@@ -21,9 +33,15 @@ func TestTemplateNameToApply(t *testing.T) {
 }
 
 func TestPrTemplateOptions(t *testing.T) {
-	options := prTemplateOptions()
+	options := make(map[string]string)
+	options["baseBranch"] = "main"
+	options["newPrTitle"] = "Example PR Title"
+	options["localBranch"] = "feature-branch"
+	options["localRepo"] = "test-repo"
+	pr := NewGitHubPullRequest(options, true)
+	tempOptions := pr.prTemplateOptions()
 
-	if len(options) != 0 {
-		t.Fatalf(`PR options should be 0 when there are no templates: %v`, options)
+	if len(tempOptions) != 0 {
+		t.Fatalf(`PR options should be 0 when there are no templates: %v`, tempOptions)
 	}
 }

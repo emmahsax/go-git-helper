@@ -5,7 +5,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type EmptyCommit struct{}
+type EmptyCommit struct {
+	Debug bool
+}
 
 func NewCommand() *cobra.Command {
 	var (
@@ -18,7 +20,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			emptyCommit().execute(debug)
+			newEmptyCommitClient(debug).execute()
 			return nil
 		},
 	}
@@ -28,10 +30,12 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func emptyCommit() *EmptyCommit {
-	return &EmptyCommit{}
+func newEmptyCommitClient(debug bool) *EmptyCommit {
+	return &EmptyCommit{
+		Debug: debug,
+	}
 }
 
-func (ec *EmptyCommit) execute(debug bool) {
-	git.NewGitClient(debug).CreateEmptyCommit()
+func (ec *EmptyCommit) execute() {
+	git.NewGitClient(ec.Debug).CreateEmptyCommit()
 }

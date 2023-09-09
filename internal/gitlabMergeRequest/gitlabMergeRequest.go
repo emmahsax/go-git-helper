@@ -30,7 +30,7 @@ func NewGitLabMergeRequest(options map[string]string, debug bool) *GitLabMergeRe
 }
 
 func (mr *GitLabMergeRequest) Create() {
-	body := newMrBody(mr)
+	body := mr.newMrBody()
 	optionsMap := map[string]string{
 		"description":          body,
 		"remove_source_branch": "true",
@@ -41,7 +41,7 @@ func (mr *GitLabMergeRequest) Create() {
 	}
 
 	fmt.Println("Creating merge request:", mr.NewMrTitle)
-	mrResponse := gitlabClient(mr).CreateMergeRequest(mr.LocalProject, optionsMap).(gitlab.Response)
+	mrResponse := mr.gitlabClient().CreateMergeRequest(mr.LocalProject, optionsMap).(gitlab.Response)
 
 	if mrResponse.WebURL == "" {
 		errorMessage := mrResponse.Message[0]
@@ -54,8 +54,8 @@ func (mr *GitLabMergeRequest) Create() {
 	}
 }
 
-func newMrBody(mr *GitLabMergeRequest) string {
-	templateName := templateNameToApply()
+func (mr *GitLabMergeRequest) newMrBody() string {
+	templateName := mr.templateNameToApply()
 	if templateName != "" {
 		content, err := os.ReadFile(templateName)
 		if err != nil {
@@ -70,26 +70,26 @@ func newMrBody(mr *GitLabMergeRequest) string {
 	return ""
 }
 
-func templateNameToApply() string {
+func (mr *GitLabMergeRequest) templateNameToApply() string {
 	templateName := ""
-	if len(mrTemplateOptions()) > 0 {
-		templateName = determineTemplate()
+	if len(mr.mrTemplateOptions()) > 0 {
+		templateName = mr.determineTemplate()
 	}
 
 	return templateName
 }
 
-func determineTemplate() string {
-	if len(mrTemplateOptions()) == 1 {
+func (mr *GitLabMergeRequest) determineTemplate() string {
+	if len(mr.mrTemplateOptions()) == 1 {
 		applySingleTemplate := commandline.AskYesNoQuestion(
-			fmt.Sprintf("Apply the merge request template from %s?", mrTemplateOptions()[0]),
+			fmt.Sprintf("Apply the merge request template from %s?", mr.mrTemplateOptions()[0]),
 		)
 		if applySingleTemplate {
-			return mrTemplateOptions()[0]
+			return mr.mrTemplateOptions()[0]
 		}
 	} else {
 		response := commandline.AskMultipleChoice(
-			"Which merge request template should be applied?", append(mrTemplateOptions(), "None"),
+			"Which merge request template should be applied?", append(mr.mrTemplateOptions(), "None"),
 		)
 		if response != "None" {
 			return response
@@ -99,7 +99,7 @@ func determineTemplate() string {
 	return ""
 }
 
-func mrTemplateOptions() []string {
+func (mr *GitLabMergeRequest) mrTemplateOptions() []string {
 	identifiers := map[string]string{
 		"templateDir":       ".gitlab",
 		"nestedDirName":     "merge_request_templates",
@@ -128,6 +128,6 @@ func mrTemplateOptions() []string {
 	return templateList
 }
 
-func gitlabClient(mr *GitLabMergeRequest) *gitlab.GitLabClient {
+func (mr *GitLabMergeRequest) gitlabClient() *gitlab.GitLabClient {
 	return gitlab.NewGitLabClient(mr.Debug)
 }

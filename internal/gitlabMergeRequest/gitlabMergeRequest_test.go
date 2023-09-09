@@ -5,7 +5,13 @@ import (
 )
 
 func TestNewMrBody(t *testing.T) {
-	body := newMrBody()
+	options := make(map[string]string)
+	options["baseBranch"] = "main"
+	options["newMrTitle"] = "Example MR Title"
+	options["localBranch"] = "feature-branch"
+	options["localProject"] = "test-project"
+	mr := NewGitLabMergeRequest(options, true)
+	body := mr.newMrBody()
 
 	if body != "" {
 		t.Fatalf(`Body was non-empty: %s`, body)
@@ -13,7 +19,13 @@ func TestNewMrBody(t *testing.T) {
 }
 
 func TestTemplateNameToApply(t *testing.T) {
-	template := templateNameToApply()
+	options := make(map[string]string)
+	options["baseBranch"] = "main"
+	options["newMrTitle"] = "Example MR Title"
+	options["localBranch"] = "feature-branch"
+	options["localProject"] = "test-project"
+	mr := NewGitLabMergeRequest(options, true)
+	template := mr.templateNameToApply()
 
 	if template != "" {
 		t.Fatalf(`Template was non-empty: %s`, template)
@@ -21,9 +33,15 @@ func TestTemplateNameToApply(t *testing.T) {
 }
 
 func TestMrTemplateOptions(t *testing.T) {
-	options := mrTemplateOptions()
+	options := make(map[string]string)
+	options["baseBranch"] = "main"
+	options["newMrTitle"] = "Example MR Title"
+	options["localBranch"] = "feature-branch"
+	options["localProject"] = "test-project"
+	mr := NewGitLabMergeRequest(options, true)
+	tempOptions := mr.mrTemplateOptions()
 
-	if len(options) != 0 {
-		t.Fatalf(`PR options should be 0 when there are no templates: %v`, options)
+	if len(tempOptions) != 0 {
+		t.Fatalf(`PR options should be 0 when there are no templates: %v`, tempOptions)
 	}
 }

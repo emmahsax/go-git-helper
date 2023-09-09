@@ -29,7 +29,7 @@ func NewGitLabClient(debug bool) *GitLabClient {
 }
 
 func (c *GitLabClient) CreateMergeRequest(projectName string, options map[string]string) interface{} {
-	return c.run("POST", fmt.Sprintf("/projects/%s/merge_requests%s", urlEncode(projectName), formatOptions(options)))
+	return c.run("POST", fmt.Sprintf("/projects/%s/merge_requests%s", c.urlEncode(projectName), c.formatOptions(options)))
 }
 
 func (c *GitLabClient) run(requestType, curlURL string) interface{} {
@@ -69,15 +69,15 @@ func (c *GitLabClient) run(requestType, curlURL string) interface{} {
 	return result
 }
 
-func urlEncode(input string) string {
+func (c *GitLabClient) urlEncode(input string) string {
 	return url.PathEscape(input)
 }
 
-func formatOptions(options map[string]string) string {
+func (c *GitLabClient) formatOptions(options map[string]string) string {
 	var optsAsString string
 	for key, value := range options {
 		if value != "" {
-			optsAsString += fmt.Sprintf("%s=%s&", key, urlEncode(value))
+			optsAsString += fmt.Sprintf("%s=%s&", key, c.urlEncode(value))
 		}
 	}
 	optsAsString = strings.TrimSuffix(optsAsString, "&")

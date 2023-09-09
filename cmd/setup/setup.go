@@ -31,7 +31,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			setup(debug).execute()
+			newSetupClient(debug).execute()
 			return nil
 		},
 	}
@@ -41,18 +41,18 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func setup(debug bool) *Setup {
+func newSetupClient(debug bool) *Setup {
 	return &Setup{
 		Debug: debug,
 	}
 }
 
 func (s *Setup) execute() {
-	createConfig(s)
-	setupPlugins(s)
+	s.createConfig()
+	s.setupPlugins()
 }
 
-func createConfig(s *Setup) {
+func (s *Setup) createConfig() {
 	var create bool
 
 	cf := configfile.NewConfigFileClient(s.Debug)
@@ -64,12 +64,12 @@ func createConfig(s *Setup) {
 	}
 
 	if create {
-		createOrUpdateConfig(s)
+		s.createOrUpdateConfig()
 	}
 }
 
-func createOrUpdateConfig(s *Setup) {
-	content := generateConfigFileContents()
+func (s *Setup) createOrUpdateConfig() {
+	content := s.generateConfigFileContents()
 	cf := configfile.NewConfigFileClient(s.Debug)
 
 	if !cf.ConfigDirExists() {
@@ -95,7 +95,7 @@ func createOrUpdateConfig(s *Setup) {
 	fmt.Printf("\nDone setting up %s!\n\n", cf.ConfigFile())
 }
 
-func generateConfigFileContents() string {
+func (s *Setup) generateConfigFileContents() string {
 	var contents string
 
 	github := commandline.AskYesNoQuestion("Do you wish to set up GitHub credentials?")
@@ -117,15 +117,15 @@ func generateConfigFileContents() string {
 	return contents
 }
 
-func setupPlugins(s *Setup) {
+func (s *Setup) setupPlugins() {
 	setup := commandline.AskYesNoQuestion("Do you wish to set up the Git Helper plugins?")
 
 	if setup {
-		createOrUpdatePlugins(s)
+		s.createOrUpdatePlugins()
 	}
 }
 
-func createOrUpdatePlugins(s *Setup) {
+func (s *Setup) createOrUpdatePlugins() {
 	cf := configfile.NewConfigFileClient(s.Debug)
 	pluginsDir := cf.ConfigDir() + "/plugins"
 	pluginsURL := "https://api.github.com/repos/emmahsax/go-git-helper/contents/plugins"

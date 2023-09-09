@@ -30,7 +30,7 @@ func NewGitHubPullRequest(options map[string]string, debug bool) *GitHubPullRequ
 }
 
 func (pr *GitHubPullRequest) Create() {
-	body := newPrBody(pr)
+	body := pr.newPrBody()
 	optionsMap := map[string]interface{}{
 		"base":  pr.BaseBranch,
 		"body":  body,
@@ -39,7 +39,7 @@ func (pr *GitHubPullRequest) Create() {
 	}
 
 	fmt.Println("Creating pull request:", pr.NewPrTitle)
-	prResponse := githubClient(pr).CreatePullRequest(pr.LocalRepo, optionsMap).(github.Response)
+	prResponse := pr.githubClient().CreatePullRequest(pr.LocalRepo, optionsMap).(github.Response)
 
 	if prResponse.HtmlURL == "" {
 		errorMessage := prResponse.Errors[0].Message
@@ -52,8 +52,8 @@ func (pr *GitHubPullRequest) Create() {
 	}
 }
 
-func newPrBody(pr *GitHubPullRequest) string {
-	templateName := templateNameToApply()
+func (pr *GitHubPullRequest) newPrBody() string {
+	templateName := pr.templateNameToApply()
 	if templateName != "" {
 		content, err := os.ReadFile(templateName)
 		if err != nil {
@@ -68,26 +68,26 @@ func newPrBody(pr *GitHubPullRequest) string {
 	return ""
 }
 
-func templateNameToApply() string {
+func (pr *GitHubPullRequest) templateNameToApply() string {
 	templateName := ""
-	if len(prTemplateOptions()) > 0 {
-		templateName = determineTemplate()
+	if len(pr.prTemplateOptions()) > 0 {
+		templateName = pr.determineTemplate()
 	}
 
 	return templateName
 }
 
-func determineTemplate() string {
-	if len(prTemplateOptions()) == 1 {
+func (pr *GitHubPullRequest) determineTemplate() string {
+	if len(pr.prTemplateOptions()) == 1 {
 		applySingleTemplate := commandline.AskYesNoQuestion(
-			fmt.Sprintf("Apply the pull request template from %s?", prTemplateOptions()[0]),
+			fmt.Sprintf("Apply the pull request template from %s?", pr.prTemplateOptions()[0]),
 		)
 		if applySingleTemplate {
-			return prTemplateOptions()[0]
+			return pr.prTemplateOptions()[0]
 		}
 	} else {
 		response := commandline.AskMultipleChoice(
-			"Which pull request template should be applied?", append(prTemplateOptions(), "None"),
+			"Which pull request template should be applied?", append(pr.prTemplateOptions(), "None"),
 		)
 		if response != "None" {
 			return response
@@ -97,7 +97,7 @@ func determineTemplate() string {
 	return ""
 }
 
-func prTemplateOptions() []string {
+func (pr *GitHubPullRequest) prTemplateOptions() []string {
 	identifiers := map[string]string{
 		"templateDir":       ".github",
 		"nestedDirName":     "PULL_REQUEST_TEMPLATE",
@@ -126,6 +126,6 @@ func prTemplateOptions() []string {
 	return templateList
 }
 
-func githubClient(pr *GitHubPullRequest) *github.GitHubClient {
+func (pr *GitHubPullRequest) githubClient() *github.GitHubClient {
 	return github.NewGitHubClient(pr.Debug)
 }

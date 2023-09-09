@@ -10,7 +10,8 @@ import (
 )
 
 type NewBranch struct {
-	branch string
+	Branch string
+	Debug  bool
 }
 
 func NewCommand() *cobra.Command {
@@ -37,7 +38,7 @@ func NewCommand() *cobra.Command {
 				}
 			}
 
-			newBranch(branch).execute(debug)
+			newNewBranchClient(branch, debug).execute()
 			return nil
 		},
 	}
@@ -47,9 +48,10 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newBranch(branch string) *NewBranch {
+func newNewBranchClient(branch string, debug bool) *NewBranch {
 	return &NewBranch{
-		branch: branch,
+		Branch: branch,
+		Debug:  debug,
 	}
 }
 
@@ -69,11 +71,11 @@ func getValidBranch() string {
 	return branch
 }
 
-func (nb *NewBranch) execute(debug bool) {
-	fmt.Println("Attempting to create a new branch:", nb.branch)
-	g := git.NewGitClient(debug)
+func (nb *NewBranch) execute() {
+	fmt.Println("Attempting to create a new branch:", nb.Branch)
+	g := git.NewGitClient(nb.Debug)
 	g.Pull()
-	g.CreateBranch(nb.branch)
-	g.Checkout(nb.branch)
-	g.PushBranch(nb.branch)
+	g.CreateBranch(nb.Branch)
+	g.Checkout(nb.Branch)
+	g.PushBranch(nb.Branch)
 }

@@ -37,7 +37,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newUpdate(debug).execute()
+			newUpdateClient(debug).execute()
 			return nil
 		},
 	}
@@ -47,20 +47,20 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newUpdate(debug bool) *Update {
+func newUpdateClient(debug bool) *Update {
 	return &Update{
 		Debug: debug,
 	}
 }
 
 func (u *Update) execute() {
-	downloadGitHelper(u)
-	moveGitHelper(u)
-	setPermissions(u)
-	outputNewVersion(u)
+	u.downloadGitHelper()
+	u.moveGitHelper()
+	u.setPermissions()
+	u.outputNewVersion()
 }
 
-func downloadGitHelper(u *Update) {
+func (u *Update) downloadGitHelper() {
 	fmt.Println("Installing latest git-helper version")
 
 	releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repository)
@@ -123,7 +123,7 @@ func downloadGitHelper(u *Update) {
 	}
 }
 
-func moveGitHelper(u *Update) {
+func (u *Update) moveGitHelper() {
 	cmd := exec.Command("sudo", "mv", "./"+asset, newPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -137,7 +137,7 @@ func moveGitHelper(u *Update) {
 	fmt.Printf("%s", string(output))
 }
 
-func setPermissions(u *Update) {
+func (u *Update) setPermissions() {
 	cmdChown := exec.Command("sudo", "chown", "root:wheel", newPath)
 	output, err := cmdChown.CombinedOutput()
 	if err != nil {
@@ -163,7 +163,7 @@ func setPermissions(u *Update) {
 	fmt.Printf("%s", string(output))
 }
 
-func outputNewVersion(u *Update) {
+func (u *Update) outputNewVersion() {
 	cmd := exec.Command("git-helper", "version")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
