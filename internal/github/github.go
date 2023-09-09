@@ -11,7 +11,7 @@ import (
 	"github.com/emmahsax/go-git-helper/internal/configfile"
 )
 
-type GitHubClient struct{
+type GitHubClient struct {
 	Debug bool
 }
 

@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type CodeRequest struct{
+type CodeRequest struct {
 	Debug bool
 }
 

@@ -13,7 +13,7 @@ import (
 
 type GitLabMergeRequest struct {
 	BaseBranch   string
-	Debug bool
+	Debug        bool
 	LocalBranch  string
 	LocalProject string
 	NewMrTitle   string
@@ -22,7 +22,7 @@ type GitLabMergeRequest struct {
 func NewGitLabMergeRequest(options map[string]string, debug bool) *GitLabMergeRequest {
 	return &GitLabMergeRequest{
 		BaseBranch:   options["baseBranch"],
-		Debug: debug,
+		Debug:        debug,
 		LocalBranch:  options["localBranch"],
 		LocalProject: options["localProject"],
 		NewMrTitle:   options["newMrTitle"],

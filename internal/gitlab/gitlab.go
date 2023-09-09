@@ -13,7 +13,7 @@ import (
 	"github.com/emmahsax/go-git-helper/internal/configfile"
 )
 
-type GitLabClient struct{
+type GitLabClient struct {
 	Debug bool
 }
 

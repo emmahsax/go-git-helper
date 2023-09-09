@@ -13,7 +13,7 @@ import (
 
 type GitHubPullRequest struct {
 	BaseBranch  string
-	Debug bool
+	Debug       bool
 	LocalBranch string
 	LocalRepo   string
 	NewPrTitle  string
@@ -22,7 +22,7 @@ type GitHubPullRequest struct {
 func NewGitHubPullRequest(options map[string]string, debug bool) *GitHubPullRequest {
 	return &GitHubPullRequest{
 		BaseBranch:  options["baseBranch"],
-		Debug: debug,
+		Debug:       debug,
 		LocalBranch: options["localBranch"],
 		LocalRepo:   options["localRepo"],
 		NewPrTitle:  options["newPrTitle"],
