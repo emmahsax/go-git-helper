@@ -67,17 +67,27 @@ func (cr *ChangeRemote) processDir(currentDir, originalDir string) {
 	gitDir := filepath.Join(current, ".git")
 
 	if _, err := os.Stat(gitDir); err == nil {
-		answer := commandline.AskYesNoQuestion(
-			"Found git directory: " + currentDir + ". Do you wish to proceed in updating " + currentDir + "'s remote URLs?",
-		)
+		fullRemoteInfo := cr.processGitRepository()
 
-		if answer {
-			cr.processGitRepository()
+		if len(fullRemoteInfo) > 0 {
+			fmt.Println("Found git directory: " + currentDir + ".")
+		}
+
+		for repo, inner := range fullRemoteInfo {
+			answer := commandline.AskYesNoQuestion(
+				"Do you wish to proceed in updating the " + inner["plainRemote"] + " remote URL?",
+			)
+
+			if answer {
+				cr.processRemote(inner["plainRemote"], inner["host"], repo, inner["remoteName"])
+			}
 		}
 	}
 }
 
-func (cr *ChangeRemote) processGitRepository() {
+func (cr *ChangeRemote) processGitRepository() map[string]map[string]string {
+	fullRemoteInfo := make(map[string]map[string]string)
+
 	cmd := exec.Command("git", "remote", "-v")
 	output, err := cmd.Output()
 	if err != nil {
@@ -85,7 +95,7 @@ func (cr *ChangeRemote) processGitRepository() {
 			debug.PrintStack()
 		}
 		log.Fatal(err)
-		return
+		return fullRemoteInfo
 	}
 
 	remotes := strings.Split(string(output), "\n")
@@ -100,12 +110,14 @@ func (cr *ChangeRemote) processGitRepository() {
 		host, owner, repo := cr.remoteInfo(plainRemote)
 
 		if owner == cr.OldOwner {
-			cr.processRemote(plainRemote, host, repo, remoteName)
-		} else {
-			fmt.Printf("  Found remote (%s) is not pointing to %s.\n", plainRemote, cr.OldOwner)
+			inner := make(map[string]string)
+			inner["plainRemote"] = plainRemote
+			inner["remoteName"] = remoteName
+			inner["host"] = host
+			fullRemoteInfo[repo] = inner
 		}
 	}
-	fmt.Println()
+	return fullRemoteInfo
 }
 
 func (cr *ChangeRemote) processRemote(remote, host, repo, remoteName string) {

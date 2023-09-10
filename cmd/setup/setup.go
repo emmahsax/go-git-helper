@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
@@ -50,6 +51,7 @@ func newSetupClient(debug bool) *Setup {
 func (s *Setup) execute() {
 	s.createConfig()
 	s.setupPlugins()
+	s.setupCompletion()
 }
 
 func (s *Setup) createConfig() {
@@ -199,5 +201,57 @@ func (s *Setup) createOrUpdatePlugins() {
 	}
 
 	fmt.Printf("\nDone setting up plugins at %s!\n", pluginsDir)
-	fmt.Println("\nNow add this line to your ~/.zshrc:\n  export PATH=\"$HOME/.git_helper/plugins:$PATH\"")
+	fmt.Printf("\nNow add this line to your ~/.zshrc:\n  export PATH=\"$HOME/.git_helper/plugins:$PATH\"\n")
+}
+
+func (s *Setup) setupCompletion() {
+	setup := commandline.AskYesNoQuestion("Do you wish to set up Git Helper completion?")
+
+	if setup {
+		shes := []string{"bash", "fish", "powershell", "zsh"}
+		cf := configfile.NewConfigFileClient(s.Debug)
+		completionsDir := cf.ConfigDir()+"/completions"
+		if err := os.MkdirAll(completionsDir, 0755); err != nil {
+			if s.Debug {
+				debug.PrintStack()
+			}
+			log.Fatal(err)
+			return
+		}
+
+		for _, sh := range shes {
+			cmd := exec.Command("git-helper", "completion", sh)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				if s.Debug {
+					debug.PrintStack()
+				}
+				log.Fatal(err)
+				return
+			}
+
+			filename := completionsDir+"/completion."+sh
+
+			file, err := os.Create(filename)
+			if err != nil {
+				if s.Debug {
+					debug.PrintStack()
+				}
+				log.Fatal(err)
+				return
+			}
+			defer file.Close()
+
+			_, err = file.WriteString(string(output))
+			if err != nil {
+				if s.Debug {
+					debug.PrintStack()
+				}
+				log.Fatal(err)
+				return
+			}
+		}
+
+		fmt.Println("\nCompletions (for bash, fish, powershell, and zsh) generated in "+completionsDir+". Please activate the proper completion for your Unix shell.")
+	}
 }

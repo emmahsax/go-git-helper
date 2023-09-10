@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -138,7 +139,16 @@ func (u *Update) moveGitHelper() {
 }
 
 func (u *Update) setPermissions() {
-	cmdChown := exec.Command("sudo", "chown", "root:wheel", newPath)
+	currentUser, err := user.Current()
+	if err != nil {
+		if u.Debug {
+			debug.PrintStack()
+		}
+		log.Fatal(err)
+		return
+	}
+
+	cmdChown := exec.Command("sudo", "chown", currentUser.Username+":staff", newPath)
 	output, err := cmdChown.CombinedOutput()
 	if err != nil {
 		if u.Debug {

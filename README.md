@@ -26,7 +26,7 @@ Alternatively, you can download pre-built binaries straight from [GitHub Release
 
 ```bash
 sudo mv ~/Downloads/git-helper_darwin_arm64 /usr/local/bin/git-helper
-sudo chown root:wheel /usr/local/bin/git-helper
+sudo chown $(whoami):staff /usr/local/bin/git-helper
 sudo chmod +x /usr/local/bin/git-helper
 ```
 

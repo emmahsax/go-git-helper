@@ -12,7 +12,7 @@ tasks:
       - cmd: GOOS=darwin GOARCH=arm64 go build -o git-helper_darwin_arm64
 
   build:test:
-    desc: Build go-git-helper for testing purposes
+    desc: Build test-git-helper for testing purposes
     cmds:
-      - cmd: GOOS=darwin GOARCH=arm64 go build -o go-git-helper
-      - cmd: sudo mv go-git-helper /usr/local/bin/go-git-helper
+      - cmd: GOOS=darwin GOARCH=arm64 go build -o test-git-helper
+      - cmd: sudo mv test-git-helper /usr/local/bin/test-git-helper
