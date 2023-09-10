@@ -14,27 +14,35 @@ import (
 )
 
 type ChangeRemote struct {
+	Debug    bool
 	OldOwner string
 	NewOwner string
 }
 
 func NewCommand() *cobra.Command {
+	var (
+		debug bool
+	)
+
 	cmd := &cobra.Command{
 		Use:                   "change-remote [oldOwner] [newOwner]",
 		Short:                 "Change the git remote owners for multiple cloned git repositories",
 		Args:                  cobra.ExactArgs(2),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newChangeRemote(args[0], args[1]).execute()
+			newChangeRemoteClient(args[0], args[1], debug).execute()
 			return nil
 		},
 	}
 
+	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug mode")
+
 	return cmd
 }
 
-func newChangeRemote(oldOwner, newOwner string) *ChangeRemote {
+func newChangeRemoteClient(oldOwner, newOwner string, debug bool) *ChangeRemote {
 	return &ChangeRemote{
+		Debug:    debug,
 		OldOwner: oldOwner,
 		NewOwner: newOwner,
 	}
@@ -46,12 +54,12 @@ func (cr *ChangeRemote) execute() {
 
 	for _, entry := range nestedDirs {
 		if entry.IsDir() && entry.Name() != "." && entry.Name() != ".." {
-			processDir(entry.Name(), originalDir, cr)
+			cr.processDir(entry.Name(), originalDir)
 		}
 	}
 }
 
-func processDir(currentDir, originalDir string, cr *ChangeRemote) {
+func (cr *ChangeRemote) processDir(currentDir, originalDir string) {
 	_ = os.Chdir(currentDir)
 	defer os.Chdir(originalDir)
 
@@ -59,23 +67,35 @@ func processDir(currentDir, originalDir string, cr *ChangeRemote) {
 	gitDir := filepath.Join(current, ".git")
 
 	if _, err := os.Stat(gitDir); err == nil {
-		answer := commandline.AskYesNoQuestion(
-			"Found git directory: " + currentDir + ". Do you wish to proceed in updating " + currentDir + "'s remote URLs?",
-		)
+		fullRemoteInfo := cr.processGitRepository()
 
-		if answer {
-			processGitRepository(cr)
+		if len(fullRemoteInfo) > 0 {
+			fmt.Println("Found git directory: " + currentDir + ".")
+		}
+
+		for repo, inner := range fullRemoteInfo {
+			answer := commandline.AskYesNoQuestion(
+				"Do you wish to proceed in updating the " + inner["plainRemote"] + " remote URL?",
+			)
+
+			if answer {
+				cr.processRemote(inner["plainRemote"], inner["host"], repo, inner["remoteName"])
+			}
 		}
 	}
 }
 
-func processGitRepository(cr *ChangeRemote) {
+func (cr *ChangeRemote) processGitRepository() map[string]map[string]string {
+	fullRemoteInfo := make(map[string]map[string]string)
+
 	cmd := exec.Command("git", "remote", "-v")
 	output, err := cmd.Output()
 	if err != nil {
-		debug.PrintStack()
+		if cr.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
-		return
+		return fullRemoteInfo
 	}
 
 	remotes := strings.Split(string(output), "\n")
@@ -87,18 +107,20 @@ func processGitRepository(cr *ChangeRemote) {
 
 		plainRemote := strings.Fields(remote)[1]
 		remoteName := strings.Fields(remote)[0]
-		host, owner, repo := remoteInfo(plainRemote)
+		host, owner, repo := cr.remoteInfo(plainRemote)
 
 		if owner == cr.OldOwner {
-			processRemote(plainRemote, host, repo, remoteName, cr)
-		} else {
-			fmt.Printf("  Found remote (%s) is not pointing to %s.\n", plainRemote, cr.OldOwner)
+			inner := make(map[string]string)
+			inner["plainRemote"] = plainRemote
+			inner["remoteName"] = remoteName
+			inner["host"] = host
+			fullRemoteInfo[repo] = inner
 		}
 	}
-	fmt.Println()
+	return fullRemoteInfo
 }
 
-func processRemote(remote, host, repo, remoteName string, cr *ChangeRemote) {
+func (cr *ChangeRemote) processRemote(remote, host, repo, remoteName string) {
 	var newRemote string
 
 	if strings.Contains(remote, "git@") {
@@ -111,13 +133,15 @@ func processRemote(remote, host, repo, remoteName string, cr *ChangeRemote) {
 	cmd := exec.Command("git", "remote", "set-url", remoteName, newRemote)
 	_, err := cmd.Output()
 	if err != nil {
-		debug.PrintStack()
+		if cr.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
 }
 
-func remoteInfo(remote string) (string, string, string) {
+func (cr *ChangeRemote) remoteInfo(remote string) (string, string, string) {
 	if strings.Contains(remote, "git@") {
 		remoteSplit := strings.SplitN(remote, ":", 2)
 		if len(remoteSplit) != 2 {

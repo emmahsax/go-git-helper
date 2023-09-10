@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -15,7 +16,9 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-type Update struct{}
+type Update struct {
+	Debug bool
+}
 
 var (
 	asset      = "git-helper_darwin_arm64"
@@ -25,38 +28,48 @@ var (
 )
 
 func NewCommand() *cobra.Command {
+	var (
+		debug bool
+	)
+
 	cmd := &cobra.Command{
 		Use:                   "update",
 		Short:                 "Updates Git Helper with the newest version on GitHub",
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newUpdate().execute()
+			newUpdateClient(debug).execute()
 			return nil
 		},
 	}
 
+	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug mode")
+
 	return cmd
 }
 
-func newUpdate() *Update {
-	return &Update{}
+func newUpdateClient(debug bool) *Update {
+	return &Update{
+		Debug: debug,
+	}
 }
 
 func (u *Update) execute() {
-	downloadGitHelper()
-	moveGitHelper()
-	setPermissions()
-	outputNewVersion()
+	u.downloadGitHelper()
+	u.moveGitHelper()
+	u.setPermissions()
+	u.outputNewVersion()
 }
 
-func downloadGitHelper() {
+func (u *Update) downloadGitHelper() {
 	fmt.Println("Installing latest git-helper version")
 
 	releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repository)
 	resp, err := http.Get(releaseURL)
 	if err != nil {
-		debug.PrintStack()
+		if u.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
@@ -64,7 +77,9 @@ func downloadGitHelper() {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		debug.PrintStack()
+		if u.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
@@ -81,7 +96,9 @@ func downloadGitHelper() {
 	binaryName := strings.Split(downloadURL, "/")[len(strings.Split(downloadURL, "/"))-1]
 	resp, err = http.Get(downloadURL)
 	if err != nil {
-		debug.PrintStack()
+		if u.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
@@ -89,7 +106,9 @@ func downloadGitHelper() {
 
 	out, err := os.Create(binaryName)
 	if err != nil {
-		debug.PrintStack()
+		if u.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
@@ -97,17 +116,21 @@ func downloadGitHelper() {
 
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
-		debug.PrintStack()
+		if u.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
 }
 
-func moveGitHelper() {
+func (u *Update) moveGitHelper() {
 	cmd := exec.Command("sudo", "mv", "./"+asset, newPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		debug.PrintStack()
+		if u.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
@@ -115,11 +138,22 @@ func moveGitHelper() {
 	fmt.Printf("%s", string(output))
 }
 
-func setPermissions() {
-	cmdChown := exec.Command("sudo", "chown", "root:wheel", newPath)
+func (u *Update) setPermissions() {
+	currentUser, err := user.Current()
+	if err != nil {
+		if u.Debug {
+			debug.PrintStack()
+		}
+		log.Fatal(err)
+		return
+	}
+
+	cmdChown := exec.Command("sudo", "chown", currentUser.Username+":staff", newPath)
 	output, err := cmdChown.CombinedOutput()
 	if err != nil {
-		debug.PrintStack()
+		if u.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
@@ -129,7 +163,9 @@ func setPermissions() {
 	cmdChmod := exec.Command("sudo", "chmod", "+x", newPath)
 	output, err = cmdChmod.CombinedOutput()
 	if err != nil {
-		debug.PrintStack()
+		if u.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
@@ -137,11 +173,13 @@ func setPermissions() {
 	fmt.Printf("%s", string(output))
 }
 
-func outputNewVersion() {
+func (u *Update) outputNewVersion() {
 	cmd := exec.Command("git-helper", "version")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		debug.PrintStack()
+		if u.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}

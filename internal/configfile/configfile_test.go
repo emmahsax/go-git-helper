@@ -10,7 +10,8 @@ var (
 )
 
 func TestConfigDir(t *testing.T) {
-	output := ConfigDir()
+	cf := NewConfigFileClient(false)
+	output := cf.ConfigDir()
 
 	if output != home+"/.git_helper" {
 		t.Fatalf(`ConfigDir should be %s, not %s`, home+"/.git_helper", output)
@@ -18,7 +19,8 @@ func TestConfigDir(t *testing.T) {
 }
 
 func TestConfigFile(t *testing.T) {
-	output := ConfigFile()
+	cf := NewConfigFileClient(false)
+	output := cf.ConfigFile()
 
 	if output != home+"/.git_helper/config.yml" {
 		t.Fatalf(`ConfigFile should be %s, not %s`, home+"/.git_helper/config.yml", output)

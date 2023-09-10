@@ -5,28 +5,39 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type ForgetLocalChanges struct{}
+type ForgetLocalChanges struct {
+	Debug bool
+}
 
 func NewCommand() *cobra.Command {
+	var (
+		debug bool
+	)
+
 	cmd := &cobra.Command{
 		Use:                   "forget-local-changes",
 		Short:                 "Forget all changes that aren't committed",
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			forgetLocalChanges().execute()
+			newForgetLocalChangesClient(debug).execute()
 			return nil
 		},
 	}
 
+	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug mode")
+
 	return cmd
 }
 
-func forgetLocalChanges() *ForgetLocalChanges {
-	return &ForgetLocalChanges{}
+func newForgetLocalChangesClient(debug bool) *ForgetLocalChanges {
+	return &ForgetLocalChanges{
+		Debug: debug,
+	}
 }
 
 func (flc *ForgetLocalChanges) execute() {
-	git.Stash()
-	git.StashDrop()
+	g := git.NewGitClient(flc.Debug)
+	g.Stash()
+	g.StashDrop()
 }

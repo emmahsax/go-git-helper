@@ -5,13 +5,14 @@ import (
 )
 
 func TestCheckAllLetters(t *testing.T) {
-	resp := checkAllLetters("iekslkjasd")
+	cr := newCodeRequestClient(true)
+	resp := cr.checkAllLetters("iekslkjasd")
 
 	if resp == false {
 		t.Fatalf(`String %v should be all letters`, resp)
 	}
 
-	resp = checkAllLetters("iekslkjasd321")
+	resp = cr.checkAllLetters("iekslkjasd321")
 
 	if resp == true {
 		t.Fatalf(`String %v should not be all letters`, resp)
@@ -19,13 +20,14 @@ func TestCheckAllLetters(t *testing.T) {
 }
 
 func TestCheckAllNumbers(t *testing.T) {
-	resp := checkAllNumbers("284161")
+	cr := newCodeRequestClient(true)
+	resp := cr.checkAllNumbers("284161")
 
 	if resp == false {
 		t.Fatalf(`String %v should be all numbers`, resp)
 	}
 
-	resp = checkAllNumbers("39812k3jiksd9z")
+	resp = cr.checkAllNumbers("39812k3jiksd9z")
 
 	if resp == true {
 		t.Fatalf(`String %v should not be all numbers`, resp)
@@ -33,13 +35,14 @@ func TestCheckAllNumbers(t *testing.T) {
 }
 
 func TestMatchesFullJiraPattern(t *testing.T) {
-	resp := matchesFullJiraPattern("jira-29142")
+	cr := newCodeRequestClient(true)
+	resp := cr.matchesFullJiraPattern("jira-29142")
 
 	if resp == false {
 		t.Fatalf(`String %v should match Jira pattern (e.g. jira-123)`, resp)
 	}
 
-	resp = matchesFullJiraPattern("jIra*3291")
+	resp = cr.matchesFullJiraPattern("jIra*3291")
 
 	if resp == true {
 		t.Fatalf(`String %v should not match Jira pattern (e.g. jira-123)`, resp)
@@ -47,7 +50,8 @@ func TestMatchesFullJiraPattern(t *testing.T) {
 }
 
 func TestTitleize(t *testing.T) {
-	resp := titleize("mysTrInG")
+	cr := newCodeRequestClient(true)
+	resp := cr.titleize("mysTrInG")
 
 	if resp != "MysTrInG" {
 		t.Fatalf(`String %v was not properly titleized`, resp)
@@ -55,7 +59,8 @@ func TestTitleize(t *testing.T) {
 }
 
 func TestIsGitHub(t *testing.T) {
-	resp := isGitHub()
+	cr := newCodeRequestClient(true)
+	resp := cr.isGitHub()
 
 	if resp != true {
 		t.Fatalf(`Project should be GitHub, but was %v`, resp)
@@ -63,7 +68,8 @@ func TestIsGitHub(t *testing.T) {
 }
 
 func TestIsGitLab(t *testing.T) {
-	resp := isGitLab()
+	cr := newCodeRequestClient(true)
+	resp := cr.isGitLab()
 
 	if resp == true {
 		t.Fatalf(`Project should not be GitLab, but was %v`, resp)
@@ -71,14 +77,15 @@ func TestIsGitLab(t *testing.T) {
 }
 
 func TestContainsSubstring(t *testing.T) {
+	cr := newCodeRequestClient(true)
 	strs := []string{"string1", "string3", "string18"}
-	resp := containsSubstring(strs, "string3")
+	resp := cr.containsSubstring(strs, "string3")
 
 	if resp == false {
 		t.Fatalf(`String %v should be present in %v`, "string3", strs)
 	}
 
-	resp = containsSubstring(strs, "string2")
+	resp = cr.containsSubstring(strs, "string2")
 
 	if resp == true {
 		t.Fatalf(`String %v should not be present in %v`, "string2", strs)

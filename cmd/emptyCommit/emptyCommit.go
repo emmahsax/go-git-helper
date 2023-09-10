@@ -5,27 +5,37 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type EmptyCommit struct{}
+type EmptyCommit struct {
+	Debug bool
+}
 
 func NewCommand() *cobra.Command {
+	var (
+		debug bool
+	)
+
 	cmd := &cobra.Command{
 		Use:                   "empty-commit",
 		Short:                 "Creates an empty commit",
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			emptyCommit().execute()
+			newEmptyCommitClient(debug).execute()
 			return nil
 		},
 	}
 
+	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug mode")
+
 	return cmd
 }
 
-func emptyCommit() *EmptyCommit {
-	return &EmptyCommit{}
+func newEmptyCommitClient(debug bool) *EmptyCommit {
+	return &EmptyCommit{
+		Debug: debug,
+	}
 }
 
 func (ec *EmptyCommit) execute() {
-	git.CreateEmptyCommit()
+	git.NewGitClient(ec.Debug).CreateEmptyCommit()
 }

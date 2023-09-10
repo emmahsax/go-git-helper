@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
@@ -16,69 +17,87 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type Setup struct{}
+type Setup struct {
+	Debug bool
+}
 
 func NewCommand() *cobra.Command {
+	var (
+		debug bool
+	)
+
 	cmd := &cobra.Command{
 		Use:                   "setup",
 		Short:                 "Creates a Git Helper config file at ~/.git_helper/config.yml",
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			setup().execute()
+			newSetupClient(debug).execute()
 			return nil
 		},
 	}
 
+	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug mode")
+
 	return cmd
 }
 
-func setup() *Setup {
-	return &Setup{}
+func newSetupClient(debug bool) *Setup {
+	return &Setup{
+		Debug: debug,
+	}
 }
 
 func (s *Setup) execute() {
-	createConfig()
-	setupPlugins()
+	s.createConfig()
+	s.setupPlugins()
+	s.setupCompletion()
 }
 
-func createConfig() {
+func (s *Setup) createConfig() {
 	var create bool
 
-	if configfile.ConfigFileExists() {
-		create = commandline.AskYesNoQuestion("It looks like the " + configfile.ConfigFile() + " file already exists. Do you wish to replace it?")
+	cf := configfile.NewConfigFileClient(s.Debug)
+
+	if cf.ConfigFileExists() {
+		create = commandline.AskYesNoQuestion("It looks like the " + cf.ConfigFile() + " file already exists. Do you wish to replace it?")
 	} else {
 		create = true
 	}
 
 	if create {
-		createOrUpdateConfig()
+		s.createOrUpdateConfig()
 	}
 }
 
-func createOrUpdateConfig() {
-	content := generateConfigFileContents()
+func (s *Setup) createOrUpdateConfig() {
+	content := s.generateConfigFileContents()
+	cf := configfile.NewConfigFileClient(s.Debug)
 
-	if !configfile.ConfigDirExists() {
-		err := os.Mkdir(configfile.ConfigDir(), 0755)
+	if !cf.ConfigDirExists() {
+		err := os.Mkdir(cf.ConfigDir(), 0755)
 		if err != nil {
-			debug.PrintStack()
+			if s.Debug {
+				debug.PrintStack()
+			}
 			log.Fatal(err)
 			return
 		}
 	}
 
-	err := os.WriteFile(configfile.ConfigFile(), []byte(content), 0644)
+	err := os.WriteFile(cf.ConfigFile(), []byte(content), 0644)
 	if err != nil {
-		debug.PrintStack()
+		if s.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
 
-	fmt.Printf("\nDone setting up %s!\n\n", configfile.ConfigFile())
+	fmt.Printf("\nDone setting up %s!\n\n", cf.ConfigFile())
 }
 
-func generateConfigFileContents() string {
+func (s *Setup) generateConfigFileContents() string {
 	var contents string
 
 	github := commandline.AskYesNoQuestion("Do you wish to set up GitHub credentials?")
@@ -100,27 +119,32 @@ func generateConfigFileContents() string {
 	return contents
 }
 
-func setupPlugins() {
+func (s *Setup) setupPlugins() {
 	setup := commandline.AskYesNoQuestion("Do you wish to set up the Git Helper plugins?")
 
 	if setup {
-		createOrUpdatePlugins()
+		s.createOrUpdatePlugins()
 	}
 }
 
-func createOrUpdatePlugins() {
-	pluginsDir := configfile.ConfigDir() + "/plugins"
+func (s *Setup) createOrUpdatePlugins() {
+	cf := configfile.NewConfigFileClient(s.Debug)
+	pluginsDir := cf.ConfigDir() + "/plugins"
 	pluginsURL := "https://api.github.com/repos/emmahsax/go-git-helper/contents/plugins"
 
 	if err := os.MkdirAll(pluginsDir, 0755); err != nil {
-		debug.PrintStack()
+		if s.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
 
 	resp, err := http.Get(pluginsURL)
 	if err != nil {
-		debug.PrintStack()
+		if s.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal("Error:", err)
 		return
 	}
@@ -128,7 +152,9 @@ func createOrUpdatePlugins() {
 
 	var allPlugins []map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&allPlugins); err != nil {
-		debug.PrintStack()
+		if s.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
@@ -139,7 +165,9 @@ func createOrUpdatePlugins() {
 
 		resp, err := http.Get(pluginURL)
 		if err != nil {
-			debug.PrintStack()
+			if s.Debug {
+				debug.PrintStack()
+			}
 			log.Fatal(err)
 			continue
 		}
@@ -148,7 +176,9 @@ func createOrUpdatePlugins() {
 		pluginPath := filepath.Join(pluginsDir, pluginName)
 		file, err := os.Create(pluginPath)
 		if err != nil {
-			debug.PrintStack()
+			if s.Debug {
+				debug.PrintStack()
+			}
 			log.Fatal(err)
 			continue
 		}
@@ -156,7 +186,9 @@ func createOrUpdatePlugins() {
 
 		_, err = io.Copy(file, resp.Body)
 		if err != nil {
-			debug.PrintStack()
+			if s.Debug {
+				debug.PrintStack()
+			}
 			log.Fatal(err)
 			continue
 		}
@@ -169,5 +201,57 @@ func createOrUpdatePlugins() {
 	}
 
 	fmt.Printf("\nDone setting up plugins at %s!\n", pluginsDir)
-	fmt.Println("\nNow add this line to your ~/.zshrc:\n  export PATH=\"$HOME/.git_helper/plugins:$PATH\"")
+	fmt.Printf("\nNow add this line to your Unix shell file (e.g. ~/.zshrc):\n  export PATH=\"$HOME/.git_helper/plugins:$PATH\"\n")
+}
+
+func (s *Setup) setupCompletion() {
+	setup := commandline.AskYesNoQuestion("Do you wish to set up Git Helper completion?")
+
+	if setup {
+		shes := []string{"bash", "fish", "powershell", "zsh"}
+		cf := configfile.NewConfigFileClient(s.Debug)
+		completionsDir := cf.ConfigDir() + "/completions"
+		if err := os.MkdirAll(completionsDir, 0755); err != nil {
+			if s.Debug {
+				debug.PrintStack()
+			}
+			log.Fatal(err)
+			return
+		}
+
+		for _, sh := range shes {
+			cmd := exec.Command("git-helper", "completion", sh)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				if s.Debug {
+					debug.PrintStack()
+				}
+				log.Fatal(err)
+				return
+			}
+
+			filename := completionsDir + "/completion." + sh
+
+			file, err := os.Create(filename)
+			if err != nil {
+				if s.Debug {
+					debug.PrintStack()
+				}
+				log.Fatal(err)
+				return
+			}
+			defer file.Close()
+
+			_, err = file.WriteString(string(output))
+			if err != nil {
+				if s.Debug {
+					debug.PrintStack()
+				}
+				log.Fatal(err)
+				return
+			}
+		}
+
+		fmt.Println("\nCompletions (for bash, fish, powershell, and zsh) generated in " + completionsDir + ". Please activate the proper completion for your Unix shell. E.g. add the following to your ~/.zshrc file:\n  [ -f ~/.git_helper/completions/completion.zsh ] && source ~/.git_helper/completions/completion.zsh\n")
+	}
 }

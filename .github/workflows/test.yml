@@ -1,20 +1,10 @@
-name: Test & Release
+name: Test
 
 on:
   pull_request:
   push:
     branches: [ main ]
   workflow_dispatch:
-    inputs:
-      release:
-        default: false
-        description: Whether to create a GitHub Release (ignored if not on 'main' branch)
-        required: true
-        type: boolean
-      tag_name:
-        description: The tag name to make a GitHub Release for
-        required: false
-        type: string
 
 jobs:
   setup:
@@ -30,19 +20,9 @@ jobs:
   gitleaks:
     uses: emmahsax/github-actions/.github/workflows/gitleaks.yml@main
 
-  go-release:
-    if: github.ref == 'refs/heads/main' && inputs.release
-    uses: emmahsax/github-actions/.github/workflows/go-release.yml@main
-    with:
-      build_command: task build
-      files: |
-        git-helper_darwin_arm64
-      tag_name: ${{ inputs.tag_name }}
-      upload: true
-
   go-test:
     if: github.event_name == 'pull_request' || !(github.event_name == 'push' && github.ref == 'refs/heads/main')
-    needs: [setup]
+    needs: [ setup ]
     uses: emmahsax/github-actions/.github/workflows/go-test.yml@main
     with:
       branch: ${{ needs.setup.outputs.branch }}

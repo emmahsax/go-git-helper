@@ -26,7 +26,7 @@ Alternatively, you can download pre-built binaries straight from [GitHub Release
 
 ```bash
 sudo mv ~/Downloads/git-helper_darwin_arm64 /usr/local/bin/git-helper
-sudo chown root:wheel /usr/local/bin/git-helper
+sudo chown $(whoami):staff /usr/local/bin/git-helper
 sudo chmod +x /usr/local/bin/git-helper
 ```
 
@@ -278,4 +278,4 @@ To make a new release:
 
 1. Merge the pull request via the big green button
 2. Run `git tag vX.X.X` and `git push --tag`
-3. Trigger a new workflow from [GitHub Actions](https://github.com/emmahsax/go-git-helper/actions/workflows/test-and-release.yml) and check to create a new release and pass in the tag name that you just pushed
+3. Trigger a new workflow from [GitHub Actions](https://github.com/emmahsax/go-git-helper/actions/workflows/release.yml) and pass in the tag name just created
