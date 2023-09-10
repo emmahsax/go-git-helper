@@ -201,7 +201,7 @@ func (s *Setup) createOrUpdatePlugins() {
 	}
 
 	fmt.Printf("\nDone setting up plugins at %s!\n", pluginsDir)
-	fmt.Printf("\nNow add this line to your ~/.zshrc:\n  export PATH=\"$HOME/.git_helper/plugins:$PATH\"\n")
+	fmt.Printf("\nNow add this line to your Unix shell file (e.g. ~/.zshrc):\n  export PATH=\"$HOME/.git_helper/plugins:$PATH\"\n")
 }
 
 func (s *Setup) setupCompletion() {
@@ -252,6 +252,6 @@ func (s *Setup) setupCompletion() {
 			}
 		}
 
-		fmt.Println("\nCompletions (for bash, fish, powershell, and zsh) generated in "+completionsDir+". Please activate the proper completion for your Unix shell.")
+		fmt.Println("\nCompletions (for bash, fish, powershell, and zsh) generated in "+completionsDir+". Please activate the proper completion for your Unix shell. E.g. add the following to your ~/.zshrc file:\n  [ -f ~/.git_helper/completions/completion.zsh ] && source ~/.git_helper/completions/completion.zsh\n")
 	}
 }
