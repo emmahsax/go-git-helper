@@ -210,7 +210,7 @@ func (s *Setup) setupCompletion() {
 	if setup {
 		shes := []string{"bash", "fish", "powershell", "zsh"}
 		cf := configfile.NewConfigFileClient(s.Debug)
-		completionsDir := cf.ConfigDir()+"/completions"
+		completionsDir := cf.ConfigDir() + "/completions"
 		if err := os.MkdirAll(completionsDir, 0755); err != nil {
 			if s.Debug {
 				debug.PrintStack()
@@ -230,7 +230,7 @@ func (s *Setup) setupCompletion() {
 				return
 			}
 
-			filename := completionsDir+"/completion."+sh
+			filename := completionsDir + "/completion." + sh
 
 			file, err := os.Create(filename)
 			if err != nil {
@@ -252,6 +252,6 @@ func (s *Setup) setupCompletion() {
 			}
 		}
 
-		fmt.Println("\nCompletions (for bash, fish, powershell, and zsh) generated in "+completionsDir+". Please activate the proper completion for your Unix shell. E.g. add the following to your ~/.zshrc file:\n  [ -f ~/.git_helper/completions/completion.zsh ] && source ~/.git_helper/completions/completion.zsh\n")
+		fmt.Println("\nCompletions (for bash, fish, powershell, and zsh) generated in " + completionsDir + ". Please activate the proper completion for your Unix shell. E.g. add the following to your ~/.zshrc file:\n  [ -f ~/.git_helper/completions/completion.zsh ] && source ~/.git_helper/completions/completion.zsh\n")
 	}
 }
