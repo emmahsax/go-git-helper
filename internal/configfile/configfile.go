@@ -28,7 +28,7 @@ func (cf *ConfigFile) ConfigDir() string {
 		return ""
 	}
 
-	return homeDir + "/.git_helper"
+	return homeDir + "/.git-helper"
 }
 
 func (cf *ConfigFile) ConfigDirExists() bool {

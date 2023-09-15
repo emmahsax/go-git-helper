@@ -58,7 +58,7 @@ git-helper setup
 
 This will give you the option to set up credentials at GitHub and/or GitLab, as well as give you the choice to set up Git Helper as a plugin or not (see below).
 
-The final result will be a `~/.git_helper/config.yml` file with the contents in this form:
+The final result will be a `~/.git-helper/config.yml` file with the contents in this form:
 
 ```
 github_user:  GITHUB-USERNAME
@@ -151,7 +151,7 @@ git-helper clean-branches
 
 ### `code-request`
 
-This command can be used to handily make new GitHub/GitLab pull/merge requests from the command-line. The command uses either the [GitHub REST API](https://docs.github.com/en/rest) or [GitLab API](https://docs.gitlab.com/ee/api/) to do this, so make sure you have a `~/.git_helper/config.yml` file set up in the home directory of your computer (instructions are higher in this `README`).
+This command can be used to handily make new GitHub/GitLab pull/merge requests from the command-line. The command uses either the [GitHub REST API](https://docs.github.com/en/rest) or [GitLab API](https://docs.gitlab.com/ee/api/) to do this, so make sure you have a `~/.git-helper/config.yml` file set up in the home directory of your computer (instructions are higher in this `README`).
 
 After setup is complete, you can call the command like this:
 
@@ -246,7 +246,7 @@ git-helper version
     ```bash
     git-helper version
     ```
-4. Run the setup command (optional for Beta modes, required when out of Beta):
+4. Run the setup command (optional for Beta modes < 1.0.0, required otherwise):
     ```bash
     git-helper setup
     ```
