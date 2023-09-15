@@ -28,7 +28,7 @@ func NewCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:                   "setup",
-		Short:                 "Creates a Git Helper config file at ~/.git_helper/config.yml",
+		Short:                 "Creates a Git Helper config file at ~/.git-helper/config.yml",
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -201,7 +201,7 @@ func (s *Setup) createOrUpdatePlugins() {
 	}
 
 	fmt.Printf("\nDone setting up plugins at %s!\n", pluginsDir)
-	fmt.Printf("\nNow add this line to your Unix shell file (e.g. ~/.zshrc):\n  export PATH=\"$HOME/.git_helper/plugins:$PATH\"\n")
+	fmt.Printf("\nNow add this line to your Unix shell file (e.g. ~/.zshrc):\n  export PATH=\"$HOME/.git-helper/plugins:$PATH\"\n")
 }
 
 func (s *Setup) setupCompletion() {
@@ -252,6 +252,6 @@ func (s *Setup) setupCompletion() {
 			}
 		}
 
-		fmt.Println("\nCompletions (for bash, fish, powershell, and zsh) generated in " + completionsDir + ". Please activate the proper completion for your Unix shell. E.g. add the following to your ~/.zshrc file:\n  [ -f ~/.git_helper/completions/completion.zsh ] && source ~/.git_helper/completions/completion.zsh\n")
+		fmt.Println("\nCompletions (for bash, fish, powershell, and zsh) generated in " + completionsDir + ". Please activate the proper completion for your Unix shell. E.g. add the following to your ~/.zshrc file:\n  [ -f ~/.git-helper/completions/completion.zsh ] && source ~/.git-helper/completions/completion.zsh\n")
 	}
 }
