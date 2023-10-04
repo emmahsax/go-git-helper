@@ -32,7 +32,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newSetupClient(debug).execute()
+			newSetup(debug).execute()
 			return nil
 		},
 	}
@@ -42,7 +42,7 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newSetupClient(debug bool) *Setup {
+func newSetup(debug bool) *Setup {
 	return &Setup{
 		Debug: debug,
 	}
@@ -57,7 +57,7 @@ func (s *Setup) execute() {
 func (s *Setup) createConfig() {
 	var create bool
 
-	cf := configfile.NewConfigFileClient(s.Debug)
+	cf := configfile.NewConfigFile(s.Debug)
 
 	if cf.ConfigFileExists() {
 		create = commandline.AskYesNoQuestion("It looks like the " + cf.ConfigFile() + " file already exists. Do you wish to replace it?")
@@ -72,7 +72,7 @@ func (s *Setup) createConfig() {
 
 func (s *Setup) createOrUpdateConfig() {
 	content := s.generateConfigFileContents()
-	cf := configfile.NewConfigFileClient(s.Debug)
+	cf := configfile.NewConfigFile(s.Debug)
 
 	if !cf.ConfigDirExists() {
 		err := os.Mkdir(cf.ConfigDir(), 0755)
@@ -128,7 +128,7 @@ func (s *Setup) setupPlugins() {
 }
 
 func (s *Setup) createOrUpdatePlugins() {
-	cf := configfile.NewConfigFileClient(s.Debug)
+	cf := configfile.NewConfigFile(s.Debug)
 	pluginsDir := cf.ConfigDir() + "/plugins"
 	pluginsURL := "https://api.github.com/repos/emmahsax/go-git-helper/contents/plugins"
 
@@ -209,7 +209,7 @@ func (s *Setup) setupCompletion() {
 
 	if setup {
 		shes := []string{"bash", "fish", "powershell", "zsh"}
-		cf := configfile.NewConfigFileClient(s.Debug)
+		cf := configfile.NewConfigFile(s.Debug)
 		completionsDir := cf.ConfigDir() + "/completions"
 		if err := os.MkdirAll(completionsDir, 0755); err != nil {
 			if s.Debug {

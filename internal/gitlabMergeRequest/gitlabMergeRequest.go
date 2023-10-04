@@ -41,7 +41,7 @@ func (mr *GitLabMergeRequest) Create() {
 	}
 
 	fmt.Println("Creating merge request:", mr.NewMrTitle)
-	mrResponse := mr.gitlabClient().CreateMergeRequest(mr.LocalProject, optionsMap).(gitlab.Response)
+	mrResponse := mr.gitlab().CreateMergeRequest(mr.LocalProject, optionsMap).(gitlab.Response)
 
 	if mrResponse.WebURL == "" {
 		errorMessage := mrResponse.Message[0]
@@ -128,6 +128,6 @@ func (mr *GitLabMergeRequest) mrTemplateOptions() []string {
 	return templateList
 }
 
-func (mr *GitLabMergeRequest) gitlabClient() *gitlab.GitLabClient {
-	return gitlab.NewGitLabClient(mr.Debug)
+func (mr *GitLabMergeRequest) gitlab() *gitlab.GitLab {
+	return gitlab.NewGitLab(mr.Debug)
 }

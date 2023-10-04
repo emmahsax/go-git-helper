@@ -5,7 +5,7 @@ import (
 )
 
 func TestCheckAllLetters(t *testing.T) {
-	cr := newCodeRequestClient(true)
+	cr := newCodeRequest(true)
 	resp := cr.checkAllLetters("iekslkjasd")
 
 	if resp == false {
@@ -20,7 +20,7 @@ func TestCheckAllLetters(t *testing.T) {
 }
 
 func TestCheckAllNumbers(t *testing.T) {
-	cr := newCodeRequestClient(true)
+	cr := newCodeRequest(true)
 	resp := cr.checkAllNumbers("284161")
 
 	if resp == false {
@@ -35,7 +35,7 @@ func TestCheckAllNumbers(t *testing.T) {
 }
 
 func TestMatchesFullJiraPattern(t *testing.T) {
-	cr := newCodeRequestClient(true)
+	cr := newCodeRequest(true)
 	resp := cr.matchesFullJiraPattern("jira-29142")
 
 	if resp == false {
@@ -50,7 +50,7 @@ func TestMatchesFullJiraPattern(t *testing.T) {
 }
 
 func TestTitleize(t *testing.T) {
-	cr := newCodeRequestClient(true)
+	cr := newCodeRequest(true)
 	resp := cr.titleize("mysTrInG")
 
 	if resp != "MysTrInG" {
@@ -59,7 +59,7 @@ func TestTitleize(t *testing.T) {
 }
 
 func TestIsGitHub(t *testing.T) {
-	cr := newCodeRequestClient(true)
+	cr := newCodeRequest(true)
 	resp := cr.isGitHub()
 
 	if resp != true {
@@ -68,7 +68,7 @@ func TestIsGitHub(t *testing.T) {
 }
 
 func TestIsGitLab(t *testing.T) {
-	cr := newCodeRequestClient(true)
+	cr := newCodeRequest(true)
 	resp := cr.isGitLab()
 
 	if resp == true {
@@ -77,7 +77,7 @@ func TestIsGitLab(t *testing.T) {
 }
 
 func TestContainsSubstring(t *testing.T) {
-	cr := newCodeRequestClient(true)
+	cr := newCodeRequest(true)
 	strs := []string{"string1", "string3", "string18"}
 	resp := cr.containsSubstring(strs, "string3")
 

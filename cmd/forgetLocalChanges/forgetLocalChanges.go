@@ -20,7 +20,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newForgetLocalChangesClient(debug).execute()
+			newForgetLocalChanges(debug).execute()
 			return nil
 		},
 	}
@@ -30,14 +30,14 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newForgetLocalChangesClient(debug bool) *ForgetLocalChanges {
+func newForgetLocalChanges(debug bool) *ForgetLocalChanges {
 	return &ForgetLocalChanges{
 		Debug: debug,
 	}
 }
 
 func (flc *ForgetLocalChanges) execute() {
-	g := git.NewGitClient(flc.Debug)
+	g := git.NewGit(flc.Debug)
 	g.Stash()
 	g.StashDrop()
 }

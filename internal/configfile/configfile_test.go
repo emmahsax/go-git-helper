@@ -10,7 +10,7 @@ var (
 )
 
 func TestConfigDir(t *testing.T) {
-	cf := NewConfigFileClient(false)
+	cf := NewConfigFile(false)
 	output := cf.ConfigDir()
 
 	if output != home+"/.git-helper" {
@@ -19,7 +19,7 @@ func TestConfigDir(t *testing.T) {
 }
 
 func TestConfigFile(t *testing.T) {
-	cf := NewConfigFileClient(false)
+	cf := NewConfigFile(false)
 	output := cf.ConfigFile()
 
 	if output != home+"/.git-helper/config.yml" {

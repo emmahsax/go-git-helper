@@ -14,7 +14,7 @@ type Git struct {
 	Debug bool
 }
 
-func NewGitClient(debug bool) *Git {
+func NewGit(debug bool) *Git {
 	return &Git{
 		Debug: debug,
 	}

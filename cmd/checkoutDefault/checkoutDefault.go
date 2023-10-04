@@ -20,7 +20,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newCheckoutDefaultClient(debug).execute()
+			newCheckoutDefault(debug).execute()
 			return nil
 		},
 	}
@@ -30,14 +30,14 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newCheckoutDefaultClient(debug bool) *CheckoutDefault {
+func newCheckoutDefault(debug bool) *CheckoutDefault {
 	return &CheckoutDefault{
 		Debug: debug,
 	}
 }
 
 func (cd *CheckoutDefault) execute() {
-	g := git.NewGitClient(cd.Debug)
+	g := git.NewGit(cd.Debug)
 	branch := g.DefaultBranch()
 	g.Checkout(branch)
 }

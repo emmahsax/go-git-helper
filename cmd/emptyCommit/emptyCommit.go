@@ -20,7 +20,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newEmptyCommitClient(debug).execute()
+			newEmptyCommit(debug).execute()
 			return nil
 		},
 	}
@@ -30,12 +30,12 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newEmptyCommitClient(debug bool) *EmptyCommit {
+func newEmptyCommit(debug bool) *EmptyCommit {
 	return &EmptyCommit{
 		Debug: debug,
 	}
 }
 
 func (ec *EmptyCommit) execute() {
-	git.NewGitClient(ec.Debug).CreateEmptyCommit()
+	git.NewGit(ec.Debug).CreateEmptyCommit()
 }

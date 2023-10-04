@@ -38,7 +38,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newUpdateClient(debug).execute()
+			newUpdate(debug).execute()
 			return nil
 		},
 	}
@@ -48,7 +48,7 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newUpdateClient(debug bool) *Update {
+func newUpdate(debug bool) *Update {
 	return &Update{
 		Debug: debug,
 	}
