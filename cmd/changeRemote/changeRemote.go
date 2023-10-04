@@ -30,7 +30,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(2),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newChangeRemoteClient(args[0], args[1], debug).execute()
+			newChangeRemote(args[0], args[1], debug).execute()
 			return nil
 		},
 	}
@@ -40,7 +40,7 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newChangeRemoteClient(oldOwner, newOwner string, debug bool) *ChangeRemote {
+func newChangeRemote(oldOwner, newOwner string, debug bool) *ChangeRemote {
 	return &ChangeRemote{
 		Debug:    debug,
 		OldOwner: oldOwner,

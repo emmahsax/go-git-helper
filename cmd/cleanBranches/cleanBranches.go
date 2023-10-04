@@ -20,7 +20,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newCleanBranchesClient(debug).execute()
+			newCleanBranches(debug).execute()
 			return nil
 		},
 	}
@@ -30,14 +30,14 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newCleanBranchesClient(debug bool) *CleanBranches {
+func newCleanBranches(debug bool) *CleanBranches {
 	return &CleanBranches{
 		Debug: debug,
 	}
 }
 
 func (cb *CleanBranches) execute() {
-	g := git.NewGitClient(cb.Debug)
+	g := git.NewGit(cb.Debug)
 	branch := g.DefaultBranch()
 	g.Checkout(branch)
 	g.Pull()

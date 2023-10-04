@@ -12,13 +12,13 @@ func TestExecute(t *testing.T) {
 	err := os.Chdir(tmpDir)
 	assert.NoError(t, err)
 
-	cr := newChangeRemoteClient("oldOwner", "newOwner", true)
+	cr := newChangeRemote("oldOwner", "newOwner", true)
 	cr.execute()
 }
 
 func TestRemoteInfo(t *testing.T) {
 	remote := "git@github.com:oldOwner/repo.git"
-	cr := newChangeRemoteClient("oldOwner", "newOwner", false)
+	cr := newChangeRemote("oldOwner", "newOwner", false)
 	cr.execute()
 	host, owner, repo := cr.remoteInfo(remote)
 
@@ -35,7 +35,7 @@ func TestRemoteInfo(t *testing.T) {
 	}
 
 	remote = "https://gitlab.com/oldOwner/repo"
-	cr = newChangeRemoteClient("oldOwner", "newOwner", false)
+	cr = newChangeRemote("oldOwner", "newOwner", false)
 	cr.execute()
 	host, owner, repo = cr.remoteInfo(remote)
 

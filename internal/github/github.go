@@ -11,7 +11,7 @@ import (
 	"github.com/emmahsax/go-git-helper/internal/configfile"
 )
 
-type GitHubClient struct {
+type GitHub struct {
 	Debug bool
 }
 
@@ -25,17 +25,17 @@ type Response struct {
 	} `json:"errors"`
 }
 
-func NewGitHubClient(debug bool) *GitHubClient {
-	return &GitHubClient{
+func NewGitHub(debug bool) *GitHub {
+	return &GitHub{
 		Debug: debug,
 	}
 }
 
-func (c *GitHubClient) CreatePullRequest(repoName string, options map[string]interface{}) interface{} {
+func (c *GitHub) CreatePullRequest(repoName string, options map[string]interface{}) interface{} {
 	return c.run(repoName, "POST", "/repos/"+repoName+"/pulls", options)
 }
 
-func (c *GitHubClient) run(username, requestType, curlURL string, payload map[string]interface{}) interface{} {
+func (c *GitHub) run(username, requestType, curlURL string, payload map[string]interface{}) interface{} {
 	var result Response
 	jsonBytes, err := json.Marshal(payload)
 	if err != nil {
@@ -53,7 +53,7 @@ func (c *GitHubClient) run(username, requestType, curlURL string, payload map[st
 		log.Fatal(err)
 		return result
 	}
-	cf := configfile.NewConfigFileClient(c.Debug)
+	cf := configfile.NewConfigFile(c.Debug)
 	req.Header.Set("Authorization", "token "+cf.GitHubToken())
 	req.Header.Set("Content-Type", "application/json")
 

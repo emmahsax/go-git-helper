@@ -12,7 +12,7 @@ type ConfigFile struct {
 	Debug bool
 }
 
-func NewConfigFileClient(debug bool) *ConfigFile {
+func NewConfigFile(debug bool) *ConfigFile {
 	return &ConfigFile{
 		Debug: debug,
 	}

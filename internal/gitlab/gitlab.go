@@ -13,7 +13,7 @@ import (
 	"github.com/emmahsax/go-git-helper/internal/configfile"
 )
 
-type GitLabClient struct {
+type GitLab struct {
 	Debug bool
 }
 
@@ -22,17 +22,17 @@ type Response struct {
 	WebURL  string   `json:"web_url"`
 }
 
-func NewGitLabClient(debug bool) *GitLabClient {
-	return &GitLabClient{
+func NewGitLab(debug bool) *GitLab {
+	return &GitLab{
 		Debug: debug,
 	}
 }
 
-func (c *GitLabClient) CreateMergeRequest(projectName string, options map[string]string) interface{} {
+func (c *GitLab) CreateMergeRequest(projectName string, options map[string]string) interface{} {
 	return c.run("POST", fmt.Sprintf("/projects/%s/merge_requests%s", c.urlEncode(projectName), c.formatOptions(options)))
 }
 
-func (c *GitLabClient) run(requestType, curlURL string) interface{} {
+func (c *GitLab) run(requestType, curlURL string) interface{} {
 	var result Response
 	req, err := http.NewRequest(requestType, fmt.Sprintf("https://gitlab.com/api/v4%s", curlURL), nil)
 	if err != nil {
@@ -43,7 +43,7 @@ func (c *GitLabClient) run(requestType, curlURL string) interface{} {
 		return result
 	}
 
-	cf := configfile.NewConfigFileClient(c.Debug)
+	cf := configfile.NewConfigFile(c.Debug)
 	req.Header.Set("PRIVATE-TOKEN", cf.GitLabToken())
 
 	client := &http.Client{}
@@ -69,11 +69,11 @@ func (c *GitLabClient) run(requestType, curlURL string) interface{} {
 	return result
 }
 
-func (c *GitLabClient) urlEncode(input string) string {
+func (c *GitLab) urlEncode(input string) string {
 	return url.PathEscape(input)
 }
 
-func (c *GitLabClient) formatOptions(options map[string]string) string {
+func (c *GitLab) formatOptions(options map[string]string) string {
 	var optsAsString string
 	for key, value := range options {
 		if value != "" {

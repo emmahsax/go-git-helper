@@ -39,7 +39,7 @@ func (pr *GitHubPullRequest) Create() {
 	}
 
 	fmt.Println("Creating pull request:", pr.NewPrTitle)
-	prResponse := pr.githubClient().CreatePullRequest(pr.LocalRepo, optionsMap).(github.Response)
+	prResponse := pr.github().CreatePullRequest(pr.LocalRepo, optionsMap).(github.Response)
 
 	if prResponse.HtmlURL == "" {
 		errorMessage := prResponse.Errors[0].Message
@@ -126,6 +126,6 @@ func (pr *GitHubPullRequest) prTemplateOptions() []string {
 	return templateList
 }
 
-func (pr *GitHubPullRequest) githubClient() *github.GitHubClient {
-	return github.NewGitHubClient(pr.Debug)
+func (pr *GitHubPullRequest) github() *github.GitHub {
+	return github.NewGitHub(pr.Debug)
 }

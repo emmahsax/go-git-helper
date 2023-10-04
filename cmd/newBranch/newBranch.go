@@ -38,7 +38,7 @@ func NewCommand() *cobra.Command {
 				}
 			}
 
-			newNewBranchClient(branch, debug).execute()
+			newNewBranch(branch, debug).execute()
 			return nil
 		},
 	}
@@ -48,7 +48,7 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newNewBranchClient(branch string, debug bool) *NewBranch {
+func newNewBranch(branch string, debug bool) *NewBranch {
 	return &NewBranch{
 		Branch: branch,
 		Debug:  debug,
@@ -73,7 +73,7 @@ func getValidBranch() string {
 
 func (nb *NewBranch) execute() {
 	fmt.Println("Attempting to create a new branch:", nb.Branch)
-	g := git.NewGitClient(nb.Debug)
+	g := git.NewGit(nb.Debug)
 	g.Pull()
 	g.CreateBranch(nb.Branch)
 	g.Checkout(nb.Branch)

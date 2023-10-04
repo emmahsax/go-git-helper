@@ -20,7 +20,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newForgetLocalCommitsClient(debug).execute()
+			newForgetLocalCommits(debug).execute()
 			return nil
 		},
 	}
@@ -30,14 +30,14 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newForgetLocalCommitsClient(debug bool) *ForgetLocalCommits {
+func newForgetLocalCommits(debug bool) *ForgetLocalCommits {
 	return &ForgetLocalCommits{
 		Debug: debug,
 	}
 }
 
 func (flc *ForgetLocalCommits) execute() {
-	g := git.NewGitClient(flc.Debug)
+	g := git.NewGit(flc.Debug)
 	g.Pull()
 	g.Reset()
 }
