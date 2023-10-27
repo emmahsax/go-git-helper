@@ -6,15 +6,16 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
-	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/emmahsax/go-git-helper/internal/github"
 )
 
 type GitHubPullRequest struct {
 	BaseBranch  string
 	Debug       bool
+	GitRootDir  string
 	LocalBranch string
 	LocalRepo   string
 	NewPrTitle  string
@@ -24,6 +25,7 @@ func NewGitHubPullRequest(options map[string]string, debug bool) *GitHubPullRequ
 	return &GitHubPullRequest{
 		BaseBranch:  options["baseBranch"],
 		Debug:       debug,
+		GitRootDir:  options["gitRootDir"],
 		LocalBranch: options["localBranch"],
 		LocalRepo:   options["localRepo"],
 		NewPrTitle:  options["newPrTitle"],
@@ -81,14 +83,21 @@ func (pr *GitHubPullRequest) templateNameToApply() string {
 func (pr *GitHubPullRequest) determineTemplate() string {
 	if len(pr.prTemplateOptions()) == 1 {
 		applySingleTemplate := commandline.AskYesNoQuestion(
-			fmt.Sprintf("Apply the pull request template from %s?", pr.prTemplateOptions()[0]),
+			fmt.Sprintf("Apply the pull request template from %s?", strings.TrimPrefix(
+				pr.prTemplateOptions()[0], pr.GitRootDir+"/")),
 		)
 		if applySingleTemplate {
 			return pr.prTemplateOptions()[0]
 		}
 	} else {
+		temp := []string{}
+		for _, str := range pr.prTemplateOptions() {
+			modifiedStr := strings.TrimPrefix(str, pr.GitRootDir+"/")
+			temp = append(temp, modifiedStr)
+		}
+
 		response := commandline.AskMultipleChoice(
-			"Which pull request template should be applied?", append(pr.prTemplateOptions(), "None"),
+			"Which pull request template should be applied?", append(temp, "None"),
 		)
 		if response != "None" {
 			return response
@@ -105,16 +114,13 @@ func (pr *GitHubPullRequest) prTemplateOptions() []string {
 		"nonNestedFileName": "pull_request_template",
 	}
 
-	g := git.NewGit(pr.Debug)
-	rootDir := g.GetGitRootDir()
-
 	nestedTemplates, _ := filepath.Glob(
-		filepath.Join(rootDir, identifiers["templateDir"], identifiers["nestedDirName"], "*.md"),
+		filepath.Join(pr.GitRootDir, identifiers["templateDir"], identifiers["nestedDirName"], "*.md"),
 	)
 	nonNestedTemplates, _ := filepath.Glob(
-		filepath.Join(rootDir, identifiers["templateDir"], identifiers["nonNestedFileName"]+".md"),
+		filepath.Join(pr.GitRootDir, identifiers["templateDir"], identifiers["nonNestedFileName"]+".md"),
 	)
-	rootTemplates, _ := filepath.Glob(filepath.Join(rootDir, identifiers["nonNestedFileName"]+".md"))
+	rootTemplates, _ := filepath.Glob(filepath.Join(pr.GitRootDir, identifiers["nonNestedFileName"]+".md"))
 
 	allTemplates := append(append(nestedTemplates, nonNestedTemplates...), rootTemplates...)
 	uniqueTemplates := make(map[string]bool)

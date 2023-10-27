@@ -6,15 +6,16 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
-	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/emmahsax/go-git-helper/internal/gitlab"
 )
 
 type GitLabMergeRequest struct {
 	BaseBranch   string
 	Debug        bool
+	GitRootDir  string
 	LocalBranch  string
 	LocalProject string
 	NewMrTitle   string
@@ -24,6 +25,7 @@ func NewGitLabMergeRequest(options map[string]string, debug bool) *GitLabMergeRe
 	return &GitLabMergeRequest{
 		BaseBranch:   options["baseBranch"],
 		Debug:        debug,
+		GitRootDir:   options["gitRootDir"],
 		LocalBranch:  options["localBranch"],
 		LocalProject: options["localProject"],
 		NewMrTitle:   options["newMrTitle"],
@@ -83,14 +85,20 @@ func (mr *GitLabMergeRequest) templateNameToApply() string {
 func (mr *GitLabMergeRequest) determineTemplate() string {
 	if len(mr.mrTemplateOptions()) == 1 {
 		applySingleTemplate := commandline.AskYesNoQuestion(
-			fmt.Sprintf("Apply the merge request template from %s?", mr.mrTemplateOptions()[0]),
+			fmt.Sprintf("Apply the merge request template from %s?", strings.TrimPrefix(mr.mrTemplateOptions()[0], mr.GitRootDir+"/")),
 		)
 		if applySingleTemplate {
 			return mr.mrTemplateOptions()[0]
 		}
 	} else {
+		temp := []string{}
+		for _, str := range mr.mrTemplateOptions() {
+				modifiedStr := strings.TrimPrefix(str, mr.GitRootDir+"/")
+				temp = append(temp, modifiedStr)
+		}
+
 		response := commandline.AskMultipleChoice(
-			"Which merge request template should be applied?", append(mr.mrTemplateOptions(), "None"),
+			"Which merge request template should be applied?", append(temp, "None"),
 		)
 		if response != "None" {
 			return response
@@ -107,16 +115,13 @@ func (mr *GitLabMergeRequest) mrTemplateOptions() []string {
 		"nonNestedFileName": "merge_request_template",
 	}
 
-	g := git.NewGit(mr.Debug)
-	rootDir := g.GetGitRootDir()
-
 	nestedTemplates, _ := filepath.Glob(
-		filepath.Join(rootDir, identifiers["templateDir"], identifiers["nestedDirName"], "*.md"),
+		filepath.Join(mr.GitRootDir, identifiers["templateDir"], identifiers["nestedDirName"], "*.md"),
 	)
 	nonNestedTemplates, _ := filepath.Glob(
-		filepath.Join(rootDir, identifiers["templateDir"], identifiers["nonNestedFileName"]+".md"),
+		filepath.Join(mr.GitRootDir, identifiers["templateDir"], identifiers["nonNestedFileName"]+".md"),
 	)
-	rootTemplates, _ := filepath.Glob(filepath.Join(rootDir, identifiers["nonNestedFileName"]+".md"))
+	rootTemplates, _ := filepath.Glob(filepath.Join(mr.GitRootDir, identifiers["nonNestedFileName"]+".md"))
 
 	allTemplates := append(append(nestedTemplates, nonNestedTemplates...), rootTemplates...)
 	uniqueTemplates := make(map[string]bool)
