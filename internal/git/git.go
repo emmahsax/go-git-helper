@@ -194,6 +194,20 @@ func (g *Git) Fetch() {
 	}
 }
 
+func (g *Git) GetGitRootDir() string {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if g.Debug {
+			debug.PrintStack()
+		}
+		log.Fatal(err)
+		return ""
+	}
+	return strings.TrimSpace(string(output))
+}
+
 func (g *Git) Pull() {
 	cmd := exec.Command("git", "pull")
 	cmd.Stdout = os.Stdout

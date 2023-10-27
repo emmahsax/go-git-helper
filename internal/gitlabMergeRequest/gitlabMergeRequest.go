@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
+	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/emmahsax/go-git-helper/internal/gitlab"
 )
 
@@ -106,13 +107,16 @@ func (mr *GitLabMergeRequest) mrTemplateOptions() []string {
 		"nonNestedFileName": "merge_request_template",
 	}
 
+	g := git.NewGit(mr.Debug)
+	rootDir := g.GetGitRootDir()
+
 	nestedTemplates, _ := filepath.Glob(
-		filepath.Join(identifiers["templateDir"], identifiers["nestedDirName"], "*.md"),
+		filepath.Join(rootDir, identifiers["templateDir"], identifiers["nestedDirName"], "*.md"),
 	)
 	nonNestedTemplates, _ := filepath.Glob(
-		filepath.Join(identifiers["templateDir"], identifiers["nonNestedFileName"]+".md"),
+		filepath.Join(rootDir, identifiers["templateDir"], identifiers["nonNestedFileName"]+".md"),
 	)
-	rootTemplates, _ := filepath.Glob(filepath.Join(".", identifiers["nonNestedFileName"]+".md"))
+	rootTemplates, _ := filepath.Glob(filepath.Join(rootDir, identifiers["nonNestedFileName"]+".md"))
 
 	allTemplates := append(append(nestedTemplates, nonNestedTemplates...), rootTemplates...)
 	uniqueTemplates := make(map[string]bool)
