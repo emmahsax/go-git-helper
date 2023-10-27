@@ -15,7 +15,7 @@ import (
 type GitLabMergeRequest struct {
 	BaseBranch   string
 	Debug        bool
-	GitRootDir  string
+	GitRootDir   string
 	LocalBranch  string
 	LocalProject string
 	NewMrTitle   string
