@@ -1,7 +1,10 @@
 package githubPullRequest
 
 import (
+	"os"
 	"testing"
+
+	"github.com/emmahsax/go-git-helper/internal/git"
 )
 
 func TestNewPrBody(t *testing.T) {
@@ -12,9 +15,14 @@ func TestNewPrBody(t *testing.T) {
 	options["localRepo"] = "test-repo"
 	pr := NewGitHubPullRequest(options, true)
 	body := pr.newPrBody()
+	g := git.NewGit(pr.Debug)
+	rootDir := g.GetGitRootDir()
+	realTemplate := rootDir + "/.github/pull_request_template.md"
+	content, _ := os.ReadFile(realTemplate)
+	realBody := string(content)
 
-	if body != "" {
-		t.Fatalf(`Body was non-empty: %s`, body)
+	if body != realBody {
+		t.Fatalf(`Body was not the real repo template: %s`, body)
 	}
 }
 
@@ -26,9 +34,12 @@ func TestTemplateNameToApply(t *testing.T) {
 	options["localRepo"] = "test-repo"
 	pr := NewGitHubPullRequest(options, true)
 	template := pr.templateNameToApply()
+	g := git.NewGit(pr.Debug)
+	rootDir := g.GetGitRootDir()
+	realTemplate := rootDir + "/.github/pull_request_template.md"
 
-	if template != "" {
-		t.Fatalf(`Template was non-empty: %s`, template)
+	if template != realTemplate {
+		t.Fatalf(`Template was not the real repo template: %s`, template)
 	}
 }
 
@@ -41,7 +52,7 @@ func TestPrTemplateOptions(t *testing.T) {
 	pr := NewGitHubPullRequest(options, true)
 	tempOptions := pr.prTemplateOptions()
 
-	if len(tempOptions) != 0 {
-		t.Fatalf(`PR options should be 0 when there are no templates: %v`, tempOptions)
+	if len(tempOptions) != 1 {
+		t.Fatalf(`PR options should be 1 when there is a single real repo template: %v`, tempOptions)
 	}
 }
