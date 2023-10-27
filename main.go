@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	packageVersion = "beta-1.0.3"
+	packageVersion = "beta-1.0.4"
 )
 
 func main() {

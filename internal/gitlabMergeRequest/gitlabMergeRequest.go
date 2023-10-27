@@ -93,8 +93,8 @@ func (mr *GitLabMergeRequest) determineTemplate() string {
 	} else {
 		temp := []string{}
 		for _, str := range mr.mrTemplateOptions() {
-				modifiedStr := strings.TrimPrefix(str, mr.GitRootDir+"/")
-				temp = append(temp, modifiedStr)
+			modifiedStr := strings.TrimPrefix(str, mr.GitRootDir+"/")
+			temp = append(temp, modifiedStr)
 		}
 
 		response := commandline.AskMultipleChoice(

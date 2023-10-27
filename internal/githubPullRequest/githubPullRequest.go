@@ -83,8 +83,7 @@ func (pr *GitHubPullRequest) templateNameToApply() string {
 func (pr *GitHubPullRequest) determineTemplate() string {
 	if len(pr.prTemplateOptions()) == 1 {
 		applySingleTemplate := commandline.AskYesNoQuestion(
-			fmt.Sprintf("Apply the pull request template from %s?", strings.TrimPrefix(
-				pr.prTemplateOptions()[0], pr.GitRootDir+"/")),
+			fmt.Sprintf("Apply the pull request template from %s?", strings.TrimPrefix(pr.prTemplateOptions()[0], pr.GitRootDir+"/")),
 		)
 		if applySingleTemplate {
 			return pr.prTemplateOptions()[0]
