@@ -8,15 +8,18 @@ import (
 )
 
 func TestNewPrBody(t *testing.T) {
+	g := git.NewGit(true)
+	rootDir := g.GetGitRootDir()
+
 	options := make(map[string]string)
 	options["baseBranch"] = "main"
 	options["newPrTitle"] = "Example PR Title"
+	options["gitRootDir"] = rootDir
 	options["localBranch"] = "feature-branch"
 	options["localRepo"] = "test-repo"
 	pr := NewGitHubPullRequest(options, true)
 	body := pr.newPrBody()
-	g := git.NewGit(pr.Debug)
-	rootDir := g.GetGitRootDir()
+
 	realTemplate := rootDir + "/.github/pull_request_template.md"
 	content, _ := os.ReadFile(realTemplate)
 	realBody := string(content)
@@ -27,15 +30,17 @@ func TestNewPrBody(t *testing.T) {
 }
 
 func TestTemplateNameToApply(t *testing.T) {
+	g := git.NewGit(true)
+	rootDir := g.GetGitRootDir()
+
 	options := make(map[string]string)
 	options["baseBranch"] = "main"
 	options["newPrTitle"] = "Example PR Title"
+	options["gitRootDir"] = rootDir
 	options["localBranch"] = "feature-branch"
 	options["localRepo"] = "test-repo"
 	pr := NewGitHubPullRequest(options, true)
 	template := pr.templateNameToApply()
-	g := git.NewGit(pr.Debug)
-	rootDir := g.GetGitRootDir()
 	realTemplate := rootDir + "/.github/pull_request_template.md"
 
 	if template != realTemplate {
@@ -44,9 +49,13 @@ func TestTemplateNameToApply(t *testing.T) {
 }
 
 func TestPrTemplateOptions(t *testing.T) {
+	g := git.NewGit(true)
+	rootDir := g.GetGitRootDir()
+
 	options := make(map[string]string)
 	options["baseBranch"] = "main"
 	options["newPrTitle"] = "Example PR Title"
+	options["gitRootDir"] = rootDir
 	options["localBranch"] = "feature-branch"
 	options["localRepo"] = "test-repo"
 	pr := NewGitHubPullRequest(options, true)
