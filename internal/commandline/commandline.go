@@ -25,7 +25,7 @@ func AskMultipleChoice(question string, choices []string) string {
 	choiceNum, err := strconv.Atoi(input)
 	if err != nil || choiceNum < 1 || choiceNum > len(choices) {
 		fmt.Println("--- This question is required ---")
-		AskMultipleChoice(question, choices)
+		return AskMultipleChoice(question, choices)
 	}
 
 	return choices[choiceNum-1]
@@ -47,7 +47,7 @@ func AskOpenEndedQuestion(question string, secret bool) string {
 
 	if response == "" {
 		fmt.Println("--- This question is required ---")
-		AskOpenEndedQuestion(question, secret)
+		return AskOpenEndedQuestion(question, secret)
 	}
 
 	return response
