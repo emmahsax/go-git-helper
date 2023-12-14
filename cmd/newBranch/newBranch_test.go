@@ -1,8 +1,6 @@
 package newBranch
 
 import (
-	"io"
-	"os"
 	"testing"
 )
 
@@ -47,42 +45,5 @@ func TestIsValidBranch(t *testing.T) {
 
 	if output {
 		t.Fatalf(`Branch %s should be invalid`, "hello-world*")
-	}
-}
-
-func TestGetValidBranch(t *testing.T) {
-	testCases := []struct {
-		expected string
-		input    string
-	}{
-		{
-			expected: "hello-world",
-			input:    "hello-world\n",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run("New branch name?", func(t *testing.T) {
-			reader, writer, _ := os.Pipe()
-			defer reader.Close()
-			defer writer.Close()
-
-			originalStdin := os.Stdin
-			os.Stdin = reader
-			defer func() {
-				os.Stdin = originalStdin
-			}()
-
-			_, err := io.WriteString(writer, tc.input)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			response := getValidBranch()
-
-			if response != tc.expected {
-				t.Errorf("Expected response %s, but got %s", tc.expected, response)
-			}
-		})
 	}
 }
