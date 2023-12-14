@@ -96,7 +96,7 @@ func (pr *GitHubPullRequest) determineTemplate() string {
 		}
 
 		response := commandline.AskMultipleChoice(
-			"Which pull request template should be applied?", append(temp, "None"),
+			"Choose a pull request template to be applied", append(temp, "None"),
 		)
 		if response != "None" {
 			return response

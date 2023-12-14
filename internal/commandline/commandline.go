@@ -1,71 +1,84 @@
 package commandline
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
-	"syscall"
 
-	"golang.org/x/term"
+	"github.com/pterm/pterm"
 )
 
 func AskMultipleChoice(question string, choices []string) string {
-	fmt.Println(question)
+	selectedOption, _ := pterm.DefaultInteractiveSelect.
+		WithDefaultText(question).
+		WithOnInterruptFunc(func() {
+			os.Exit(1)
+		}).
+		WithOptions(choices).
+		Show()
 
-	for i, choice := range choices {
-		fmt.Printf("%d. %s\n", i+1, choice)
-	}
+	pterm.Println()
+	pterm.Info.Printfln("Selected option: %s", pterm.Green(selectedOption))
+	pterm.Println()
 
-	reader := bufio.NewReader(os.Stdin)
-	input, _ := reader.ReadString('\n')
-	input = strings.TrimSpace(input)
-
-	choiceNum, err := strconv.Atoi(input)
-	if err != nil || choiceNum < 1 || choiceNum > len(choices) {
-		fmt.Println("--- This question is required ---")
-		return AskMultipleChoice(question, choices)
-	}
-
-	return choices[choiceNum-1]
+	return selectedOption
 }
 
 func AskOpenEndedQuestion(question string, secret bool) string {
-	fmt.Println(question)
-	var response string
+	var result string
 
 	if secret {
-		bytePassword, _ := term.ReadPassword(int(syscall.Stdin))
-		response = string(bytePassword)
-		fmt.Println()
+		result, _ = pterm.DefaultInteractiveTextInput.
+			WithMultiLine(false).
+			WithDefaultText(question).
+			WithMask("*").
+			WithOnInterruptFunc(func() {
+				os.Exit(1)
+			}).
+			Show()
 	} else {
-		reader := bufio.NewReader(os.Stdin)
-		response, _ = reader.ReadString('\n')
-		response = strings.TrimSpace(response)
+		result, _ = pterm.DefaultInteractiveTextInput.
+			WithMultiLine(false).
+			WithDefaultText(question).
+			WithOnInterruptFunc(func() {
+				os.Exit(1)
+			}).
+			Show()
 	}
 
-	if response == "" {
-		fmt.Println("--- This question is required ---")
+	pterm.Println()
+
+	if result == "" {
+		fmt.Printf("--- This question is required ---\n\n")
 		return AskOpenEndedQuestion(question, secret)
 	}
 
-	return response
+	if secret == false {
+		pterm.Info.Printfln("You answered: %s", result)
+		pterm.Println()
+	}
+
+	return result
 }
 
 func AskYesNoQuestion(question string) bool {
-	fmt.Printf("%s (Y/n): ", question)
+	result, _ := pterm.DefaultInteractiveConfirm.
+		WithDefaultText(question).
+		WithDefaultValue(true).
+		WithOnInterruptFunc(func() {
+			os.Exit(1)
+		}).
+		Show()
 
-	reader := bufio.NewReader(os.Stdin)
-	response, _ := reader.ReadString('\n')
-	response = strings.ToLower(strings.TrimSpace(response))
+	pterm.Println()
+	pterm.Info.Printfln("You answered: %s", boolToText(result))
+	pterm.Println()
 
-	if response == "yes" || response == "y" || response == "" {
-		return true
-	} else if response == "no" || response == "n" {
-		return false
-	} else {
-		fmt.Println("--- This question is required ---")
-		return AskYesNoQuestion(question)
+	return result
+}
+
+func boolToText(b bool) string {
+	if b {
+		return pterm.Green("Yes")
 	}
+	return pterm.Red("No")
 }

@@ -61,7 +61,7 @@ func isValidBranch(branch string) bool {
 }
 
 func getValidBranch() string {
-	branch := commandline.AskOpenEndedQuestion("New branch name?", false)
+	branch := commandline.AskOpenEndedQuestion("New branch name", false)
 
 	if !isValidBranch(branch) {
 		fmt.Println("--- Invalid branch ---")

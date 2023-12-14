@@ -103,15 +103,15 @@ func (s *Setup) generateConfigFileContents() string {
 	github := commandline.AskYesNoQuestion("Do you wish to set up GitHub credentials?")
 
 	if github {
-		contents = contents + "github_username: " + commandline.AskOpenEndedQuestion("GitHub username?", false) + "\n"
-		contents = contents + "github_token: " + commandline.AskOpenEndedQuestion("GitHub personal access token? (Navigate to https://github.com/settings/tokens to create a new personal access token)", true) + "\n"
+		contents = contents + "github_username: " + commandline.AskOpenEndedQuestion("GitHub username", false) + "\n"
+		contents = contents + "github_token: " + commandline.AskOpenEndedQuestion("GitHub personal access token - navigate to https://github.com/settings/tokens to create a new personal access token", true) + "\n"
 	}
 
 	gitlab := commandline.AskYesNoQuestion("Do you wish to set up GitLab credentials?")
 
 	if gitlab {
-		contents = contents + "gitlab_username: " + commandline.AskOpenEndedQuestion("GitLab username?", false) + "\n"
-		contents = contents + "gitlab_token: " + commandline.AskOpenEndedQuestion("GitLab personal access token? (Navigate to https://gitlab.com/-/profile/personal_access_tokens to create a new personal access token)", true) + "\n"
+		contents = contents + "gitlab_username: " + commandline.AskOpenEndedQuestion("GitLab username", false) + "\n"
+		contents = contents + "gitlab_token: " + commandline.AskOpenEndedQuestion("GitLab personal access token - navigate to https://gitlab.com/-/profile/personal_access_tokens to create a new personal access token", true) + "\n"
 	}
 
 	contents = strings.TrimSpace(contents) + "\n"
