@@ -60,10 +60,3 @@ func AskYesNoQuestion(question string) bool {
 
 	return result
 }
-
-func boolToText(b bool) string {
-	if b {
-		return pterm.Green("Yes")
-	}
-	return pterm.Red("No")
-}
