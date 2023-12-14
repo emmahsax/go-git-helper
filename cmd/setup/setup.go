@@ -201,7 +201,7 @@ func (s *Setup) createOrUpdatePlugins() {
 	}
 
 	fmt.Printf("\nDone setting up plugins at %s!\n", pluginsDir)
-	fmt.Printf("\nNow add this line to your Unix shell file (e.g. ~/.zshrc):\n  export PATH=\"$HOME/.git-helper/plugins:$PATH\"\n")
+	fmt.Printf("\nNow add this line to your Unix shell file (e.g. ~/.zshrc):\n  export PATH=\"$HOME/.git-helper/plugins:$PATH\"\n\n")
 }
 
 func (s *Setup) setupCompletion() {
