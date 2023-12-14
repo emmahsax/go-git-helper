@@ -16,10 +16,6 @@ func AskMultipleChoice(question string, choices []string) string {
 		WithOptions(choices).
 		Show()
 
-	pterm.Println()
-	pterm.Info.Printfln("Selected option: %s", pterm.Green(selectedOption))
-	pterm.Println()
-
 	return selectedOption
 }
 
@@ -45,16 +41,9 @@ func AskOpenEndedQuestion(question string, secret bool) string {
 			Show()
 	}
 
-	pterm.Println()
-
 	if result == "" {
-		fmt.Printf("--- This question is required ---\n\n")
+		fmt.Println("--- This question is required ---")
 		return AskOpenEndedQuestion(question, secret)
-	}
-
-	if secret == false {
-		pterm.Info.Printfln("You answered: %s", result)
-		pterm.Println()
 	}
 
 	return result
@@ -68,10 +57,6 @@ func AskYesNoQuestion(question string) bool {
 			os.Exit(1)
 		}).
 		Show()
-
-	pterm.Println()
-	pterm.Info.Printfln("You answered: %s", boolToText(result))
-	pterm.Println()
 
 	return result
 }
