@@ -29,7 +29,7 @@ func (c *GitHub) CreatePullRequest(owner, repo string, options map[string]string
 	createOpts := &github.NewPullRequest{
 		Base:                github.String(options["base"]),
 		Body:                github.String(options["body"]),
-		Head:                github.String(owner + ":" + options["head"]),
+		Head:                github.String(options["head"]),
 		MaintainerCanModify: github.Bool(true),
 		Title:               github.String(options["title"]),
 	}
