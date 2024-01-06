@@ -42,8 +42,6 @@ func (pr *GitHubPullRequest) Create() {
 	repo := strings.Split(pr.LocalRepo, "/")
 
 	fmt.Println("Creating pull request:", pr.NewPrTitle)
-	fmt.Println(repo[0])
-	fmt.Println(repo[1])
 	resp, err := pr.github().CreatePullRequest(repo[0], repo[1], optionsMap)
 	if err != nil {
 		if pr.Debug {
@@ -52,7 +50,7 @@ func (pr *GitHubPullRequest) Create() {
 		log.Fatal("Could not create pull request: " + err.Error())
 	}
 
-	fmt.Println("Pull request successfully created:", resp.HTMLURL)
+	fmt.Println("Pull request successfully created:", *resp.HTMLURL)
 }
 
 func (pr *GitHubPullRequest) newPrBody() string {

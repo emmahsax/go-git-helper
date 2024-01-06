@@ -27,9 +27,9 @@ func NewGitHub(debugB bool) *GitHub {
 
 func (c *GitHub) CreatePullRequest(owner, repo string, options map[string]string) (*github.PullRequest, error) {
 	createOpts := &github.NewPullRequest{
-		Base:                github.String(options["target_branch"]),
-		Body:                github.String(options["description"]),
-		Head:                github.String(options["source_branch"]),
+		Base:                github.String(options["base"]),
+		Body:                github.String(options["body"]),
+		Head:                github.String(owner + ":" + options["head"]),
 		MaintainerCanModify: github.Bool(true),
 		Title:               github.String(options["title"]),
 	}
