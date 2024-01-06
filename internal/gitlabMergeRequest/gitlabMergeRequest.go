@@ -44,17 +44,15 @@ func (mr *GitLabMergeRequest) Create() {
 	}
 
 	fmt.Println("Creating merge request:", mr.NewMrTitle)
-	mrResponse := mr.gitlab().CreateMergeRequest(mr.LocalProject, optionsMap).(gitlab.Response)
-
-	if mrResponse.WebURL == "" {
-		errorMessage := mrResponse.Message[0]
+	resp, err := mr.gitlab().CreateMergeRequest(mr.LocalProject, optionsMap)
+	if err != nil {
 		if mr.Debug {
 			debug.PrintStack()
 		}
-		log.Fatal("Could not create merge request: " + errorMessage)
-	} else {
-		fmt.Println("Merge request successfully created:", mrResponse.WebURL)
+		log.Fatal("Could not create merge request " + err.Error())
 	}
+
+	fmt.Println("Merge request successfully created:", resp.WebURL)
 }
 
 func (mr *GitLabMergeRequest) newMrBody() string {
