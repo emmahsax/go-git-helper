@@ -145,7 +145,7 @@ func (s *Setup) createOrUpdatePlugins() {
 		if s.Debug {
 			debug.PrintStack()
 		}
-		log.Fatal("Error:", err)
+		log.Fatal("Error: ", err)
 		return
 	}
 	defer resp.Body.Close()
