@@ -33,26 +33,24 @@ func NewGitHubPullRequest(options map[string]string, debug bool) *GitHubPullRequ
 }
 
 func (pr *GitHubPullRequest) Create() {
-	body := pr.newPrBody()
-	optionsMap := map[string]interface{}{
+	optionsMap := map[string]string{
 		"base":  pr.BaseBranch,
-		"body":  body,
+		"body":  pr.newPrBody(),
 		"head":  pr.LocalBranch,
 		"title": pr.NewPrTitle,
 	}
+	repo := strings.Split(pr.LocalRepo, "/")
 
 	fmt.Println("Creating pull request:", pr.NewPrTitle)
-	prResponse := pr.github().CreatePullRequest(pr.LocalRepo, optionsMap).(github.Response)
-
-	if prResponse.HtmlURL == "" {
-		errorMessage := prResponse.Errors[0].Message
+	resp, err := pr.github().CreatePullRequest(repo[0], repo[1], optionsMap)
+	if err != nil {
 		if pr.Debug {
 			debug.PrintStack()
 		}
-		log.Fatal("Could not create pull request: " + errorMessage)
-	} else {
-		fmt.Println("Pull request successfully created:", prResponse.HtmlURL)
+		log.Fatal("Could not create pull request: " + err.Error())
 	}
+
+	fmt.Println("Pull request successfully created:", *resp.HTMLURL)
 }
 
 func (pr *GitHubPullRequest) newPrBody() string {

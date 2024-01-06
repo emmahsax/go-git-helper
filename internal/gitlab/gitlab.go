@@ -1,88 +1,62 @@
 package gitlab
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
 	"log"
-	"net/http"
-	"net/url"
 	"runtime/debug"
-	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/configfile"
+	"github.com/xanzy/go-gitlab"
 )
 
 type GitLab struct {
-	Debug bool
+	Debug  bool
+	Client *gitlab.Client
 }
 
-type Response struct {
-	Message []string `json:"message"`
-	WebURL  string   `json:"web_url"`
-}
+func NewGitLab(debugB bool) *GitLab {
+	cf := configfile.NewConfigFile(debugB)
+	c, err := newGitLabClient(cf.GitLabToken())
+	if err != nil {
+		if debugB {
+			debug.PrintStack()
+		}
+		log.Fatal("Could not create GitLab client: ", err)
+		return nil
+	}
 
-func NewGitLab(debug bool) *GitLab {
 	return &GitLab{
-		Debug: debug,
+		Debug:  debugB,
+		Client: c,
 	}
 }
 
-func (c *GitLab) CreateMergeRequest(projectName string, options map[string]string) interface{} {
-	return c.run("POST", fmt.Sprintf("/projects/%s/merge_requests%s", c.urlEncode(projectName), c.formatOptions(options)))
-}
+func (c *GitLab) CreateMergeRequest(projectName string, options map[string]string) (*gitlab.MergeRequest, error) {
+	createOpts := &gitlab.CreateMergeRequestOptions{
+		Description:        gitlab.Ptr(options["description"]),
+		RemoveSourceBranch: gitlab.Ptr(true),
+		SourceBranch:       gitlab.Ptr(options["source_branch"]),
+		Squash:             gitlab.Ptr(true),
+		TargetBranch:       gitlab.Ptr(options["target_branch"]),
+		Title:              gitlab.Ptr(options["title"]),
+	}
 
-func (c *GitLab) run(requestType, curlURL string) interface{} {
-	var result Response
-	req, err := http.NewRequest(requestType, fmt.Sprintf("https://gitlab.com/api/v4%s", curlURL), nil)
+	mr, _, err := c.Client.MergeRequests.CreateMergeRequest(projectName, createOpts)
 	if err != nil {
 		if c.Debug {
 			debug.PrintStack()
 		}
 		log.Fatal(err)
-		return result
+		return nil, err
 	}
 
-	cf := configfile.NewConfigFile(c.Debug)
-	req.Header.Set("PRIVATE-TOKEN", cf.GitLabToken())
+	return mr, nil
+}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+func newGitLabClient(token string) (*gitlab.Client, error) {
+	git, err := gitlab.NewClient(token)
 	if err != nil {
-		if c.Debug {
-			debug.PrintStack()
-		}
 		log.Fatal(err)
-		return result
+		return nil, err
 	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-	if err := json.Unmarshal(body, &result); err != nil {
-		if c.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal("Cannot unmarshal JSON")
-		return err
-	}
-
-	return result
-}
-
-func (c *GitLab) urlEncode(input string) string {
-	return url.PathEscape(input)
-}
-
-func (c *GitLab) formatOptions(options map[string]string) string {
-	var optsAsString string
-	for key, value := range options {
-		if value != "" {
-			optsAsString += fmt.Sprintf("%s=%s&", key, c.urlEncode(value))
-		}
-	}
-	optsAsString = strings.TrimSuffix(optsAsString, "&")
-	if optsAsString != "" {
-		optsAsString = "?" + optsAsString
-	}
-	return optsAsString
+	return git, nil
 }

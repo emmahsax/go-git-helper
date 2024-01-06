@@ -92,13 +92,13 @@ func (cf *ConfigFile) GitLabToken() string {
 func (cf *ConfigFile) configFileContents() map[string]string {
 	data, err := os.ReadFile(cf.ConfigFile())
 	if err != nil {
-		log.Fatalf("Error reading file: %v", err)
+		log.Fatal("Error reading file: ", err.Error())
 	}
 
 	var result map[string]string
 	err = yaml.Unmarshal(data, &result)
 	if err != nil {
-		log.Fatalf("Error unmarshaling YAML: %v", err)
+		log.Fatal("Error unmarshaling YAML: ", err.Error())
 	}
 
 	return result

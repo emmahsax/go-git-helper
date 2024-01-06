@@ -1,81 +1,55 @@
 package github
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
+	"context"
 	"log"
-	"net/http"
 	"runtime/debug"
 
 	"github.com/emmahsax/go-git-helper/internal/configfile"
+	"github.com/google/go-github/v56/github"
+	"golang.org/x/oauth2"
 )
 
 type GitHub struct {
-	Debug bool
+	Debug  bool
+	Client *github.Client
 }
 
-type Response struct {
-	HtmlURL string `json:"html_url"`
-	Message string `json:"message"`
-	Errors  []struct {
-		Resource string `json:"resource"`
-		Code     string `json:"code"`
-		Message  string `json:"message"`
-	} `json:"errors"`
-}
+func NewGitHub(debugB bool) *GitHub {
+	cf := configfile.NewConfigFile(debugB)
+	c := newGitHubClient(cf.GitHubToken())
 
-func NewGitHub(debug bool) *GitHub {
 	return &GitHub{
-		Debug: debug,
+		Debug:  debugB,
+		Client: c,
 	}
 }
 
-func (c *GitHub) CreatePullRequest(repoName string, options map[string]interface{}) interface{} {
-	return c.run(repoName, "POST", "/repos/"+repoName+"/pulls", options)
+func (c *GitHub) CreatePullRequest(owner, repo string, options map[string]string) (*github.PullRequest, error) {
+	createOpts := &github.NewPullRequest{
+		Base:                github.String(options["base"]),
+		Body:                github.String(options["body"]),
+		Head:                github.String(options["head"]),
+		MaintainerCanModify: github.Bool(true),
+		Title:               github.String(options["title"]),
+	}
+
+	pr, _, err := c.Client.PullRequests.Create(context.Background(), owner, repo, createOpts)
+	if err != nil {
+		if c.Debug {
+			debug.PrintStack()
+		}
+		log.Fatal(err)
+		return nil, err
+	}
+
+	return pr, nil
 }
 
-func (c *GitHub) run(username, requestType, curlURL string, payload map[string]interface{}) interface{} {
-	var result Response
-	jsonBytes, err := json.Marshal(payload)
-	if err != nil {
-		if c.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return result
-	}
-	req, err := http.NewRequest(requestType, "https://api.github.com"+curlURL, bytes.NewBuffer(jsonBytes))
-	if err != nil {
-		if c.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return result
-	}
-	cf := configfile.NewConfigFile(c.Debug)
-	req.Header.Set("Authorization", "token "+cf.GitHubToken())
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		if c.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return result
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-	if err := json.Unmarshal(body, &result); err != nil {
-		if c.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal("Cannot unmarshal JSON")
-		return err
-	}
-
-	return result
+func newGitHubClient(token string) *github.Client {
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	tc := oauth2.NewClient(ctx, ts)
+	git := github.NewClient(tc)
+	return git
 }
