@@ -3,12 +3,12 @@ module github.com/emmahsax/go-git-helper
 go 1.21
 
 require (
-	github.com/google/go-github/v56 v56.0.0
+	github.com/google/go-github/v58 v58.0.0
 	github.com/pterm/pterm v0.12.73
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
 	github.com/tidwall/gjson v1.17.0
-	github.com/xanzy/go-gitlab v0.95.2
+	github.com/xanzy/go-gitlab v0.97.0
 	golang.org/x/oauth2 v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )
