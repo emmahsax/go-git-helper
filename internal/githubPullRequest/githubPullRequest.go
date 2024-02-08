@@ -6,15 +6,18 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strconv"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/github"
+	go_github "github.com/google/go-github/v58/github"
 )
 
 type GitHubPullRequest struct {
 	BaseBranch  string
 	Debug       bool
+	Draft       string
 	GitRootDir  string
 	LocalBranch string
 	LocalRepo   string
@@ -25,6 +28,7 @@ func NewGitHubPullRequest(options map[string]string, debug bool) *GitHubPullRequ
 	return &GitHubPullRequest{
 		BaseBranch:  options["baseBranch"],
 		Debug:       debug,
+		Draft:       options["draft"],
 		GitRootDir:  options["gitRootDir"],
 		LocalBranch: options["localBranch"],
 		LocalRepo:   options["localRepo"],
@@ -33,16 +37,20 @@ func NewGitHubPullRequest(options map[string]string, debug bool) *GitHubPullRequ
 }
 
 func (pr *GitHubPullRequest) Create() {
-	optionsMap := map[string]string{
-		"base":  pr.BaseBranch,
-		"body":  pr.newPrBody(),
-		"head":  pr.LocalBranch,
-		"title": pr.NewPrTitle,
+	d, _ := strconv.ParseBool(pr.Draft)
+	options := go_github.NewPullRequest{
+		Base:                go_github.String(pr.BaseBranch),
+		Body:                go_github.String(pr.newPrBody()),
+		Draft:               go_github.Bool(d),
+		Head:                go_github.String(pr.LocalBranch),
+		MaintainerCanModify: go_github.Bool(true),
+		Title:               go_github.String(pr.NewPrTitle),
 	}
+
 	repo := strings.Split(pr.LocalRepo, "/")
 
 	fmt.Println("Creating pull request:", pr.NewPrTitle)
-	resp, err := pr.github().CreatePullRequest(repo[0], repo[1], optionsMap)
+	resp, err := pr.github().CreatePullRequest(repo[0], repo[1], &options)
 	if err != nil {
 		if pr.Debug {
 			debug.PrintStack()

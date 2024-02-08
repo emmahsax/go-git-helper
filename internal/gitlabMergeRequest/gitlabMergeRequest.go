@@ -6,10 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strconv"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/gitlab"
+	go_github "github.com/xanzy/go-gitlab"
 )
 
 type GitLabMergeRequest struct {
@@ -17,6 +19,7 @@ type GitLabMergeRequest struct {
 	Debug        bool
 	GitRootDir   string
 	LocalBranch  string
+	Draft        string
 	LocalProject string
 	NewMrTitle   string
 }
@@ -25,6 +28,7 @@ func NewGitLabMergeRequest(options map[string]string, debug bool) *GitLabMergeRe
 	return &GitLabMergeRequest{
 		BaseBranch:   options["baseBranch"],
 		Debug:        debug,
+		Draft:        options["draft"],
 		GitRootDir:   options["gitRootDir"],
 		LocalBranch:  options["localBranch"],
 		LocalProject: options["localProject"],
@@ -33,17 +37,24 @@ func NewGitLabMergeRequest(options map[string]string, debug bool) *GitLabMergeRe
 }
 
 func (mr *GitLabMergeRequest) Create() {
-	optionsMap := map[string]string{
-		"description":          mr.newMrBody(),
-		"remove_source_branch": "true",
-		"squash":               "true",
-		"source_branch":        mr.LocalBranch,
-		"target_branch":        mr.BaseBranch,
-		"title":                mr.NewMrTitle,
+	var t string
+	if d, _ := strconv.ParseBool(mr.Draft); d {
+		t = "Draft: " + mr.NewMrTitle
+	} else {
+		t = mr.NewMrTitle
 	}
 
-	fmt.Println("Creating merge request:", mr.NewMrTitle)
-	resp, err := mr.gitlab().CreateMergeRequest(mr.LocalProject, optionsMap)
+	options := go_github.CreateMergeRequestOptions{
+		Description:        go_github.Ptr(mr.newMrBody()),
+		RemoveSourceBranch: go_github.Ptr(true),
+		SourceBranch:       go_github.Ptr(mr.LocalBranch),
+		Squash:             go_github.Ptr(true),
+		TargetBranch:       go_github.Ptr(mr.BaseBranch),
+		Title:              go_github.Ptr(t),
+	}
+
+	fmt.Println("Creating merge request:", t)
+	resp, err := mr.gitlab().CreateMergeRequest(mr.LocalProject, &options)
 	if err != nil {
 		if mr.Debug {
 			debug.PrintStack()

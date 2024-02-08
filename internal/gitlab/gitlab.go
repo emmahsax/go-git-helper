@@ -30,17 +30,8 @@ func NewGitLab(debugB bool) *GitLab {
 	}
 }
 
-func (c *GitLab) CreateMergeRequest(projectName string, options map[string]string) (*gitlab.MergeRequest, error) {
-	createOpts := &gitlab.CreateMergeRequestOptions{
-		Description:        gitlab.Ptr(options["description"]),
-		RemoveSourceBranch: gitlab.Ptr(true),
-		SourceBranch:       gitlab.Ptr(options["source_branch"]),
-		Squash:             gitlab.Ptr(true),
-		TargetBranch:       gitlab.Ptr(options["target_branch"]),
-		Title:              gitlab.Ptr(options["title"]),
-	}
-
-	mr, _, err := c.Client.MergeRequests.CreateMergeRequest(projectName, createOpts)
+func (c *GitLab) CreateMergeRequest(projectName string, options *gitlab.CreateMergeRequestOptions) (*gitlab.MergeRequest, error) {
+	mr, _, err := c.Client.MergeRequests.CreateMergeRequest(projectName, options)
 	if err != nil {
 		if c.Debug {
 			debug.PrintStack()

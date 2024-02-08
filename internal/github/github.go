@@ -6,7 +6,7 @@ import (
 	"runtime/debug"
 
 	"github.com/emmahsax/go-git-helper/internal/configfile"
-	"github.com/google/go-github/v56/github"
+	"github.com/google/go-github/v58/github"
 	"golang.org/x/oauth2"
 )
 
@@ -25,16 +25,8 @@ func NewGitHub(debugB bool) *GitHub {
 	}
 }
 
-func (c *GitHub) CreatePullRequest(owner, repo string, options map[string]string) (*github.PullRequest, error) {
-	createOpts := &github.NewPullRequest{
-		Base:                github.String(options["base"]),
-		Body:                github.String(options["body"]),
-		Head:                github.String(options["head"]),
-		MaintainerCanModify: github.Bool(true),
-		Title:               github.String(options["title"]),
-	}
-
-	pr, _, err := c.Client.PullRequests.Create(context.Background(), owner, repo, createOpts)
+func (c *GitHub) CreatePullRequest(owner, repo string, options *github.NewPullRequest) (*github.PullRequest, error) {
+	pr, _, err := c.Client.PullRequests.Create(context.Background(), owner, repo, options)
 	if err != nil {
 		if c.Debug {
 			debug.PrintStack()

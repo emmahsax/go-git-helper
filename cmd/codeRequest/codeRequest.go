@@ -68,6 +68,7 @@ func (cr *CodeRequest) askForClarification() {
 func (cr *CodeRequest) createGitHub() {
 	options := make(map[string]string)
 	options["baseBranch"] = cr.baseBranch()
+	options["draft"] = cr.draft()
 	options["newPrTitle"] = cr.newPrTitle()
 	g := git.NewGit(cr.Debug)
 	options["gitRootDir"] = g.GetGitRootDir()
@@ -79,6 +80,7 @@ func (cr *CodeRequest) createGitHub() {
 func (cr *CodeRequest) createGitLab() {
 	options := make(map[string]string)
 	options["baseBranch"] = cr.baseBranch()
+	options["draft"] = cr.draft()
 	options["newMrTitle"] = cr.newMrTitle()
 	g := git.NewGit(cr.Debug)
 	options["gitRootDir"] = g.GetGitRootDir()
@@ -95,6 +97,16 @@ func (cr *CodeRequest) baseBranch() string {
 		return g.DefaultBranch()
 	} else {
 		return commandline.AskOpenEndedQuestion("Base branch", false)
+	}
+}
+
+func (cr *CodeRequest) draft() string {
+	answer := commandline.AskYesNoQuestion("Create a draft code request?")
+
+	if answer {
+		return "true"
+	} else {
+		return "false"
 	}
 }
 
