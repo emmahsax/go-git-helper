@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime/debug"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
+	"github.com/emmahsax/go-git-helper/internal/executor"
 	"github.com/spf13/cobra"
 )
 
 type ChangeRemote struct {
 	Debug    bool
-	OldOwner string
+	Executor executor.ExecutorInterface
 	NewOwner string
+	OldOwner string
 }
 
 func NewCommand() *cobra.Command {
@@ -43,8 +43,9 @@ func NewCommand() *cobra.Command {
 func newChangeRemote(oldOwner, newOwner string, debug bool) *ChangeRemote {
 	return &ChangeRemote{
 		Debug:    debug,
-		OldOwner: oldOwner,
+		Executor: executor.NewExecutor(debug),
 		NewOwner: newOwner,
+		OldOwner: oldOwner,
 	}
 }
 
@@ -79,6 +80,7 @@ func (cr *ChangeRemote) processDir(currentDir, originalDir string) {
 			)
 
 			if answer {
+				fmt.Println("doing something different")
 				cr.processRemote(inner["plainRemote"], inner["host"], repo, inner["remoteName"])
 			}
 		}
@@ -88,12 +90,8 @@ func (cr *ChangeRemote) processDir(currentDir, originalDir string) {
 func (cr *ChangeRemote) processGitRepository() map[string]map[string]string {
 	fullRemoteInfo := make(map[string]map[string]string)
 
-	cmd := exec.Command("git", "remote", "-v")
-	output, err := cmd.Output()
+	output, err := cr.Executor.Exec("git", "remote", "-v")
 	if err != nil {
-		if cr.Debug {
-			debug.PrintStack()
-		}
 		log.Fatal(err)
 		return fullRemoteInfo
 	}
@@ -130,15 +128,13 @@ func (cr *ChangeRemote) processRemote(remote, host, repo, remoteName string) {
 	}
 
 	fmt.Printf("  Changing the remote URL '%s' to be '%s'.\n", remote, newRemote)
-	cmd := exec.Command("git", "remote", "set-url", remoteName, newRemote)
-	_, err := cmd.Output()
+
+	output, err := cr.Executor.Exec("git", "remote", "set-url", remoteName, newRemote)
 	if err != nil {
-		if cr.Debug {
-			debug.PrintStack()
-		}
 		log.Fatal(err)
 		return
 	}
+	fmt.Println(string(output))
 }
 
 func (cr *ChangeRemote) remoteInfo(remote string) (string, string, string) {

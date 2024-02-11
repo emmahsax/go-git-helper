@@ -49,7 +49,7 @@ func AskOpenEndedQuestion(question string, secret bool) string {
 	return result
 }
 
-func AskYesNoQuestion(question string) bool {
+var AskYesNoQuestion = func(question string) bool {
 	result, _ := pterm.DefaultInteractiveConfirm.
 		WithDefaultText(question).
 		WithDefaultValue(true).
