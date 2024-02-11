@@ -37,5 +37,5 @@ func newEmptyCommit(debug bool) *EmptyCommit {
 }
 
 func (ec *EmptyCommit) execute() {
-	git.NewGit(ec.Debug).CreateEmptyCommit()
+	git.NewGit(ec.Debug, nil).CreateEmptyCommit()
 }

@@ -37,7 +37,7 @@ func newCleanBranches(debug bool) *CleanBranches {
 }
 
 func (cb *CleanBranches) execute() {
-	g := git.NewGit(cb.Debug)
+	g := git.NewGit(cb.Debug, nil)
 	branch := g.DefaultBranch()
 	g.Checkout(branch)
 	g.Pull()

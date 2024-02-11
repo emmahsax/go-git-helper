@@ -37,7 +37,7 @@ func newForgetLocalCommits(debug bool) *ForgetLocalCommits {
 }
 
 func (flc *ForgetLocalCommits) execute() {
-	g := git.NewGit(flc.Debug)
+	g := git.NewGit(flc.Debug, nil)
 	g.Pull()
 	g.Reset()
 }

@@ -73,7 +73,7 @@ func getValidBranch() string {
 
 func (nb *NewBranch) execute() {
 	fmt.Println("Attempting to create a new branch:", nb.Branch)
-	g := git.NewGit(nb.Debug)
+	g := git.NewGit(nb.Debug, nil)
 	g.Pull()
 	g.CreateBranch(nb.Branch)
 	g.Checkout(nb.Branch)

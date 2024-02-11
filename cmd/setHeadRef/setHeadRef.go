@@ -39,6 +39,6 @@ func newSetHeadRef(defaultBranch string, debug bool) *SetHeadRef {
 }
 
 func (shr *SetHeadRef) execute() {
-	g := git.NewGit(shr.Debug)
+	g := git.NewGit(shr.Debug, nil)
 	g.SetHeadRef(shr.DefaultBranch)
 }
