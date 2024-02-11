@@ -8,33 +8,24 @@ import (
 	"regexp"
 	"runtime/debug"
 	"strings"
+
+	"github.com/emmahsax/go-git-helper/internal/executor"
 )
 
 type Git struct {
-	Debug bool
+	Debug    bool
+	Executor executor.ExecutorInterface
 }
 
-func NewGit(debug bool) *Git {
+func NewGit(debug bool, executor executor.ExecutorInterface) *Git {
 	return &Git{
-		Debug: debug,
+		Debug:    debug,
+		Executor: executor,
 	}
 }
 
 func (g *Git) Checkout(branch string) {
-	cmd := exec.Command("git", "checkout", branch)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
+	_, err := g.Executor.Exec("git", "checkout", branch)
 	if err != nil {
 		if g.Debug {
 			debug.PrintStack()
@@ -148,8 +139,7 @@ func (g *Git) CurrentBranch() string {
 }
 
 func (g *Git) DefaultBranch() string {
-	cmd := exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD")
-	output, err := cmd.CombinedOutput()
+	output, err := g.Executor.Exec("git", "symbolic-ref", "refs/remotes/origin/HEAD")
 	if err != nil {
 		if string(output) == "fatal: ref refs/remotes/origin/HEAD is not a symbolic ref\n" {
 			fmt.Printf("\nYour symbolic ref is not set up properly. Please run:\n  git-helper set-head-ref [defaultBranch]\n\nAnd then try your command again.\n\n")
