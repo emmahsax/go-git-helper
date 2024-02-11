@@ -2,6 +2,7 @@ package executor
 
 import (
 	"log"
+	"os"
 	"os/exec"
 	"runtime/debug"
 )
@@ -25,9 +26,23 @@ func NewExecutor(debug bool) *Executor {
 func (e *Executor) Exec(command string, args ...string) ([]byte, error) {
 	e.Command = command
 	e.Args = args
+	origStdout := os.Stdout
+	origStdin := os.Stdin
 
 	cmd := exec.Command(command, args...)
-	output, err := cmd.Output()
+	// output, err := cmd.CombinedOutput()
+	// if err != nil {
+	// 	if e.Debug {
+	// 		debug.PrintStack()
+	// 	}
+	// 	log.Fatal(err)
+	// 	return nil, err
+	// }
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
 	if err != nil {
 		if e.Debug {
 			debug.PrintStack()
@@ -35,5 +50,17 @@ func (e *Executor) Exec(command string, args ...string) ([]byte, error) {
 		log.Fatal(err)
 		return nil, err
 	}
-	return output, nil
+
+	err = cmd.Wait()
+	if err != nil {
+		if e.Debug {
+			debug.PrintStack()
+		}
+		log.Fatal(err)
+		return nil, err
+	}
+
+	os.Stdout = origStdout
+	os.Stdin = origStdin
+	return []byte{}, nil
 }

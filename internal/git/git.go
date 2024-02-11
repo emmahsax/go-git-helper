@@ -25,14 +25,12 @@ func NewGit(debug bool, executor executor.ExecutorInterface) *Git {
 }
 
 func (g *Git) Checkout(branch string) {
-	_, err := g.Executor.Exec("git", "checkout", branch)
+	output, err := g.Executor.Exec("git", "checkout", branch)
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
 		log.Fatal(err)
 		return
 	}
+	fmt.Println(string(output))
 }
 
 func (g *Git) CleanDeletedBranches() {
