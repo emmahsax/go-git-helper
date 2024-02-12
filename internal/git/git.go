@@ -27,14 +27,16 @@ func NewGit(debug bool, executor executor.ExecutorInterface) *Git {
 func (g *Git) Checkout(branch string) {
 	_, err := g.Executor.Exec("waitAndStdout", "git", "checkout", branch)
 	if err != nil {
+		if g.Debug {
+			debug.PrintStack()
+		}
 		log.Fatal(err)
 		return
 	}
 }
 
 func (g *Git) CleanDeletedBranches() {
-	cmd := exec.Command("git", "branch", "-vv")
-	output, err := cmd.CombinedOutput()
+	output, err := g.Executor.Exec("actionAndOutput", "git", "branch", "-vv")
 	if err != nil {
 		if g.Debug {
 			debug.PrintStack()
@@ -51,8 +53,7 @@ func (g *Git) CleanDeletedBranches() {
 
 		if re.MatchString(branch) {
 			b := strings.Fields(branch)[0]
-			cmd = exec.Command("git", "branch", "-D", b)
-			output, err := cmd.CombinedOutput()
+			output, err = g.Executor.Exec("actionAndOutput", "git", "branch", "-D", b)
 			if err != nil {
 				if g.Debug {
 					debug.PrintStack()
@@ -158,20 +159,7 @@ func (g *Git) DefaultBranch() string {
 }
 
 func (g *Git) Fetch() {
-	cmd := exec.Command("git", "fetch", "-p")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "fetch", "-p")
 	if err != nil {
 		if g.Debug {
 			debug.PrintStack()
@@ -196,20 +184,7 @@ func (g *Git) GetGitRootDir() string {
 }
 
 func (g *Git) Pull() {
-	cmd := exec.Command("git", "pull")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "pull")
 	if err != nil {
 		if g.Debug {
 			debug.PrintStack()
