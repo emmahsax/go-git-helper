@@ -3,7 +3,6 @@ package git
 import (
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"regexp"
 	"runtime/debug"
@@ -68,20 +67,7 @@ func (g *Git) CleanDeletedBranches() {
 }
 
 func (g *Git) CreateBranch(branch string) {
-	cmd := exec.Command("git", "branch", "--no-track", branch)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "branch", "--no-track", branch)
 	if err != nil {
 		if g.Debug {
 			debug.PrintStack()
@@ -182,20 +168,7 @@ func (g *Git) Pull() {
 }
 
 func (g *Git) PushBranch(branch string) {
-	cmd := exec.Command("git", "push", "--set-upstream", "origin", branch)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "push", "--set-upstream", "origin", branch)
 	if err != nil {
 		if g.Debug {
 			debug.PrintStack()
@@ -254,11 +227,7 @@ func (g *Git) Reset() {
 }
 
 func (g *Git) SetHeadRef(defaultBranch string) {
-	cmd := exec.Command("git", "branch", "--set-upstream-to=origin/"+defaultBranch, defaultBranch)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "branch", "--set-upstream-to=origin/"+defaultBranch, defaultBranch)
 	if err != nil {
 		if g.Debug {
 			debug.PrintStack()
@@ -267,29 +236,7 @@ func (g *Git) SetHeadRef(defaultBranch string) {
 		return
 	}
 
-	err = cmd.Wait()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	cmd = exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/"+defaultBranch)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Start()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
+	_, err = g.Executor.Exec("waitAndStdout", "git", "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/"+defaultBranch)
 	if err != nil {
 		if g.Debug {
 			debug.PrintStack()
@@ -311,25 +258,6 @@ func (g *Git) Stash() {
 }
 
 func (g *Git) StashDrop() {
-	// cmd := exec.Command("git", "stash", "drop")
-	// cmd.Stdout = os.Stdout
-	// cmd.Stderr = os.Stderr
-
-	// err := cmd.Start()
-	// if err != nil {
-	// 	if g.Debug {
-	// 		debug.PrintStack()
-	// 	}
-	// 	log.Fatal(err)
-	// 	return
-	// }
-
-	// err = cmd.Wait()
-	// if err != nil {
-	// 	// The command output an error itself, so we can just be done
-	// 	return
-	// }
-
 	_, err := g.Executor.Exec("waitAndStdout", "git", "stash", "drop")
 	if err != nil {
 		if g.Debug {

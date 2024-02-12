@@ -19,13 +19,23 @@ func (me *MockExecutor) Exec(execType string, command string, args ...string) ([
 
 func Test_execute(t *testing.T) {
 	tests := []struct {
-		expectedArgs []string
+		name           string
+		executorOutput []byte
+		expectedArgs   []string
 	}{
-		{expectedArgs: []string{"branch", "-vv"}},
+		{
+			name:           "Git directory",
+			executorOutput: []byte("refs/remotes/origin/main"),
+			expectedArgs:   []string{"branch", "-vv"},
+		},
 	}
 
 	for _, test := range tests {
-		executor := &MockExecutor{Debug: true}
+		executor := &MockExecutor{
+			Debug:  true,
+			Output: test.executorOutput,
+		}
+
 		cb := newCleanBranches(true, executor)
 		cb.execute()
 

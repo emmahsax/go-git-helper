@@ -1,4 +1,4 @@
-package emptyCommit
+package setHeadRef
 
 import (
 	"testing"
@@ -21,13 +21,13 @@ func Test_execute(t *testing.T) {
 	tests := []struct {
 		expectedArgs []string
 	}{
-		{expectedArgs: []string{"commit", "--allow-empty", "-m", "Empty commit"}},
+		{expectedArgs: []string{"symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"}},
 	}
 
 	for _, test := range tests {
 		executor := &MockExecutor{Debug: true}
-		ec := newEmptyCommit(true, executor)
-		ec.execute()
+		shr := newSetHeadRef("main", true, executor)
+		shr.execute()
 
 		if executor.Command != "git" {
 			t.Errorf("Unexpected command received: expected %s, but got %s", "git", executor.Command)

@@ -2,48 +2,131 @@ package newBranch
 
 import (
 	"testing"
+
+	"github.com/emmahsax/go-git-helper/internal/commandline"
 )
 
-func TestIsValidBranch(t *testing.T) {
-	output := isValidBranch("hello-world")
+type MockExecutor struct {
+	Args    []string
+	Command string
+	Debug   bool
+	Output  []byte
+}
 
-	if output == false {
-		t.Fatalf(`Branch %s should be valid`, "hello-world")
+func (me *MockExecutor) Exec(execType string, command string, args ...string) ([]byte, error) {
+	me.Command = command
+	me.Args = args
+	return me.Output, nil
+}
+
+func Test_determineBranch(t *testing.T) {
+	tests := []struct {
+		args   []string
+		branch string
+	}{
+		{args: []string{}, branch: "hello-world"},
+		{args: []string{"hello-world"}, branch: "hello-world"},
+		{args: []string{"hello_world"}, branch: "hello_world"},
+		{args: []string{"hello world"}, branch: "hello-world"},
+		{args: []string{"hello_world!"}, branch: "hello-world"},
+		{args: []string{"hello_world?"}, branch: "hello-world"},
+		{args: []string{"#HelloWorld"}, branch: "hello-world"},
+		{args: []string{"hello-world*"}, branch: "hello-world"},
 	}
 
-	output = isValidBranch("hello_world")
+	// Mock the AskOpenEndedQuestion function to always return "hello-world"
+	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
+	t.Cleanup(func() {
+		commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion
+	})
 
-	if output == false {
-		t.Fatalf(`Branch %s should be valid`, "hello_world")
+	for _, test := range tests {
+		commandline.AskOpenEndedQuestion = func(question string, secret bool) string {
+			return test.branch
+		}
+
+		o := determineBranch(test.args, true)
+
+		if o != test.branch {
+			t.Errorf("branch should be %s, but was %s", test.branch, o)
+		}
+	}
+}
+
+func Test_isValidBranch(t *testing.T) {
+	tests := []struct {
+		branch string
+		valid  bool
+	}{
+		{branch: "hello-world", valid: true},
+		{branch: "hello_world", valid: true},
+		{branch: "hello world", valid: false},
+		{branch: "hello_world!", valid: false},
+		{branch: "hello_world?", valid: false},
+		{branch: "#HelloWorld", valid: false},
+		{branch: "hello-world*", valid: false},
 	}
 
-	output = isValidBranch("hello world")
+	for _, test := range tests {
+		o := isValidBranch(test.branch)
 
-	if output {
-		t.Fatalf(`Branch %s should be invalid`, "hello world")
+		if o != test.valid {
+			t.Errorf("branch %s should be %v, but wasn't", test.branch, test.valid)
+		}
+	}
+}
+
+func Test_getValidBranch(t *testing.T) {
+	tests := []struct {
+		branch string
+		valid  bool
+	}{
+		{branch: "hello-world", valid: true},
 	}
 
-	output = isValidBranch("hello_world!")
+	// Mock the AskOpenEndedQuestion function to always return "hello-world"
+	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
+	t.Cleanup(func() {
+		commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion
+	})
 
-	if output {
-		t.Fatalf(`Branch %s should be invalid`, "hello_world!")
+	for _, test := range tests {
+		commandline.AskOpenEndedQuestion = func(question string, secret bool) string {
+			return test.branch
+		}
+
+		o := getValidBranch()
+
+		if o != test.branch {
+			t.Errorf("branch should be %s, but was %s", "hello-world", o)
+		}
+	}
+}
+
+func Test_execute(t *testing.T) {
+	tests := []struct {
+		expectedArgs []string
+	}{
+		{expectedArgs: []string{"push", "--set-upstream", "origin", "hello-world"}},
 	}
 
-	output = isValidBranch("hello_world?")
+	for _, test := range tests {
+		executor := &MockExecutor{Debug: true}
+		nb := newNewBranch("hello-world", true, executor)
+		nb.execute()
 
-	if output {
-		t.Fatalf(`Branch %s should be invalid`, "hello_world?")
-	}
+		if executor.Command != "git" {
+			t.Errorf("Unexpected command received: expected %s, but got %s", "git", executor.Command)
+		}
 
-	output = isValidBranch("#helloWorld")
+		if len(executor.Args) != len(test.expectedArgs) {
+			t.Errorf("Unexpected args received: expected %v, but got %v", test.expectedArgs, executor.Args)
+		}
 
-	if output {
-		t.Fatalf(`Branch %s should be invalid`, "#helloWorld")
-	}
-
-	output = isValidBranch("hello-world*")
-
-	if output {
-		t.Fatalf(`Branch %s should be invalid`, "hello-world*")
+		for i, v := range executor.Args {
+			if v != test.expectedArgs[i] {
+				t.Errorf("Unexpected args received: expected %v, but got %v", test.expectedArgs, executor.Args)
+			}
+		}
 	}
 }
