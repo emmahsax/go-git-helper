@@ -79,7 +79,7 @@ func Test_templateNameToApply(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	err = os.MkdirAll(filepath.Join(tempDir, ".github", "pull_request_template"), 0755)
+	err = os.MkdirAll(filepath.Join(tempDir, ".github", "PULL_REQUEST_TEMPLATE"), 0755)
 	if err != nil {
 		t.Fatal(err)
 	}
