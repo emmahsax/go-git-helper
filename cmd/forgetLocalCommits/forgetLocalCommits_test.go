@@ -30,16 +30,16 @@ func Test_execute(t *testing.T) {
 		flc.execute()
 
 		if executor.Command != "git" {
-			t.Errorf("Unexpected command received: expected %s, but got %s", "git", executor.Command)
+			t.Errorf("unexpected command received: expected %s, but got %s", "git", executor.Command)
 		}
 
 		if len(executor.Args) != len(test.expectedArgs) {
-			t.Errorf("Unexpected args received: expected %v, but got %v", test.expectedArgs, executor.Args)
+			t.Errorf("unexpected args received: expected %v, but got %v", test.expectedArgs, executor.Args)
 		}
 
 		for i, v := range executor.Args {
 			if v != test.expectedArgs[i] {
-				t.Errorf("Unexpected args received: expected %v, but got %v", test.expectedArgs, executor.Args)
+				t.Errorf("unexpected args received: expected %v, but got %v", test.expectedArgs, executor.Args)
 			}
 		}
 	}

@@ -27,7 +27,7 @@ func Test_execute(t *testing.T) {
 	err := os.Chdir(tmpDir)
 
 	if err != nil {
-		t.Errorf("Error was found: %s", err.Error())
+		t.Errorf("error was found: %s", err.Error())
 	}
 
 	cr := newChangeRemote("oldOwner", "newOwner", true, &MockExecutor{Debug: true})
@@ -62,16 +62,16 @@ func Test_processDir(t *testing.T) {
 	args := []string{"remote", "-v"}
 
 	if cr.Executor.(*MockExecutor).Command != "git" {
-		t.Errorf("Unexpected command received: expected %s, but got %s", "git", cr.Executor.(*MockExecutor).Command)
+		t.Errorf("unexpected command received: expected %s, but got %s", "git", cr.Executor.(*MockExecutor).Command)
 	}
 
 	if len(executor.Args) != len(args) {
-		t.Errorf("Unexpected args received: expected %v, but got %v", args, executor.Args)
+		t.Errorf("unexpected args received: expected %v, but got %v", args, executor.Args)
 	}
 
 	for i, v := range executor.Args {
 		if v != args[i] {
-			t.Errorf("Unexpected args received: expected %v, but got %v", args, executor.Args)
+			t.Errorf("unexpected args received: expected %v, but got %v", args, executor.Args)
 		}
 	}
 }
@@ -127,7 +127,7 @@ origin  https://github.com/randomOwner/repository.git (push)
 		fullRemoteInfo := cr.processGitRepository()
 
 		if !reflect.DeepEqual(fullRemoteInfo, test.expected) {
-			t.Errorf("Expected %v, but got %v", test.expected, fullRemoteInfo)
+			t.Errorf("expected %v, but got %v", test.expected, fullRemoteInfo)
 		}
 	}
 }
@@ -166,16 +166,16 @@ func Test_processRemote(t *testing.T) {
 		cr.processRemote(test.url, test.host, test.repo, test.remoteName)
 
 		if executor.Command != "git" {
-			t.Errorf("Unexpected command received: expected %s, but got %s", "git", executor.Command)
+			t.Errorf("unexpected command received: expected %s, but got %s", "git", executor.Command)
 		}
 
 		if len(executor.Args) != len(test.expectedArgs) {
-			t.Errorf("Unexpected args received: expected %v, but got %v", test.expectedArgs, executor.Args)
+			t.Errorf("unexpected args received: expected %v, but got %v", test.expectedArgs, executor.Args)
 		}
 
 		for i, v := range executor.Args {
 			if v != test.expectedArgs[i] {
-				t.Errorf("Unexpected args received: expected %v, but got %v", test.expectedArgs, executor.Args)
+				t.Errorf("unexpected args received: expected %v, but got %v", test.expectedArgs, executor.Args)
 			}
 		}
 	}
@@ -205,7 +205,7 @@ func Test_remoteInfo(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			host, owner, repo := cr.remoteInfo(test.remote)
 			if host != test.expected[0] || owner != test.expected[1] || repo != test.expected[2] {
-				t.Errorf("Expected %v, but got %v, %v, %v", test.expected, host, owner, repo)
+				t.Errorf("expected %v, but got %v, %v, %v", test.expected, host, owner, repo)
 			}
 		})
 	}
