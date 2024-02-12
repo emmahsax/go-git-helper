@@ -10,7 +10,7 @@ import (
 )
 
 func Test_newPrBody(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "gitlab")
+	tempDir, err := os.MkdirTemp("", "github")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func Test_newPrBody(t *testing.T) {
 }
 
 func Test_templateNameToApply(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "gitlab")
+	tempDir, err := os.MkdirTemp("", "github")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +159,7 @@ func Test_determineTemplate(t *testing.T) {
 }
 
 func Test_prTemplateOptions(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "gitlab")
+	tempDir, err := os.MkdirTemp("", "github")
 	if err != nil {
 		t.Fatal(err)
 	}

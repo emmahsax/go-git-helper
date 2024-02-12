@@ -16,16 +16,14 @@ import (
 	"github.com/emmahsax/go-git-helper/cmd/setup"
 	"github.com/emmahsax/go-git-helper/cmd/update"
 	"github.com/emmahsax/go-git-helper/cmd/version"
-	"github.com/emmahsax/go-git-helper/internal/configfile"
 	"github.com/spf13/cobra"
 )
 
 var (
-	packageVersion = "0.0.3"
+	packageVersion = "0.0.3-tests"
 )
 
 func main() {
-	_ = configfile.NewConfigFile(false).GitHubUsername()
 	rootCmd := newCommand()
 
 	if err := rootCmd.Execute(); err != nil {
