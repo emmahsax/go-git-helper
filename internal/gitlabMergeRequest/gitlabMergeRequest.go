@@ -1,16 +1,16 @@
 package gitlabMergeRequest
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"strconv"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/gitlab"
+	"github.com/emmahsax/go-git-helper/internal/utils"
 	go_github "github.com/xanzy/go-gitlab"
 )
 
@@ -56,10 +56,8 @@ func (mr *GitLabMergeRequest) Create() {
 	fmt.Println("Creating merge request:", t)
 	resp, err := mr.gitlab().CreateMergeRequest(mr.LocalProject, &options)
 	if err != nil {
-		if mr.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal("Could not create merge request: " + err.Error())
+		customErr := errors.New("could not create merge request: " + err.Error())
+		utils.HandleError(customErr, mr.Debug, nil)
 	}
 
 	fmt.Println("Merge request successfully created:", resp.WebURL)
@@ -70,10 +68,7 @@ func (mr *GitLabMergeRequest) newMrBody() string {
 	if templateName != "" {
 		content, err := os.ReadFile(templateName)
 		if err != nil {
-			if mr.Debug {
-				debug.PrintStack()
-			}
-			log.Fatal(err)
+			utils.HandleError(err, mr.Debug, nil)
 		}
 
 		return string(content)

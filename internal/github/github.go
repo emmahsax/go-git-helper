@@ -2,10 +2,9 @@ package github
 
 import (
 	"context"
-	"log"
-	"runtime/debug"
 
 	"github.com/emmahsax/go-git-helper/internal/configfile"
+	"github.com/emmahsax/go-git-helper/internal/utils"
 	"github.com/google/go-github/v58/github"
 	"golang.org/x/oauth2"
 )
@@ -28,10 +27,7 @@ func NewGitHub(debugB bool) *GitHub {
 func (c *GitHub) CreatePullRequest(owner, repo string, options *github.NewPullRequest) (*github.PullRequest, error) {
 	pr, _, err := c.Client.PullRequests.Create(context.Background(), owner, repo, options)
 	if err != nil {
-		if c.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, c.Debug, nil)
 		return nil, err
 	}
 

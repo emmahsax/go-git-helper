@@ -1,6 +1,9 @@
 package update
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"testing"
 )
 
@@ -17,10 +20,6 @@ func (me *MockExecutor) Exec(execType string, command string, args ...string) ([
 	return me.Output, nil
 }
 
-func Test_downloadGitHelper(t *testing.T) {
-
-}
-
 func Test_buildReleaseURL(t *testing.T) {
 	executor := &MockExecutor{Debug: true}
 	u := newUpdate(true, executor)
@@ -30,6 +29,76 @@ func Test_buildReleaseURL(t *testing.T) {
 	if o != output {
 		t.Errorf("unexpected output received: expected %s, but got %s", output, o)
 	}
+}
+
+func Test_fetchReleaseBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("test response"))
+	}))
+	defer server.Close()
+
+	executor := &MockExecutor{Debug: true}
+	u := &Update{true, executor}
+	body := u.fetchReleaseBody(server.URL)
+
+	if string(body) != "test response" {
+		t.Errorf("expected 'test response', got '%s'", body)
+	}
+}
+
+func Test_getDownloadURL(t *testing.T) {
+	body := []byte(`{
+		"assets": [
+			{
+				"name": "` + asset + `",
+				"browser_download_url": "https://example.com/download"
+			}
+		]
+	}`)
+
+	executor := &MockExecutor{Debug: true}
+	u := &Update{true, executor}
+	downloadURL := u.getDownloadURL(body)
+
+	if downloadURL != "https://example.com/download" {
+		t.Errorf("expected 'https://example.com/download', got '%s'", downloadURL)
+	}
+}
+
+func Test_getBinaryName(t *testing.T) {
+	executor := &MockExecutor{Debug: true}
+	u := newUpdate(true, executor)
+	o := u.getBinaryName("https://example.com/download")
+	output := "download"
+
+	if o != output {
+		t.Errorf("unexpected output received: expected %s, but got %s", output, o)
+	}
+}
+
+func Test_downloadAndSaveBinary(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("test response"))
+	}))
+	defer server.Close()
+
+	executor := &MockExecutor{Debug: true}
+	u := newUpdate(true, executor)
+
+	binaryName := "test_binary"
+
+	u.downloadAndSaveBinary(server.URL, binaryName)
+
+	content, err := os.ReadFile(binaryName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(content) != "test response" {
+		t.Errorf("expected 'test response', got '%s'", content)
+	}
+
+	os.Remove(binaryName)
 }
 
 func Test_moveGitHelper(t *testing.T) {

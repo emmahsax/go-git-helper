@@ -4,21 +4,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime/debug"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/configfile"
+	"github.com/emmahsax/go-git-helper/internal/executor"
+	"github.com/emmahsax/go-git-helper/internal/utils"
 	"github.com/spf13/cobra"
 )
 
 type Setup struct {
-	Debug bool
+	Debug    bool
+	Executor executor.ExecutorInterface
 }
 
 func NewCommand() *cobra.Command {
@@ -32,7 +32,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newSetup(debug).execute()
+			newSetup(debug, executor.NewExecutor(debug)).execute()
 			return nil
 		},
 	}
@@ -42,9 +42,10 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newSetup(debug bool) *Setup {
+func newSetup(debug bool, executor executor.ExecutorInterface) *Setup {
 	return &Setup{
-		Debug: debug,
+		Debug:    debug,
+		Executor: executor,
 	}
 }
 
@@ -60,7 +61,7 @@ func (s *Setup) createConfig() {
 	cf := configfile.NewConfigFile(s.Debug)
 
 	if cf.ConfigFileExists() {
-		create = commandline.AskYesNoQuestion("It looks like the " + cf.ConfigFile() + " file already exists. Do you wish to replace it?")
+		create = commandline.AskYesNoQuestion("The " + cf.ConfigFile() + " file already exists. Do you wish to replace it?")
 	} else {
 		create = true
 	}
@@ -77,20 +78,14 @@ func (s *Setup) createOrUpdateConfig() {
 	if !cf.ConfigDirExists() {
 		err := os.Mkdir(cf.ConfigDir(), 0755)
 		if err != nil {
-			if s.Debug {
-				debug.PrintStack()
-			}
-			log.Fatal(err)
+			utils.HandleError(err, s.Debug, nil)
 			return
 		}
 	}
 
 	err := os.WriteFile(cf.ConfigFile(), []byte(content), 0644)
 	if err != nil {
-		if s.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, s.Debug, nil)
 		return
 	}
 
@@ -133,29 +128,20 @@ func (s *Setup) createOrUpdatePlugins() {
 	pluginsURL := "https://api.github.com/repos/emmahsax/go-git-helper/contents/plugins"
 
 	if err := os.MkdirAll(pluginsDir, 0755); err != nil {
-		if s.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, s.Debug, nil)
 		return
 	}
 
 	resp, err := http.Get(pluginsURL)
 	if err != nil {
-		if s.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal("Error: ", err)
+		utils.HandleError(err, s.Debug, nil)
 		return
 	}
 	defer resp.Body.Close()
 
 	var allPlugins []map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&allPlugins); err != nil {
-		if s.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, s.Debug, nil)
 		return
 	}
 
@@ -165,10 +151,7 @@ func (s *Setup) createOrUpdatePlugins() {
 
 		resp, err := http.Get(pluginURL)
 		if err != nil {
-			if s.Debug {
-				debug.PrintStack()
-			}
-			log.Fatal(err)
+			utils.HandleError(err, s.Debug, nil)
 			continue
 		}
 		defer resp.Body.Close()
@@ -176,20 +159,14 @@ func (s *Setup) createOrUpdatePlugins() {
 		pluginPath := filepath.Join(pluginsDir, pluginName)
 		file, err := os.Create(pluginPath)
 		if err != nil {
-			if s.Debug {
-				debug.PrintStack()
-			}
-			log.Fatal(err)
+			utils.HandleError(err, s.Debug, nil)
 			continue
 		}
 		defer file.Close()
 
 		_, err = io.Copy(file, resp.Body)
 		if err != nil {
-			if s.Debug {
-				debug.PrintStack()
-			}
-			log.Fatal(err)
+			utils.HandleError(err, s.Debug, nil)
 			continue
 		}
 
@@ -212,21 +189,14 @@ func (s *Setup) setupCompletion() {
 		cf := configfile.NewConfigFile(s.Debug)
 		completionsDir := cf.ConfigDir() + "/completions"
 		if err := os.MkdirAll(completionsDir, 0755); err != nil {
-			if s.Debug {
-				debug.PrintStack()
-			}
-			log.Fatal(err)
+			utils.HandleError(err, s.Debug, nil)
 			return
 		}
 
 		for _, sh := range shes {
-			cmd := exec.Command("git-helper", "completion", sh)
-			output, err := cmd.CombinedOutput()
+			output, err := s.Executor.Exec("actionAndOutput", "git-helper", "completion", sh)
 			if err != nil {
-				if s.Debug {
-					debug.PrintStack()
-				}
-				log.Fatal(err)
+				utils.HandleError(err, s.Debug, nil)
 				return
 			}
 
@@ -234,20 +204,14 @@ func (s *Setup) setupCompletion() {
 
 			file, err := os.Create(filename)
 			if err != nil {
-				if s.Debug {
-					debug.PrintStack()
-				}
-				log.Fatal(err)
+				utils.HandleError(err, s.Debug, nil)
 				return
 			}
 			defer file.Close()
 
 			_, err = file.WriteString(string(output))
 			if err != nil {
-				if s.Debug {
-					debug.PrintStack()
-				}
-				log.Fatal(err)
+				utils.HandleError(err, s.Debug, nil)
 				return
 			}
 		}

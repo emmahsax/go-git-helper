@@ -3,15 +3,14 @@ package update
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/user"
 	"runtime"
-	"runtime/debug"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/executor"
+	"github.com/emmahsax/go-git-helper/internal/utils"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 )
@@ -80,14 +79,14 @@ func (u *Update) buildReleaseURL() string {
 func (u *Update) fetchReleaseBody(releaseURL string) []byte {
 	resp, err := http.Get(releaseURL)
 	if err != nil {
-		u.handleError(err)
+		utils.HandleError(err, u.Debug, nil)
 		return []byte{}
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		u.handleError(err)
+		utils.HandleError(err, u.Debug, nil)
 		return []byte{}
 	}
 
@@ -115,29 +114,26 @@ func (u *Update) getBinaryName(downloadURL string) string {
 func (u *Update) downloadAndSaveBinary(downloadURL, binaryName string) {
 	resp, err := http.Get(downloadURL)
 	if err != nil {
-		u.handleError(err)
+		utils.HandleError(err, u.Debug, nil)
 	}
 	defer resp.Body.Close()
 
 	out, err := os.Create(binaryName)
 	if err != nil {
-		u.handleError(err)
+		utils.HandleError(err, u.Debug, nil)
 	}
 	defer out.Close()
 
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
-		u.handleError(err)
+		utils.HandleError(err, u.Debug, nil)
 	}
 }
 
 func (u *Update) moveGitHelper() {
 	output, err := u.Executor.Exec("actionAndOutput", "sudo", "mv", "./"+asset, newPath)
 	if err != nil {
-		if u.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, u.Debug, nil)
 		return
 	}
 
@@ -147,13 +143,13 @@ func (u *Update) moveGitHelper() {
 func (u *Update) setPermissions() {
 	currentUser, err := user.Current()
 	if err != nil {
-		u.handleError(err)
+		utils.HandleError(err, u.Debug, nil)
 		return
 	}
 
 	output, err := u.Executor.Exec("actionAndOutput", "sudo", "chown", currentUser.Username+":staff", newPath)
 	if err != nil {
-		u.handleError(err)
+		utils.HandleError(err, u.Debug, nil)
 		return
 	}
 
@@ -161,7 +157,7 @@ func (u *Update) setPermissions() {
 
 	output, err = u.Executor.Exec("actionAndOutput", "sudo", "chmod", "+x", newPath)
 	if err != nil {
-		u.handleError(err)
+		utils.HandleError(err, u.Debug, nil)
 		return
 	}
 
@@ -171,15 +167,8 @@ func (u *Update) setPermissions() {
 func (u *Update) outputNewVersion() {
 	output, err := u.Executor.Exec("actionAndOutput", "git-helper", "version")
 	if err != nil {
-		u.handleError(err)
+		utils.HandleError(err, u.Debug, nil)
 		return
 	}
 	fmt.Printf("Installed %s", string(output))
-}
-
-func (u *Update) handleError(err error) {
-	if u.Debug {
-		debug.PrintStack()
-	}
-	log.Fatal(err)
 }

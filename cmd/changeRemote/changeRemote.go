@@ -1,14 +1,15 @@
 package changeRemote
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/executor"
+	"github.com/emmahsax/go-git-helper/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -91,7 +92,7 @@ func (cr *ChangeRemote) processGitRepository() map[string]map[string]string {
 
 	output, err := cr.Executor.Exec("actionAndOutput", "git", "remote", "-v")
 	if err != nil {
-		log.Fatal(err)
+		utils.HandleError(err, cr.Debug, nil)
 		return fullRemoteInfo
 	}
 
@@ -130,7 +131,7 @@ func (cr *ChangeRemote) processRemote(remote, host, repo, remoteName string) {
 
 	output, err := cr.Executor.Exec("actionAndOutput", "git", "remote", "set-url", remoteName, newRemote)
 	if err != nil {
-		log.Fatal(err)
+		utils.HandleError(err, cr.Debug, nil)
 		return
 	}
 	fmt.Println(string(output))
@@ -140,13 +141,15 @@ func (cr *ChangeRemote) remoteInfo(remote string) (string, string, string) {
 	if strings.Contains(remote, "git@") {
 		remoteSplit := strings.SplitN(remote, ":", 2)
 		if len(remoteSplit) != 2 {
-			log.Fatal("Invalid remote URL format")
+			err := errors.New("invalid remote URL format")
+			utils.HandleError(err, cr.Debug, nil)
 			return "", "", ""
 		}
 
 		parts := strings.SplitN(remoteSplit[1], "/", 2)
 		if len(parts) != 2 {
-			log.Fatal("Invalid remote URL format")
+			err := errors.New("invalid remote URL format")
+			utils.HandleError(err, cr.Debug, nil)
 			return "", "", ""
 		}
 
@@ -157,7 +160,8 @@ func (cr *ChangeRemote) remoteInfo(remote string) (string, string, string) {
 
 		return host, remoteSplit[3], remoteSplit[4]
 	} else {
-		log.Fatal("Invalid remote URL format")
+		err := errors.New("invalid remote URL format")
+		utils.HandleError(err, cr.Debug, nil)
 		return "", "", ""
 	}
 }

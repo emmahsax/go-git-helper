@@ -1,16 +1,16 @@
 package githubPullRequest
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"strconv"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/github"
+	"github.com/emmahsax/go-git-helper/internal/utils"
 	go_github "github.com/google/go-github/v58/github"
 )
 
@@ -52,10 +52,9 @@ func (pr *GitHubPullRequest) Create() {
 	fmt.Println("Creating pull request:", pr.NewPrTitle)
 	resp, err := pr.github().CreatePullRequest(repo[0], repo[1], &options)
 	if err != nil {
-		if pr.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal("Could not create pull request: " + err.Error())
+		customErr := errors.New("could not create pull request: " + err.Error())
+		utils.HandleError(customErr, pr.Debug, nil)
+
 	}
 
 	fmt.Println("Pull request successfully created:", *resp.HTMLURL)
@@ -66,10 +65,7 @@ func (pr *GitHubPullRequest) newPrBody() string {
 	if templateName != "" {
 		content, err := os.ReadFile(templateName)
 		if err != nil {
-			if pr.Debug {
-				debug.PrintStack()
-			}
-			log.Fatal(err)
+			utils.HandleError(err, pr.Debug, nil)
 		}
 
 		return string(content)

@@ -1,8 +1,8 @@
 package codeRequest
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 
@@ -10,6 +10,7 @@ import (
 	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/emmahsax/go-git-helper/internal/githubPullRequest"
 	"github.com/emmahsax/go-git-helper/internal/gitlabMergeRequest"
+	"github.com/emmahsax/go-git-helper/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +53,8 @@ func (cr *CodeRequest) execute() {
 	} else if cr.isGitLab() {
 		cr.createGitLab()
 	} else {
-		log.Fatal("Could not locate GitHub or GitLab remote URLs")
+		err := errors.New("could not locate GitHub or GitLab remote URLs")
+		utils.HandleError(err, cr.Debug, nil)
 	}
 }
 
