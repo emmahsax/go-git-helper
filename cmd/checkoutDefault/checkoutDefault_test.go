@@ -19,23 +19,13 @@ func (me *MockExecutor) Exec(execType string, command string, args ...string) ([
 
 func Test_execute(t *testing.T) {
 	tests := []struct {
-		name           string
-		executorOutput []byte
-		expectedArgs   []string
+		expectedArgs []string
 	}{
-		{
-			name:           "Git directory",
-			executorOutput: []byte("refs/remotes/origin/main"),
-			expectedArgs:   []string{"checkout", "main"},
-		},
+		{expectedArgs: []string{"checkout", "main"}},
 	}
 
 	for _, test := range tests {
-		executor := &MockExecutor{
-			Debug:  true,
-			Output: test.executorOutput,
-		}
-
+		executor := &MockExecutor{Debug: true}
 		cd := newCheckoutDefault(true, executor)
 		cd.execute()
 

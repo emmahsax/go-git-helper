@@ -19,18 +19,13 @@ func (me *MockExecutor) Exec(execType string, command string, args ...string) ([
 
 func Test_execute(t *testing.T) {
 	tests := []struct {
-		name         string
 		expectedArgs []string
 	}{
-		{
-			name:         "Git directory",
-			expectedArgs: []string{"commit", "stash", "drop"},
-		},
+		{expectedArgs: []string{"stash", "drop"}},
 	}
 
 	for _, test := range tests {
 		executor := &MockExecutor{Debug: true}
-
 		flc := newForgetLocalChanges(true, executor)
 		flc.execute()
 

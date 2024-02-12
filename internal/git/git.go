@@ -243,20 +243,7 @@ func (g *Git) Remotes() []string {
 }
 
 func (g *Git) Reset() {
-	cmd := exec.Command("git", "reset", "--hard", "origin/HEAD")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "reset", "--hard", "origin/HEAD")
 	if err != nil {
 		if g.Debug {
 			debug.PrintStack()

@@ -40,7 +40,7 @@ func newForgetLocalChanges(debug bool, executor executor.ExecutorInterface) *For
 }
 
 func (flc *ForgetLocalChanges) execute() {
-	g := git.NewGit(flc.Debug, nil)
+	g := git.NewGit(flc.Debug, flc.Executor)
 	g.Stash()
 	g.StashDrop()
 }

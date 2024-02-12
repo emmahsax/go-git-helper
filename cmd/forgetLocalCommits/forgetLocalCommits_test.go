@@ -1,4 +1,4 @@
-package emptyCommit
+package forgetLocalCommits
 
 import (
 	"testing"
@@ -19,16 +19,15 @@ func (me *MockExecutor) Exec(execType string, command string, args ...string) ([
 
 func Test_execute(t *testing.T) {
 	tests := []struct {
-		executorOutput []byte
-		expectedArgs   []string
+		expectedArgs []string
 	}{
-		{expectedArgs: []string{"commit", "--allow-empty", "-m", "Empty commit"}},
+		{expectedArgs: []string{"reset", "--hard", "origin/HEAD"}},
 	}
 
 	for _, test := range tests {
 		executor := &MockExecutor{Debug: true}
-		ec := newEmptyCommit(true, executor)
-		ec.execute()
+		flc := newForgetLocalCommits(true, executor)
+		flc.execute()
 
 		if executor.Command != "git" {
 			t.Errorf("Unexpected command received: expected %s, but got %s", "git", executor.Command)
