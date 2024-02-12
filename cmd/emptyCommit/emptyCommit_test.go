@@ -1,4 +1,4 @@
-package checkoutDefault
+package emptyCommit
 
 import (
 	"testing"
@@ -26,7 +26,7 @@ func Test_execute(t *testing.T) {
 		{
 			name:           "Git directory",
 			executorOutput: []byte("refs/remotes/origin/main"),
-			expectedArgs:   []string{"checkout", "main"},
+			expectedArgs:   []string{"commit", "--allow-empty", "-m", "Empty commit"},
 		},
 	}
 
@@ -36,8 +36,8 @@ func Test_execute(t *testing.T) {
 			Output: test.executorOutput,
 		}
 
-		cd := newCheckoutDefault(true, executor)
-		cd.execute()
+		ec := newEmptyCommit(true, executor)
+		ec.execute()
 
 		if executor.Command != "git" {
 			t.Errorf("Unexpected command received: expected %s, but got %s", "git", executor.Command)

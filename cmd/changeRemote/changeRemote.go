@@ -30,7 +30,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(2),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newChangeRemote(args[0], args[1], debug).execute()
+			newChangeRemote(args[0], args[1], debug, executor.NewExecutor(debug)).execute()
 			return nil
 		},
 	}
@@ -40,10 +40,10 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newChangeRemote(oldOwner, newOwner string, debug bool) *ChangeRemote {
+func newChangeRemote(oldOwner, newOwner string, debug bool, executor executor.ExecutorInterface) *ChangeRemote {
 	return &ChangeRemote{
 		Debug:    debug,
-		Executor: executor.NewExecutor(debug),
+		Executor: executor,
 		NewOwner: newOwner,
 		OldOwner: oldOwner,
 	}
@@ -80,7 +80,6 @@ func (cr *ChangeRemote) processDir(currentDir, originalDir string) {
 			)
 
 			if answer {
-				fmt.Println("doing something different")
 				cr.processRemote(inner["plainRemote"], inner["host"], repo, inner["remoteName"])
 			}
 		}

@@ -36,11 +36,7 @@ func Test_execute(t *testing.T) {
 			Output: test.executorOutput,
 		}
 
-		cb := &CleanBranches{
-			Debug:    true,
-			Executor: executor,
-		}
-
+		cb := newCleanBranches(true, executor)
 		cb.execute()
 
 		if executor.Command != "git" {

@@ -22,7 +22,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newCheckoutDefault(debug).execute()
+			newCheckoutDefault(debug, executor.NewExecutor(debug)).execute()
 			return nil
 		},
 	}
@@ -32,10 +32,10 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newCheckoutDefault(debug bool) *CheckoutDefault {
+func newCheckoutDefault(debug bool, executor executor.ExecutorInterface) *CheckoutDefault {
 	return &CheckoutDefault{
 		Debug:    debug,
-		Executor: executor.NewExecutor(debug),
+		Executor: executor,
 	}
 }
 

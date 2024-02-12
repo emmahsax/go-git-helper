@@ -92,20 +92,7 @@ func (g *Git) CreateBranch(branch string) {
 }
 
 func (g *Git) CreateEmptyCommit() {
-	cmd := exec.Command("git", "commit", "--allow-empty", "-m", "Empty commit")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "commit", "--allow-empty", "-m", "Empty commit")
 	if err != nil {
 		if g.Debug {
 			debug.PrintStack()
@@ -326,20 +313,7 @@ func (g *Git) SetHeadRef(defaultBranch string) {
 }
 
 func (g *Git) Stash() {
-	cmd := exec.Command("git", "stash")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "stash")
 	if err != nil {
 		if g.Debug {
 			debug.PrintStack()
@@ -350,22 +324,31 @@ func (g *Git) Stash() {
 }
 
 func (g *Git) StashDrop() {
-	cmd := exec.Command("git", "stash", "drop")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// cmd := exec.Command("git", "stash", "drop")
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
 
-	err := cmd.Start()
+	// err := cmd.Start()
+	// if err != nil {
+	// 	if g.Debug {
+	// 		debug.PrintStack()
+	// 	}
+	// 	log.Fatal(err)
+	// 	return
+	// }
+
+	// err = cmd.Wait()
+	// if err != nil {
+	// 	// The command output an error itself, so we can just be done
+	// 	return
+	// }
+
+	_, err := g.Executor.Exec("waitAndStdout", "git", "stash", "drop")
 	if err != nil {
 		if g.Debug {
 			debug.PrintStack()
 		}
 		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		// The command output an error itself, so we can just be done
 		return
 	}
 }

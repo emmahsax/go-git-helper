@@ -30,7 +30,7 @@ func Test_execute(t *testing.T) {
 		t.Errorf("Error was found: %s", err.Error())
 	}
 
-	cr := newChangeRemote("oldOwner", "newOwner", true)
+	cr := newChangeRemote("oldOwner", "newOwner", true, &MockExecutor{Debug: true})
 	cr.execute()
 }
 
@@ -57,13 +57,7 @@ func Test_processDir(t *testing.T) {
 	}
 
 	executor := &MockExecutor{Debug: true}
-	cr := &ChangeRemote{
-		Debug:    true,
-		Executor: executor,
-		NewOwner: "newOwner",
-		OldOwner: "oldOwner",
-	}
-
+	cr := newChangeRemote("oldOwner", "newOwner", true, executor)
 	cr.processDir(tempDir, "")
 	args := []string{"remote", "-v"}
 
@@ -129,13 +123,7 @@ origin  https://github.com/randomOwner/repository.git (push)
 			Output: test.executorOutput,
 		}
 
-		cr := &ChangeRemote{
-			Debug:    true,
-			Executor: executor,
-			NewOwner: "newOwner",
-			OldOwner: "oldOwner",
-		}
-
+		cr := newChangeRemote("oldOwner", "newOwner", true, executor)
 		fullRemoteInfo := cr.processGitRepository()
 
 		if !reflect.DeepEqual(fullRemoteInfo, test.expected) {
@@ -172,12 +160,7 @@ func Test_processRemote(t *testing.T) {
 	}
 
 	executor := &MockExecutor{Debug: true}
-	cr := &ChangeRemote{
-		Debug:    true,
-		Executor: executor,
-		NewOwner: "newOwner",
-		OldOwner: "oldOwner",
-	}
+	cr := newChangeRemote("oldOwner", "newOwner", true, executor)
 
 	for _, test := range tests {
 		cr.processRemote(test.url, test.host, test.repo, test.remoteName)
@@ -216,11 +199,7 @@ func Test_remoteInfo(t *testing.T) {
 		},
 	}
 
-	cr := &ChangeRemote{
-		Debug:    false,
-		OldOwner: "oldOwner",
-		NewOwner: "newOwner",
-	}
+	cr := newChangeRemote("oldOwner", "newOwner", false, &MockExecutor{Debug: false})
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

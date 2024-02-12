@@ -1,4 +1,4 @@
-package checkoutDefault
+package forgetLocalChanges
 
 import (
 	"testing"
@@ -19,25 +19,20 @@ func (me *MockExecutor) Exec(execType string, command string, args ...string) ([
 
 func Test_execute(t *testing.T) {
 	tests := []struct {
-		name           string
-		executorOutput []byte
-		expectedArgs   []string
+		name         string
+		expectedArgs []string
 	}{
 		{
-			name:           "Git directory",
-			executorOutput: []byte("refs/remotes/origin/main"),
-			expectedArgs:   []string{"checkout", "main"},
+			name:         "Git directory",
+			expectedArgs: []string{"commit", "stash", "drop"},
 		},
 	}
 
 	for _, test := range tests {
-		executor := &MockExecutor{
-			Debug:  true,
-			Output: test.executorOutput,
-		}
+		executor := &MockExecutor{Debug: true}
 
-		cd := newCheckoutDefault(true, executor)
-		cd.execute()
+		flc := newForgetLocalChanges(true, executor)
+		flc.execute()
 
 		if executor.Command != "git" {
 			t.Errorf("Unexpected command received: expected %s, but got %s", "git", executor.Command)

@@ -22,7 +22,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newCleanBranches(debug).execute()
+			newCleanBranches(debug, executor.NewExecutor(debug)).execute()
 			return nil
 		},
 	}
@@ -32,10 +32,10 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newCleanBranches(debug bool) *CleanBranches {
+func newCleanBranches(debug bool, executor executor.ExecutorInterface) *CleanBranches {
 	return &CleanBranches{
 		Debug:    debug,
-		Executor: executor.NewExecutor(debug),
+		Executor: executor,
 	}
 }
 
