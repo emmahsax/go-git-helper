@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
+	"github.com/emmahsax/go-git-helper/internal/executor"
 	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/emmahsax/go-git-helper/internal/githubPullRequest"
 	"github.com/emmahsax/go-git-helper/internal/gitlabMergeRequest"
@@ -15,7 +16,8 @@ import (
 )
 
 type CodeRequest struct {
-	Debug bool
+	Debug    bool
+	Executor executor.ExecutorInterface
 }
 
 func NewCommand() *cobra.Command {
@@ -29,7 +31,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newCodeRequest(debug).execute()
+			newCodeRequest(debug, executor.NewExecutor(debug)).execute()
 			return nil
 		},
 	}
@@ -39,9 +41,10 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newCodeRequest(debug bool) *CodeRequest {
+func newCodeRequest(debug bool, executor executor.ExecutorInterface) *CodeRequest {
 	return &CodeRequest{
-		Debug: debug,
+		Debug:    debug,
+		Executor: executor,
 	}
 }
 
@@ -181,11 +184,11 @@ func (cr *CodeRequest) titleize(s string) string {
 }
 
 func (cr *CodeRequest) isGitHub() bool {
-	return cr.containsSubstring(git.NewGit(cr.Debug, nil).Remotes(), "github")
+	return cr.containsSubstring(git.NewGit(cr.Debug, cr.Executor).Remotes(), "github")
 }
 
 func (cr *CodeRequest) isGitLab() bool {
-	return cr.containsSubstring(git.NewGit(cr.Debug, nil).Remotes(), "gitlab")
+	return cr.containsSubstring(git.NewGit(cr.Debug, cr.Executor).Remotes(), "gitlab")
 }
 
 func (cr *CodeRequest) containsSubstring(strs []string, substring string) bool {

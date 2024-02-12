@@ -3,7 +3,6 @@ package git
 import (
 	"errors"
 	"fmt"
-	"os/exec"
 	"regexp"
 	"strings"
 
@@ -74,8 +73,7 @@ func (g *Git) CreateEmptyCommit() {
 }
 
 func (g *Git) CurrentBranch() string {
-	cmd := exec.Command("git", "branch")
-	output, err := cmd.CombinedOutput()
+	output, err := g.Executor.Exec("actionAndOutput", "git", "branch")
 	if err != nil {
 		utils.HandleError(err, g.Debug, nil)
 		return ""
@@ -120,9 +118,7 @@ func (g *Git) Fetch() {
 }
 
 func (g *Git) GetGitRootDir() string {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-
-	output, err := cmd.CombinedOutput()
+	output, err := g.Executor.Exec("actionAndOutput", "git", "rev-parse", "--show-toplevel")
 	if err != nil {
 		utils.HandleError(err, g.Debug, nil)
 		return ""
@@ -147,17 +143,17 @@ func (g *Git) PushBranch(branch string) {
 }
 
 func (g *Git) RepoName() string {
-	output, err := exec.Command("git", "remote", "-v").Output()
+	output, err := g.Executor.Exec("actionAndOutput", "git", "remote", "-v")
 	if err != nil {
 		utils.HandleError(err, g.Debug, nil)
 		return ""
 	}
 
 	remoteURL := string(output)
-	re := regexp.MustCompile(`\S\s*\S+.com\S{1}(\S*).git`)
+	re := regexp.MustCompile(`\S\s*\S+.com\S{1}(\S*) \(push\)`)
 	match := re.FindStringSubmatch(remoteURL)
 	if len(match) >= 2 {
-		return match[1]
+		return strings.Split(match[1], ".git")[0]
 	} else {
 		err = errors.New("no match found")
 		utils.HandleError(err, g.Debug, nil)
@@ -167,9 +163,7 @@ func (g *Git) RepoName() string {
 }
 
 func (g *Git) Remotes() []string {
-	cmd := exec.Command("git", "remote", "-v")
-
-	output, err := cmd.CombinedOutput()
+	output, err := g.Executor.Exec("actionAndOutput", "git", "remote", "-v")
 	if err != nil {
 		utils.HandleError(err, g.Debug, nil)
 		return []string{}

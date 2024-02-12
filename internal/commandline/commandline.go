@@ -7,7 +7,7 @@ import (
 	"github.com/pterm/pterm"
 )
 
-func AskMultipleChoice(question string, choices []string) string {
+var AskMultipleChoice = func(question string, choices []string) string {
 	selectedOption, _ := pterm.DefaultInteractiveSelect.
 		WithDefaultText(question).
 		WithOnInterruptFunc(func() {

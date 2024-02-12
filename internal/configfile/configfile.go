@@ -2,7 +2,6 @@ package configfile
 
 import (
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/emmahsax/go-git-helper/internal/utils"
@@ -100,6 +99,5 @@ func (cf *ConfigFile) configFileContents() map[string]string {
 		customErr := errors.New("error unmarshaling YAML: " + err.Error())
 		utils.HandleError(customErr, cf.Debug, nil)
 	}
-	fmt.Println(result)
 	return result
 }

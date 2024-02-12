@@ -4,8 +4,22 @@ import (
 	"testing"
 )
 
+type MockExecutor struct {
+	Args    []string
+	Command string
+	Debug   bool
+	Output  []byte
+}
+
+func (me *MockExecutor) Exec(execType string, command string, args ...string) ([]byte, error) {
+	me.Command = command
+	me.Args = args
+	return me.Output, nil
+}
+
 func TestCheckAllLetters(t *testing.T) {
-	cr := newCodeRequest(true)
+	executor := &MockExecutor{Debug: true}
+	cr := newCodeRequest(true, executor)
 	resp := cr.checkAllLetters("iekslkjasd")
 
 	if resp == false {
@@ -20,7 +34,8 @@ func TestCheckAllLetters(t *testing.T) {
 }
 
 func TestCheckAllNumbers(t *testing.T) {
-	cr := newCodeRequest(true)
+	executor := &MockExecutor{Debug: true}
+	cr := newCodeRequest(true, executor)
 	resp := cr.checkAllNumbers("284161")
 
 	if resp == false {
@@ -35,7 +50,8 @@ func TestCheckAllNumbers(t *testing.T) {
 }
 
 func TestMatchesFullJiraPattern(t *testing.T) {
-	cr := newCodeRequest(true)
+	executor := &MockExecutor{Debug: true}
+	cr := newCodeRequest(true, executor)
 	resp := cr.matchesFullJiraPattern("jira-29142")
 
 	if resp == false {
@@ -50,7 +66,8 @@ func TestMatchesFullJiraPattern(t *testing.T) {
 }
 
 func TestTitleize(t *testing.T) {
-	cr := newCodeRequest(true)
+	executor := &MockExecutor{Debug: true}
+	cr := newCodeRequest(true, executor)
 	resp := cr.titleize("mysTrInG")
 
 	if resp != "MysTrInG" {
@@ -58,8 +75,14 @@ func TestTitleize(t *testing.T) {
 	}
 }
 
-func TestIsGitHub(t *testing.T) {
-	cr := newCodeRequest(true)
+func Test_isGitHub(t *testing.T) {
+	output := `origin  git@github.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.com:emmahsax/go-git-helper.git (push)`
+	executor := &MockExecutor{
+		Debug:  true,
+		Output: []byte(output),
+	}
+	cr := newCodeRequest(true, executor)
 	resp := cr.isGitHub()
 
 	if resp != true {
@@ -67,17 +90,24 @@ func TestIsGitHub(t *testing.T) {
 	}
 }
 
-func TestIsGitLab(t *testing.T) {
-	cr := newCodeRequest(true)
+func Test_isGitLab(t *testing.T) {
+	output := `origin  git@gitlab.com:emmahsax/go-git-helper.git (fetch)
+origin  git@gitlab.com:emmahsax/go-git-helper.git (push)`
+	executor := &MockExecutor{
+		Debug:  true,
+		Output: []byte(output),
+	}
+	cr := newCodeRequest(true, executor)
 	resp := cr.isGitLab()
 
-	if resp == true {
+	if resp != true {
 		t.Fatalf(`Project should not be GitLab, but was %v`, resp)
 	}
 }
 
 func TestContainsSubstring(t *testing.T) {
-	cr := newCodeRequest(true)
+	executor := &MockExecutor{Debug: true}
+	cr := newCodeRequest(true, executor)
 	strs := []string{"string1", "string3", "string18"}
 	resp := cr.containsSubstring(strs, "string3")
 

@@ -37,12 +37,7 @@ func NewGitLabMergeRequest(options map[string]string, debug bool) *GitLabMergeRe
 }
 
 func (mr *GitLabMergeRequest) Create() {
-	var t string
-	if d, _ := strconv.ParseBool(mr.Draft); d {
-		t = "Draft: " + mr.NewMrTitle
-	} else {
-		t = mr.NewMrTitle
-	}
+	t := mr.determineTitle()
 
 	options := go_github.CreateMergeRequestOptions{
 		Description:        go_github.Ptr(mr.newMrBody()),
@@ -61,6 +56,17 @@ func (mr *GitLabMergeRequest) Create() {
 	}
 
 	fmt.Println("Merge request successfully created:", resp.WebURL)
+}
+
+func (mr *GitLabMergeRequest) determineTitle() string {
+	var t string
+	if d, _ := strconv.ParseBool(mr.Draft); d {
+		t = "Draft: " + mr.NewMrTitle
+	} else {
+		t = mr.NewMrTitle
+	}
+
+	return t
 }
 
 func (mr *GitLabMergeRequest) newMrBody() string {
