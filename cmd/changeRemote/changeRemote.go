@@ -90,7 +90,7 @@ func (cr *ChangeRemote) processDir(currentDir, originalDir string) {
 func (cr *ChangeRemote) processGitRepository() map[string]map[string]string {
 	fullRemoteInfo := make(map[string]map[string]string)
 
-	output, err := cr.Executor.Exec("git", "remote", "-v")
+	output, err := cr.Executor.Exec("actionAndOutput", "git", "remote", "-v")
 	if err != nil {
 		log.Fatal(err)
 		return fullRemoteInfo
@@ -129,7 +129,7 @@ func (cr *ChangeRemote) processRemote(remote, host, repo, remoteName string) {
 
 	fmt.Printf("  Changing the remote URL '%s' to be '%s'.\n", remote, newRemote)
 
-	output, err := cr.Executor.Exec("git", "remote", "set-url", remoteName, newRemote)
+	output, err := cr.Executor.Exec("actionAndOutput", "git", "remote", "set-url", remoteName, newRemote)
 	if err != nil {
 		log.Fatal(err)
 		return

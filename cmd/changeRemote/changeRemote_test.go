@@ -10,13 +10,13 @@ import (
 )
 
 type MockExecutor struct {
-	Command string
 	Args    []string
+	Command string
 	Debug   bool
 	Output  []byte
 }
 
-func (me *MockExecutor) Exec(command string, args ...string) ([]byte, error) {
+func (me *MockExecutor) Exec(execType string, command string, args ...string) ([]byte, error) {
 	me.Command = command
 	me.Args = args
 	return me.Output, nil

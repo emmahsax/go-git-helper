@@ -25,12 +25,11 @@ func NewGit(debug bool, executor executor.ExecutorInterface) *Git {
 }
 
 func (g *Git) Checkout(branch string) {
-	output, err := g.Executor.Exec("git", "checkout", branch)
+	_, err := g.Executor.Exec("waitAndStdout", "git", "checkout", branch)
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
-	fmt.Println(string(output))
 }
 
 func (g *Git) CleanDeletedBranches() {
@@ -137,9 +136,9 @@ func (g *Git) CurrentBranch() string {
 }
 
 func (g *Git) DefaultBranch() string {
-	output, err := g.Executor.Exec("git", "symbolic-ref", "refs/remotes/origin/HEAD")
+	output, err := g.Executor.Exec("actionAndOutput", "git", "symbolic-ref", "refs/remotes/origin/HEAD")
 	if err != nil {
-		if string(output) == "fatal: ref refs/remotes/origin/HEAD is not a symbolic ref\n" {
+		if strings.Contains(err.Error(), "fatal: ") {
 			fmt.Printf("\nYour symbolic ref is not set up properly. Please run:\n  git-helper set-head-ref [defaultBranch]\n\nAnd then try your command again.\n\n")
 		}
 		if g.Debug {
