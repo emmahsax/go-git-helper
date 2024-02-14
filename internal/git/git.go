@@ -203,9 +203,5 @@ func (g *Git) Stash() {
 }
 
 func (g *Git) StashDrop() {
-	_, err := g.Executor.Exec("waitAndStdout", "git", "stash", "drop")
-	if err != nil {
-		utils.HandleError(err, g.Debug, nil)
-		return
-	}
+	_, _ = g.Executor.Exec("waitAndStdout", "git", "stash", "drop")
 }

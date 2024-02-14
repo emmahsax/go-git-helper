@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"log"
 	"runtime/debug"
 )
 
@@ -13,9 +14,9 @@ func HandleError(err error, debugB bool, logger Logger) {
 		debug.PrintStack()
 	}
 
-	var customLogger Logger
-	if logger != nil {
-		customLogger = logger
+	if logger == nil {
+		log.Fatal(err)
+	} else {
+		logger.Fatal(err)
 	}
-	customLogger.Fatal(err)
 }
