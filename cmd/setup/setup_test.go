@@ -1,6 +1,9 @@
 package setup
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -57,20 +60,6 @@ func (mc *MockConfig) GitLabToken() string {
 	return "random-gitlab-token"
 }
 
-// func captureStdout(f func()) string {
-// 	old := os.Stdout // keep backup of the real stdout
-// 	r, w, _ := os.Pipe()
-// 	os.Stdout = w
-
-// 	f()
-
-// 	w.Close()
-// 	out, _ := io.ReadAll(r)
-// 	os.Stdout = old // restore the real stdout
-
-// 	return string(out)
-// }
-
 func Test_createOrUpdateConfig(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -120,7 +109,7 @@ gitlab_token: hello_world
 				"github_token":    "test_token",
 			},
 		}
-		s := newSetup(true, executor, configFile)
+		s := newSetup("owner", "repo", true, executor, configFile)
 
 		_, err := os.Stat(configFile.ConfigFile())
 		if err != nil {
@@ -177,11 +166,92 @@ func Test_generateConfigFileContents(t *testing.T) {
 			"github_token":    "test_token",
 		},
 	}
-	s := newSetup(true, executor, configFile)
+	s := newSetup("owner", "repo", true, executor, configFile)
 	contents := s.generateConfigFileContents()
 
 	expectedContents := "github_username: hello_world\ngithub_token: hello_world\ngitlab_username: hello_world\ngitlab_token: hello_world\n"
 	if contents != expectedContents {
 		t.Errorf("Expected '%s', got '%s'", expectedContents, contents)
+	}
+}
+
+func Test_CceateOrUpdatePlugins(t *testing.T) {
+	executor := &MockExecutor{Debug: true}
+	configFile := &MockConfig{
+		Debug: true,
+		Contents: map[string]string{
+			"github_username": "test_user",
+			"github_token":    "test_token",
+		},
+	}
+	s := newSetup("owner", "repo", true, executor, configFile)
+
+	serverPlugin1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("plugin1 content"))
+	}))
+	defer serverPlugin1.Close()
+
+	serverPlugin2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("plugin2 content"))
+	}))
+	defer serverPlugin2.Close()
+
+	response := []map[string]string{
+		{
+			"name":         "plugin1",
+			"download_url": serverPlugin1.URL,
+		},
+		{
+			"name":         "plugin2",
+			"download_url": serverPlugin2.URL,
+		},
+	}
+
+	jsonData, _ := json.Marshal(response)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(jsonData))
+	}))
+	defer server.Close()
+	defer os.RemoveAll(configFile.ConfigDir())
+
+	s.createOrUpdatePlugins(server.URL)
+
+	resPlugin1, _ := os.ReadFile(configFile.ConfigDir() + "/plugins/plugin1")
+
+	if string(resPlugin1) != "plugin1 content" {
+		t.Errorf("expected output to be '%s', but got '%s'", "plugin1 content", resPlugin1)
+	}
+
+	resPlugin2, _ := os.ReadFile(configFile.ConfigDir() + "/plugins/plugin2")
+
+	if string(resPlugin2) != "plugin2 content" {
+		t.Errorf("expected output to be '%s', but got '%s'", "plugin2 content", resPlugin2)
+	}
+}
+
+func Test_createOrUpdateCompletion(t *testing.T) {
+	executor := &MockExecutor{Debug: true}
+	configFile := &MockConfig{
+		Debug: true,
+		Contents: map[string]string{
+			"github_username": "test_user",
+			"github_token":    "test_token",
+		},
+	}
+	s := newSetup("owner", "repo", true, executor, configFile)
+	defer os.RemoveAll(configFile.ConfigDir())
+
+	s.createOrUpdateCompletion()
+
+	shes := []string{"bash", "fish", "powershell", "zsh"}
+	for _, sh := range shes {
+		_, err := os.Stat(configFile.ConfigDir() + "/completions/completion." + sh)
+		if err != nil {
+			if os.IsNotExist(err) {
+				t.Errorf("expected completion file %s to exist, but got error: %s", sh, err)
+			} else {
+				t.Errorf("unexpected error: %s", err)
+			}
+		}
 	}
 }

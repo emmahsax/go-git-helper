@@ -20,17 +20,6 @@ func (me *MockExecutor) Exec(execType string, command string, args ...string) ([
 	return me.Output, nil
 }
 
-func Test_buildReleaseURL(t *testing.T) {
-	executor := &MockExecutor{Debug: true}
-	u := newUpdate(true, executor)
-	o := u.buildReleaseURL()
-	output := "https://api.github.com/repos/emmahsax/go-git-helper/releases/latest"
-
-	if o != output {
-		t.Errorf("unexpected output received: expected %s, but got %s", output, o)
-	}
-}
-
 func Test_fetchReleaseBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("test response"))
@@ -38,7 +27,7 @@ func Test_fetchReleaseBody(t *testing.T) {
 	defer server.Close()
 
 	executor := &MockExecutor{Debug: true}
-	u := &Update{true, executor}
+	u := newUpdate("owner", "repo", true, executor)
 	body := u.fetchReleaseBody(server.URL)
 
 	if string(body) != "test response" {
@@ -57,22 +46,11 @@ func Test_getDownloadURL(t *testing.T) {
 	}`)
 
 	executor := &MockExecutor{Debug: true}
-	u := &Update{true, executor}
+	u := newUpdate("owner", "repo", true, executor)
 	downloadURL := u.getDownloadURL(body)
 
 	if downloadURL != "https://example.com/download" {
 		t.Errorf("expected 'https://example.com/download', got '%s'", downloadURL)
-	}
-}
-
-func Test_getBinaryName(t *testing.T) {
-	executor := &MockExecutor{Debug: true}
-	u := newUpdate(true, executor)
-	o := u.getBinaryName("https://example.com/download")
-	output := "download"
-
-	if o != output {
-		t.Errorf("unexpected output received: expected %s, but got %s", output, o)
 	}
 }
 
@@ -83,7 +61,7 @@ func Test_downloadAndSaveBinary(t *testing.T) {
 	defer server.Close()
 
 	executor := &MockExecutor{Debug: true}
-	u := newUpdate(true, executor)
+	u := newUpdate("owner", "repo", true, executor)
 
 	binaryName := "test_binary"
 
@@ -110,7 +88,7 @@ func Test_moveGitHelper(t *testing.T) {
 
 	for _, test := range tests {
 		executor := &MockExecutor{Debug: true}
-		u := newUpdate(true, executor)
+		u := newUpdate("owner", "repo", true, executor)
 		u.moveGitHelper()
 
 		if executor.Command != "sudo" {
@@ -138,7 +116,7 @@ func Test_setPermissions(t *testing.T) {
 
 	for _, test := range tests {
 		executor := &MockExecutor{Debug: true}
-		u := newUpdate(true, executor)
+		u := newUpdate("owner", "repo", true, executor)
 		u.setPermissions()
 
 		if executor.Command != "sudo" {
@@ -174,7 +152,7 @@ func Test_outputNewVersion(t *testing.T) {
 			Output: []byte(test.executorOutput),
 		}
 
-		u := newUpdate(true, executor)
+		u := newUpdate("owner", "repo", true, executor)
 		u.outputNewVersion()
 
 		if executor.Command != "git-helper" {

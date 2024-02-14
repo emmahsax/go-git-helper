@@ -16,18 +16,18 @@ import (
 )
 
 type Update struct {
-	Debug    bool
-	Executor executor.ExecutorInterface
+	Debug      bool
+	Executor   executor.ExecutorInterface
+	Owner      string
+	Repository string
 }
 
 var (
-	asset      = "git-helper_" + runtime.GOOS + "_" + runtime.GOARCH
-	owner      = "emmahsax"
-	repository = "go-git-helper"
-	newPath    = "/usr/local/bin/git-helper" // This is for linux and mac based systems only
+	asset   = "git-helper_" + runtime.GOOS + "_" + runtime.GOARCH
+	newPath = "/usr/local/bin/git-helper" // This is for linux and mac based systems only
 )
 
-func NewCommand() *cobra.Command {
+func NewCommand(packageOwner, packageRepository string) *cobra.Command {
 	var (
 		debug bool
 	)
@@ -38,7 +38,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newUpdate(debug, executor.NewExecutor(debug)).execute()
+			newUpdate(packageOwner, packageRepository, debug, executor.NewExecutor(debug)).execute()
 			return nil
 		},
 	}
@@ -48,10 +48,12 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newUpdate(debug bool, executor executor.ExecutorInterface) *Update {
+func newUpdate(owner, repository string, debug bool, executor executor.ExecutorInterface) *Update {
 	return &Update{
-		Debug:    debug,
-		Executor: executor,
+		Debug:      debug,
+		Executor:   executor,
+		Owner:      owner,
+		Repository: repository,
 	}
 }
 
@@ -65,15 +67,10 @@ func (u *Update) execute() {
 func (u *Update) downloadGitHelper() {
 	fmt.Println("Installing latest git-helper version")
 
-	releaseURL := u.buildReleaseURL()
-	body := u.fetchReleaseBody(releaseURL)
-	downloadURL := u.getDownloadURL(body)
-	binaryName := u.getBinaryName(downloadURL)
+	releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", u.Owner, u.Repository)
+	downloadURL := u.getDownloadURL(u.fetchReleaseBody(releaseURL))
+	binaryName := strings.Split(downloadURL, "/")[len(strings.Split(downloadURL, "/"))-1]
 	u.downloadAndSaveBinary(downloadURL, binaryName)
-}
-
-func (u *Update) buildReleaseURL() string {
-	return fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repository)
 }
 
 func (u *Update) fetchReleaseBody(releaseURL string) []byte {
@@ -105,10 +102,6 @@ func (u *Update) getDownloadURL(body []byte) string {
 	}
 
 	return downloadURL
-}
-
-func (u *Update) getBinaryName(downloadURL string) string {
-	return strings.Split(downloadURL, "/")[len(strings.Split(downloadURL, "/"))-1]
 }
 
 func (u *Update) downloadAndSaveBinary(downloadURL, binaryName string) {

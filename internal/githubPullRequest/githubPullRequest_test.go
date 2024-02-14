@@ -3,10 +3,10 @@ package githubPullRequest
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
-	"github.com/stretchr/testify/assert"
 )
 
 func Test_newPrBody(t *testing.T) {
@@ -194,5 +194,17 @@ func Test_prTemplateOptions(t *testing.T) {
 		filepath.Join(tempDir, "pull_request_template.md"),
 	}
 	actual := mr.prTemplateOptions()
-	assert.ElementsMatch(t, expected, actual)
+
+	if len(expected) != len(actual) {
+		t.Fatalf("Expected and actual slices have different lengths: expected %v, got %v", len(expected), len(actual))
+	}
+
+	sort.Strings(expected)
+	sort.Strings(actual)
+
+	for i := range expected {
+		if expected[i] != actual[i] {
+			t.Fatalf("Expected and actual slices do not match: expected %v, got %v", expected, actual)
+		}
+	}
 }

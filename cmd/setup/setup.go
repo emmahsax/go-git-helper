@@ -17,12 +17,14 @@ import (
 )
 
 type Setup struct {
-	Debug    bool
-	Executor executor.ExecutorInterface
-	Config   configfile.ConfigFileInterface
+	Debug      bool
+	Executor   executor.ExecutorInterface
+	Config     configfile.ConfigFileInterface
+	Owner      string
+	Repository string
 }
 
-func NewCommand() *cobra.Command {
+func NewCommand(packageOwner, packageRepository string) *cobra.Command {
 	var (
 		debug bool
 	)
@@ -33,7 +35,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newSetup(debug, executor.NewExecutor(debug), configfile.NewConfigFile(debug)).execute()
+			newSetup(packageOwner, packageRepository, debug, executor.NewExecutor(debug), configfile.NewConfigFile(debug)).execute()
 			return nil
 		},
 	}
@@ -43,21 +45,23 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newSetup(debug bool, executor executor.ExecutorInterface, config configfile.ConfigFileInterface) *Setup {
+func newSetup(owner, repository string, debug bool, executor executor.ExecutorInterface, config configfile.ConfigFileInterface) *Setup {
 	return &Setup{
-		Debug:    debug,
-		Executor: executor,
-		Config:   config,
+		Debug:      debug,
+		Executor:   executor,
+		Config:     config,
+		Owner:      owner,
+		Repository: repository,
 	}
 }
 
 func (s *Setup) execute() {
-	s.createConfig()
+	s.setupConfig()
 	s.setupPlugins()
 	s.setupCompletion()
 }
 
-func (s *Setup) createConfig() {
+func (s *Setup) setupConfig() {
 	var create bool
 
 	if s.Config.ConfigFileExists() {
@@ -117,13 +121,12 @@ func (s *Setup) setupPlugins() {
 	setup := commandline.AskYesNoQuestion("Do you wish to set up the Git Helper plugins?")
 
 	if setup {
-		s.createOrUpdatePlugins()
+		s.createOrUpdatePlugins(fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/plugins", s.Owner, s.Repository))
 	}
 }
 
-func (s *Setup) createOrUpdatePlugins() {
+func (s *Setup) createOrUpdatePlugins(pluginsURL string) {
 	pluginsDir := s.Config.ConfigDir() + "/plugins"
-	pluginsURL := "https://api.github.com/repos/emmahsax/go-git-helper/contents/plugins"
 
 	if err := os.MkdirAll(pluginsDir, 0755); err != nil {
 		utils.HandleError(err, s.Debug, nil)
@@ -183,36 +186,40 @@ func (s *Setup) setupCompletion() {
 	setup := commandline.AskYesNoQuestion("Do you wish to set up Git Helper completion?")
 
 	if setup {
-		shes := []string{"bash", "fish", "powershell", "zsh"}
-		completionsDir := s.Config.ConfigDir() + "/completions"
-		if err := os.MkdirAll(completionsDir, 0755); err != nil {
+		s.createOrUpdateCompletion()
+	}
+}
+
+func (s *Setup) createOrUpdateCompletion() {
+	shes := []string{"bash", "fish", "powershell", "zsh"}
+	completionsDir := s.Config.ConfigDir() + "/completions"
+	if err := os.MkdirAll(completionsDir, 0755); err != nil {
+		utils.HandleError(err, s.Debug, nil)
+		return
+	}
+
+	for _, sh := range shes {
+		output, err := s.Executor.Exec("actionAndOutput", "git-helper", "completion", sh)
+		if err != nil {
 			utils.HandleError(err, s.Debug, nil)
 			return
 		}
 
-		for _, sh := range shes {
-			output, err := s.Executor.Exec("actionAndOutput", "git-helper", "completion", sh)
-			if err != nil {
-				utils.HandleError(err, s.Debug, nil)
-				return
-			}
+		filename := completionsDir + "/completion." + sh
 
-			filename := completionsDir + "/completion." + sh
-
-			file, err := os.Create(filename)
-			if err != nil {
-				utils.HandleError(err, s.Debug, nil)
-				return
-			}
-			defer file.Close()
-
-			_, err = file.WriteString(string(output))
-			if err != nil {
-				utils.HandleError(err, s.Debug, nil)
-				return
-			}
+		file, err := os.Create(filename)
+		if err != nil {
+			utils.HandleError(err, s.Debug, nil)
+			return
 		}
+		defer file.Close()
 
-		fmt.Println("\nCompletions (for bash, fish, powershell, and zsh) generated in " + completionsDir + ". Please activate the proper completion for your Unix shell. E.g. add the following to your ~/.zshrc file:\n  [ -f ~/.git-helper/completions/completion.zsh ] && source ~/.git-helper/completions/completion.zsh\n")
+		_, err = file.WriteString(string(output))
+		if err != nil {
+			utils.HandleError(err, s.Debug, nil)
+			return
+		}
 	}
+
+	fmt.Println("\nCompletions (for bash, fish, powershell, and zsh) generated in " + completionsDir + ". Please activate the proper completion for your Unix shell. E.g. add the following to your ~/.zshrc file:\n  [ -f ~/.git-helper/completions/completion.zsh ] && source ~/.git-helper/completions/completion.zsh\n")
 }
