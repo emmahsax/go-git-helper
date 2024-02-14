@@ -8,6 +8,17 @@ import (
 	yaml "gopkg.in/yaml.v3"
 )
 
+type ConfigFileInterface interface {
+	ConfigDir() string
+	ConfigDirExists() bool
+	ConfigFile() string
+	ConfigFileExists() bool
+	GitHubUsername() string
+	GitLabUsername() string
+	GitHubToken() string
+	GitLabToken() string
+}
+
 type ConfigFile struct {
 	Debug bool
 }

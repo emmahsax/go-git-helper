@@ -19,6 +19,7 @@ import (
 type Setup struct {
 	Debug    bool
 	Executor executor.ExecutorInterface
+	Config   configfile.ConfigFileInterface
 }
 
 func NewCommand() *cobra.Command {
@@ -32,7 +33,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newSetup(debug, executor.NewExecutor(debug)).execute()
+			newSetup(debug, executor.NewExecutor(debug), configfile.NewConfigFile(debug)).execute()
 			return nil
 		},
 	}
@@ -42,10 +43,11 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newSetup(debug bool, executor executor.ExecutorInterface) *Setup {
+func newSetup(debug bool, executor executor.ExecutorInterface, config configfile.ConfigFileInterface) *Setup {
 	return &Setup{
 		Debug:    debug,
 		Executor: executor,
+		Config:   config,
 	}
 }
 
@@ -58,10 +60,8 @@ func (s *Setup) execute() {
 func (s *Setup) createConfig() {
 	var create bool
 
-	cf := configfile.NewConfigFile(s.Debug)
-
-	if cf.ConfigFileExists() {
-		create = commandline.AskYesNoQuestion("The " + cf.ConfigFile() + " file already exists. Do you wish to replace it?")
+	if s.Config.ConfigFileExists() {
+		create = commandline.AskYesNoQuestion("The " + s.Config.ConfigFile() + " file already exists. Do you wish to replace it?")
 	} else {
 		create = true
 	}
@@ -73,23 +73,22 @@ func (s *Setup) createConfig() {
 
 func (s *Setup) createOrUpdateConfig() {
 	content := s.generateConfigFileContents()
-	cf := configfile.NewConfigFile(s.Debug)
 
-	if !cf.ConfigDirExists() {
-		err := os.Mkdir(cf.ConfigDir(), 0755)
+	if !s.Config.ConfigDirExists() {
+		err := os.Mkdir(s.Config.ConfigDir(), 0755)
 		if err != nil {
 			utils.HandleError(err, s.Debug, nil)
 			return
 		}
 	}
 
-	err := os.WriteFile(cf.ConfigFile(), []byte(content), 0644)
+	err := os.WriteFile(s.Config.ConfigFile(), []byte(content), 0644)
 	if err != nil {
 		utils.HandleError(err, s.Debug, nil)
 		return
 	}
 
-	fmt.Printf("\nDone setting up %s!\n\n", cf.ConfigFile())
+	fmt.Printf("\nDone setting up %s!\n\n", s.Config.ConfigFile())
 }
 
 func (s *Setup) generateConfigFileContents() string {
@@ -123,8 +122,7 @@ func (s *Setup) setupPlugins() {
 }
 
 func (s *Setup) createOrUpdatePlugins() {
-	cf := configfile.NewConfigFile(s.Debug)
-	pluginsDir := cf.ConfigDir() + "/plugins"
+	pluginsDir := s.Config.ConfigDir() + "/plugins"
 	pluginsURL := "https://api.github.com/repos/emmahsax/go-git-helper/contents/plugins"
 
 	if err := os.MkdirAll(pluginsDir, 0755); err != nil {
@@ -186,8 +184,7 @@ func (s *Setup) setupCompletion() {
 
 	if setup {
 		shes := []string{"bash", "fish", "powershell", "zsh"}
-		cf := configfile.NewConfigFile(s.Debug)
-		completionsDir := cf.ConfigDir() + "/completions"
+		completionsDir := s.Config.ConfigDir() + "/completions"
 		if err := os.MkdirAll(completionsDir, 0755); err != nil {
 			utils.HandleError(err, s.Debug, nil)
 			return
