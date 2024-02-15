@@ -106,9 +106,8 @@ func (mr *GitLabMergeRequest) determineTemplate() string {
 			temp = append(temp, modifiedStr)
 		}
 
-		response := commandline.AskMultipleChoice(
-			"Choose a merge request template to be applied", append(temp, "None"),
-		)
+		response := commandline.AskMultipleChoice("Choose a merge request template to be applied", append(temp, "None"))
+
 		if response != "None" {
 			return response
 		}
