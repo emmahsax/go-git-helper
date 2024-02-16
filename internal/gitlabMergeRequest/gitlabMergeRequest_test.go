@@ -79,7 +79,6 @@ func Test_newMrBody(t *testing.T) {
 		GitRootDir: tempDir,
 	}
 
-	// Mock the AskYesNoQuestion function to always return true
 	originalAskYesNoQuestion := commandline.AskYesNoQuestion
 	t.Cleanup(func() {
 		commandline.AskYesNoQuestion = originalAskYesNoQuestion
@@ -88,7 +87,6 @@ func Test_newMrBody(t *testing.T) {
 		return true
 	}
 
-	// Mock the AskMultipleChoice function to always return "hello world"
 	originalAskMultipleChoice := commandline.AskMultipleChoice
 	t.Cleanup(func() {
 		commandline.AskMultipleChoice = originalAskMultipleChoice
@@ -134,7 +132,6 @@ func Test_templateNameToApply(t *testing.T) {
 		GitRootDir: tempDir,
 	}
 
-	// Mock the AskYesNoQuestion function to always return true
 	originalAskYesNoQuestion := commandline.AskYesNoQuestion
 	t.Cleanup(func() {
 		commandline.AskYesNoQuestion = originalAskYesNoQuestion
@@ -143,7 +140,6 @@ func Test_templateNameToApply(t *testing.T) {
 		return true
 	}
 
-	// Mock the AskMultipleChoice function to always return "hello world"
 	originalAskMultipleChoice := commandline.AskMultipleChoice
 	t.Cleanup(func() {
 		commandline.AskMultipleChoice = originalAskMultipleChoice
@@ -165,7 +161,6 @@ func Test_determineTemplate(t *testing.T) {
 		GitRootDir: "/path/to/repo",
 	}
 
-	// Mock the AskYesNoQuestion function to always return true
 	originalAskYesNoQuestion := commandline.AskYesNoQuestion
 	t.Cleanup(func() {
 		commandline.AskYesNoQuestion = originalAskYesNoQuestion
@@ -174,7 +169,6 @@ func Test_determineTemplate(t *testing.T) {
 		return true
 	}
 
-	// Mock the AskMultipleChoice function to always return "hello world"
 	originalAskMultipleChoice := commandline.AskMultipleChoice
 	t.Cleanup(func() {
 		commandline.AskMultipleChoice = originalAskMultipleChoice

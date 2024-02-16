@@ -83,7 +83,6 @@ gitlab_token: hello_world
 	}
 
 	for _, test := range tests {
-		// Mock the AskYesNoQuestion function to always return true
 		originalAskYesNoQuestion := commandline.AskYesNoQuestion
 		t.Cleanup(func() {
 			commandline.AskYesNoQuestion = originalAskYesNoQuestion
@@ -92,7 +91,6 @@ gitlab_token: hello_world
 			return test.replace
 		}
 
-		// Mock the AskOpenEndedQuestion function to always return "hello world"
 		originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
 		t.Cleanup(func() {
 			commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion
@@ -140,7 +138,6 @@ gitlab_token: hello_world
 }
 
 func Test_generateConfigFileContents(t *testing.T) {
-	// Mock the AskYesNoQuestion function to always return true
 	originalAskYesNoQuestion := commandline.AskYesNoQuestion
 	t.Cleanup(func() {
 		commandline.AskYesNoQuestion = originalAskYesNoQuestion
@@ -149,7 +146,6 @@ func Test_generateConfigFileContents(t *testing.T) {
 		return true
 	}
 
-	// Mock the AskOpenEndedQuestion function to always return "hello world"
 	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
 	t.Cleanup(func() {
 		commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion

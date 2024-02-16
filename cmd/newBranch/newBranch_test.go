@@ -34,7 +34,6 @@ func Test_determineBranch(t *testing.T) {
 		{args: []string{"hello-world*"}, branch: "hello-world"},
 	}
 
-	// Mock the AskOpenEndedQuestion function to always return "hello-world"
 	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
 	t.Cleanup(func() {
 		commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion
@@ -84,7 +83,6 @@ func Test_getValidBranch(t *testing.T) {
 		{branch: "hello-world", valid: true},
 	}
 
-	// Mock the AskOpenEndedQuestion function to always return "hello-world"
 	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
 	t.Cleanup(func() {
 		commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion

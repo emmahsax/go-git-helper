@@ -47,7 +47,6 @@ func Test_processDir(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Mock the AskYesNoQuestion function to always return true
 	originalAskYesNoQuestion := commandline.AskYesNoQuestion
 	t.Cleanup(func() {
 		commandline.AskYesNoQuestion = originalAskYesNoQuestion

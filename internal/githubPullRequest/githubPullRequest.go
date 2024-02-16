@@ -54,7 +54,6 @@ func (pr *GitHubPullRequest) Create() {
 	if err != nil {
 		customErr := errors.New("could not create pull request: " + err.Error())
 		utils.HandleError(customErr, pr.Debug, nil)
-
 	}
 
 	fmt.Println("Pull request successfully created:", *resp.HTMLURL)

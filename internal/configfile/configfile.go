@@ -110,5 +110,6 @@ func (cf *ConfigFile) configFileContents() map[string]string {
 		customErr := errors.New("error unmarshaling YAML: " + err.Error())
 		utils.HandleError(customErr, cf.Debug, nil)
 	}
+
 	return result
 }
