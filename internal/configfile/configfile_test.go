@@ -17,7 +17,6 @@ func Test_ConfigDir(t *testing.T) {
 
 func Test_ConfigDirExists(t *testing.T) {
 	cf := NewConfigFile(false)
-	// created := false
 
 	_, err := os.Stat(cf.ConfigDir())
 	if err != nil {
@@ -30,7 +29,6 @@ func Test_ConfigDirExists(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// created = true
 			defer os.RemoveAll(cf.ConfigDir())
 			defer os.RemoveAll(tempDir)
 		}
