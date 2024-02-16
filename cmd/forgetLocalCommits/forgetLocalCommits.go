@@ -1,12 +1,14 @@
 package forgetLocalCommits
 
 import (
+	"github.com/emmahsax/go-git-helper/internal/executor"
 	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/spf13/cobra"
 )
 
 type ForgetLocalCommits struct {
-	Debug bool
+	Debug    bool
+	Executor executor.ExecutorInterface
 }
 
 func NewCommand() *cobra.Command {
@@ -20,7 +22,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newForgetLocalCommits(debug).execute()
+			newForgetLocalCommits(debug, executor.NewExecutor(debug)).execute()
 			return nil
 		},
 	}
@@ -30,14 +32,15 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newForgetLocalCommits(debug bool) *ForgetLocalCommits {
+func newForgetLocalCommits(debug bool, executor executor.ExecutorInterface) *ForgetLocalCommits {
 	return &ForgetLocalCommits{
-		Debug: debug,
+		Debug:    debug,
+		Executor: executor,
 	}
 }
 
 func (flc *ForgetLocalCommits) execute() {
-	g := git.NewGit(flc.Debug)
+	g := git.NewGit(flc.Debug, flc.Executor)
 	g.Pull()
 	g.Reset()
 }

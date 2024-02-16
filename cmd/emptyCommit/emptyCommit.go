@@ -1,12 +1,14 @@
 package emptyCommit
 
 import (
+	"github.com/emmahsax/go-git-helper/internal/executor"
 	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/spf13/cobra"
 )
 
 type EmptyCommit struct {
-	Debug bool
+	Debug    bool
+	Executor executor.ExecutorInterface
 }
 
 func NewCommand() *cobra.Command {
@@ -20,7 +22,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newEmptyCommit(debug).execute()
+			newEmptyCommit(debug, executor.NewExecutor(debug)).execute()
 			return nil
 		},
 	}
@@ -30,12 +32,13 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newEmptyCommit(debug bool) *EmptyCommit {
+func newEmptyCommit(debug bool, executor executor.ExecutorInterface) *EmptyCommit {
 	return &EmptyCommit{
-		Debug: debug,
+		Debug:    debug,
+		Executor: executor,
 	}
 }
 
 func (ec *EmptyCommit) execute() {
-	git.NewGit(ec.Debug).CreateEmptyCommit()
+	git.NewGit(ec.Debug, ec.Executor).CreateEmptyCommit()
 }

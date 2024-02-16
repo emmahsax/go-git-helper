@@ -1,12 +1,23 @@
 package configfile
 
 import (
-	"log"
+	"errors"
 	"os"
-	"runtime/debug"
 
+	"github.com/emmahsax/go-git-helper/internal/utils"
 	yaml "gopkg.in/yaml.v3"
 )
+
+type ConfigFileInterface interface {
+	ConfigDir() string
+	ConfigDirExists() bool
+	ConfigFile() string
+	ConfigFileExists() bool
+	GitHubUsername() string
+	GitLabUsername() string
+	GitHubToken() string
+	GitLabToken() string
+}
 
 type ConfigFile struct {
 	Debug bool
@@ -21,10 +32,7 @@ func NewConfigFile(debug bool) *ConfigFile {
 func (cf *ConfigFile) ConfigDir() string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		if cf.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, cf.Debug, nil)
 		return ""
 	}
 
@@ -92,13 +100,15 @@ func (cf *ConfigFile) GitLabToken() string {
 func (cf *ConfigFile) configFileContents() map[string]string {
 	data, err := os.ReadFile(cf.ConfigFile())
 	if err != nil {
-		log.Fatal("Error reading file: ", err.Error())
+		customErr := errors.New("error reading file: " + err.Error())
+		utils.HandleError(customErr, cf.Debug, nil)
 	}
 
 	var result map[string]string
 	err = yaml.Unmarshal(data, &result)
 	if err != nil {
-		log.Fatal("Error unmarshaling YAML: ", err.Error())
+		customErr := errors.New("error unmarshaling YAML: " + err.Error())
+		utils.HandleError(customErr, cf.Debug, nil)
 	}
 
 	return result

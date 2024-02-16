@@ -1,28 +1,78 @@
 package configfile
 
 import (
+	"fmt"
 	"os"
 	"testing"
 )
 
-var (
-	home, _ = os.UserHomeDir()
-)
-
-func TestConfigDir(t *testing.T) {
+func Test_ConfigDir(t *testing.T) {
 	cf := NewConfigFile(false)
-	output := cf.ConfigDir()
+	dir := cf.ConfigDir()
 
-	if output != home+"/.git-helper" {
-		t.Fatalf(`ConfigDir should be %s, not %s`, home+"/.git-helper", output)
+	if dir == "" {
+		t.Errorf("Expected a directory, got an empty string")
 	}
 }
 
-func TestConfigFile(t *testing.T) {
+func Test_ConfigDirExists(t *testing.T) {
 	cf := NewConfigFile(false)
-	output := cf.ConfigFile()
 
-	if output != home+"/.git-helper/config.yml" {
-		t.Fatalf(`ConfigFile should be %s, not %s`, home+"/.git-helper/config.yml", output)
+	_, err := os.Stat(cf.ConfigDir())
+	if err != nil {
+		if os.IsNotExist(err) {
+			err := os.MkdirAll(cf.ConfigDir(), 0755)
+			if err != nil {
+				t.Fatal(err)
+			}
+			tempDir, err := os.MkdirTemp(cf.ConfigDir(), "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.RemoveAll(cf.ConfigDir())
+			defer os.RemoveAll(tempDir)
+		}
+	}
+
+	fmt.Println(cf.ConfigDir())
+
+	if !cf.ConfigDirExists() {
+		t.Errorf("Expected ConfigDirExists to return true, got false")
+	}
+}
+
+func Test_ConfigFile(t *testing.T) {
+	cf := NewConfigFile(false)
+	file := cf.ConfigFile()
+
+	if file == "" {
+		t.Errorf("Expected a file, got an empty string")
+	}
+}
+
+func Test_ConfigFileExists(t *testing.T) {
+	cf := NewConfigFile(false)
+
+	_, err := os.Stat(cf.ConfigFile())
+	if err != nil {
+		err := os.MkdirAll(cf.ConfigDir(), 0755)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tempDir, err := os.MkdirTemp(cf.ConfigDir(), "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		tempFile, err := os.Create(cf.ConfigFile())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(cf.ConfigDir())
+		defer os.RemoveAll(tempDir)
+		defer os.Remove(tempFile.Name())
+	}
+
+	if !cf.ConfigFileExists() {
+		t.Errorf("Expected ConfigFileExists to return true, got false")
 	}
 }

@@ -1,22 +1,23 @@
 package changeRemote
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime/debug"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
+	"github.com/emmahsax/go-git-helper/internal/executor"
+	"github.com/emmahsax/go-git-helper/internal/utils"
 	"github.com/spf13/cobra"
 )
 
 type ChangeRemote struct {
 	Debug    bool
-	OldOwner string
+	Executor executor.ExecutorInterface
 	NewOwner string
+	OldOwner string
 }
 
 func NewCommand() *cobra.Command {
@@ -30,7 +31,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(2),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newChangeRemote(args[0], args[1], debug).execute()
+			newChangeRemote(args[0], args[1], debug, executor.NewExecutor(debug)).execute()
 			return nil
 		},
 	}
@@ -40,11 +41,12 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newChangeRemote(oldOwner, newOwner string, debug bool) *ChangeRemote {
+func newChangeRemote(oldOwner, newOwner string, debug bool, executor executor.ExecutorInterface) *ChangeRemote {
 	return &ChangeRemote{
 		Debug:    debug,
-		OldOwner: oldOwner,
+		Executor: executor,
 		NewOwner: newOwner,
+		OldOwner: oldOwner,
 	}
 }
 
@@ -88,13 +90,9 @@ func (cr *ChangeRemote) processDir(currentDir, originalDir string) {
 func (cr *ChangeRemote) processGitRepository() map[string]map[string]string {
 	fullRemoteInfo := make(map[string]map[string]string)
 
-	cmd := exec.Command("git", "remote", "-v")
-	output, err := cmd.Output()
+	output, err := cr.Executor.Exec("actionAndOutput", "git", "remote", "-v")
 	if err != nil {
-		if cr.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, cr.Debug, nil)
 		return fullRemoteInfo
 	}
 
@@ -130,28 +128,28 @@ func (cr *ChangeRemote) processRemote(remote, host, repo, remoteName string) {
 	}
 
 	fmt.Printf("  Changing the remote URL '%s' to be '%s'.\n", remote, newRemote)
-	cmd := exec.Command("git", "remote", "set-url", remoteName, newRemote)
-	_, err := cmd.Output()
+
+	output, err := cr.Executor.Exec("actionAndOutput", "git", "remote", "set-url", remoteName, newRemote)
 	if err != nil {
-		if cr.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, cr.Debug, nil)
 		return
 	}
+	fmt.Println(string(output))
 }
 
 func (cr *ChangeRemote) remoteInfo(remote string) (string, string, string) {
 	if strings.Contains(remote, "git@") {
 		remoteSplit := strings.SplitN(remote, ":", 2)
 		if len(remoteSplit) != 2 {
-			log.Fatal("Invalid remote URL format")
+			err := errors.New("invalid remote URL format")
+			utils.HandleError(err, cr.Debug, nil)
 			return "", "", ""
 		}
 
 		parts := strings.SplitN(remoteSplit[1], "/", 2)
 		if len(parts) != 2 {
-			log.Fatal("Invalid remote URL format")
+			err := errors.New("invalid remote URL format")
+			utils.HandleError(err, cr.Debug, nil)
 			return "", "", ""
 		}
 
@@ -162,7 +160,8 @@ func (cr *ChangeRemote) remoteInfo(remote string) (string, string, string) {
 
 		return host, remoteSplit[3], remoteSplit[4]
 	} else {
-		log.Fatal("Invalid remote URL format")
+		err := errors.New("invalid remote URL format")
+		utils.HandleError(err, cr.Debug, nil)
 		return "", "", ""
 	}
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/pterm/pterm"
 )
 
-func AskMultipleChoice(question string, choices []string) string {
+var AskMultipleChoice = func(question string, choices []string) string {
 	selectedOption, _ := pterm.DefaultInteractiveSelect.
 		WithDefaultText(question).
 		WithOnInterruptFunc(func() {
@@ -19,37 +19,39 @@ func AskMultipleChoice(question string, choices []string) string {
 	return selectedOption
 }
 
-func AskOpenEndedQuestion(question string, secret bool) string {
+var AskOpenEndedQuestion = func(question string, secret bool) string {
 	var result string
+	for {
+		if secret {
+			result, _ = pterm.DefaultInteractiveTextInput.
+				WithMultiLine(false).
+				WithDefaultText(question).
+				WithMask("*").
+				WithOnInterruptFunc(func() {
+					os.Exit(1)
+				}).
+				Show()
+		} else {
+			result, _ = pterm.DefaultInteractiveTextInput.
+				WithMultiLine(false).
+				WithDefaultText(question).
+				WithOnInterruptFunc(func() {
+					os.Exit(1)
+				}).
+				Show()
+		}
 
-	if secret {
-		result, _ = pterm.DefaultInteractiveTextInput.
-			WithMultiLine(false).
-			WithDefaultText(question).
-			WithMask("*").
-			WithOnInterruptFunc(func() {
-				os.Exit(1)
-			}).
-			Show()
-	} else {
-		result, _ = pterm.DefaultInteractiveTextInput.
-			WithMultiLine(false).
-			WithDefaultText(question).
-			WithOnInterruptFunc(func() {
-				os.Exit(1)
-			}).
-			Show()
-	}
+		if result != "" {
+			break
+		}
 
-	if result == "" {
 		fmt.Println("--- This question is required ---")
-		return AskOpenEndedQuestion(question, secret)
 	}
 
 	return result
 }
 
-func AskYesNoQuestion(question string) bool {
+var AskYesNoQuestion = func(question string) bool {
 	result, _ := pterm.DefaultInteractiveConfirm.
 		WithDefaultText(question).
 		WithDefaultValue(true).

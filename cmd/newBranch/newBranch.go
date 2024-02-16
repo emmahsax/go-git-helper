@@ -5,13 +5,15 @@ import (
 	"regexp"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
+	"github.com/emmahsax/go-git-helper/internal/executor"
 	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/spf13/cobra"
 )
 
 type NewBranch struct {
-	Branch string
-	Debug  bool
+	Branch   string
+	Debug    bool
+	Executor executor.ExecutorInterface
 }
 
 func NewCommand() *cobra.Command {
@@ -25,20 +27,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.MaximumNArgs(1),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var branch string
-
-			if len(args) == 0 {
-				branch = getValidBranch()
-			} else {
-				if !isValidBranch(args[0]) {
-					fmt.Println("--- Invalid branch provided ---")
-					branch = getValidBranch()
-				} else {
-					branch = args[0]
-				}
-			}
-
-			newNewBranch(branch, debug).execute()
+			newNewBranch(determineBranch(args, debug), debug, executor.NewExecutor(debug)).execute()
 			return nil
 		},
 	}
@@ -48,10 +37,24 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newNewBranch(branch string, debug bool) *NewBranch {
+func newNewBranch(branch string, debug bool, executor executor.ExecutorInterface) *NewBranch {
 	return &NewBranch{
-		Branch: branch,
-		Debug:  debug,
+		Branch:   branch,
+		Debug:    debug,
+		Executor: executor,
+	}
+}
+
+func determineBranch(args []string, debug bool) string {
+	if len(args) == 0 {
+		return getValidBranch()
+	} else {
+		if !isValidBranch(args[0]) {
+			fmt.Println("--- Invalid branch provided ---")
+			return getValidBranch()
+		} else {
+			return args[0]
+		}
 	}
 }
 
@@ -61,11 +64,16 @@ func isValidBranch(branch string) bool {
 }
 
 func getValidBranch() string {
-	branch := commandline.AskOpenEndedQuestion("New branch name", false)
+	var branch string
 
-	if !isValidBranch(branch) {
+	for {
+		branch = commandline.AskOpenEndedQuestion("New branch name", false)
+
+		if isValidBranch(branch) {
+			break
+		}
+
 		fmt.Println("--- Invalid branch ---")
-		return getValidBranch()
 	}
 
 	return branch
@@ -73,7 +81,7 @@ func getValidBranch() string {
 
 func (nb *NewBranch) execute() {
 	fmt.Println("Attempting to create a new branch:", nb.Branch)
-	g := git.NewGit(nb.Debug)
+	g := git.NewGit(nb.Debug, nb.Executor)
 	g.Pull()
 	g.CreateBranch(nb.Branch)
 	g.Checkout(nb.Branch)
