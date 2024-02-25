@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/google/go-github/v58 v58.0.0
+	github.com/google/go-github/v59 v59.0.0
 	github.com/pterm/pterm v0.12.73
 	github.com/spf13/cobra v1.8.0
 	github.com/tidwall/gjson v1.17.0
