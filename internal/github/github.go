@@ -2,6 +2,8 @@ package github
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/configfile"
 	"github.com/emmahsax/go-git-helper/internal/utils"
@@ -25,10 +27,22 @@ func NewGitHub(debugB bool) *GitHub {
 }
 
 func (c *GitHub) CreatePullRequest(owner, repo string, options *github.NewPullRequest) (*github.PullRequest, error) {
-	pr, _, err := c.Client.PullRequests.Create(context.Background(), owner, repo, options)
-	if err != nil {
-		utils.HandleError(err, c.Debug, nil)
-		return nil, err
+	var err error
+	var pr *github.PullRequest
+
+	for {
+		pr, _, err = c.Client.PullRequests.Create(context.Background(), owner, repo, options)
+		if err != nil {
+			if strings.Contains(err.Error(), "422 Draft pull requests are not supported in this repository.") {
+				fmt.Println("Draft pull requests are not supported in this repository. Retrying.")
+				options.Draft = github.Bool(false)
+				continue
+			}
+			utils.HandleError(err, c.Debug, nil)
+			return nil, err
+		}
+
+		break
 	}
 
 	return pr, nil
