@@ -1,12 +1,14 @@
 package checkoutDefault
 
 import (
+	"github.com/emmahsax/go-git-helper/internal/executor"
 	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/spf13/cobra"
 )
 
 type CheckoutDefault struct {
-	Debug bool
+	Debug    bool
+	Executor executor.ExecutorInterface
 }
 
 func NewCommand() *cobra.Command {
@@ -20,7 +22,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newCheckoutDefault(debug).execute()
+			newCheckoutDefault(debug, executor.NewExecutor(debug)).execute()
 			return nil
 		},
 	}
@@ -30,14 +32,15 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newCheckoutDefault(debug bool) *CheckoutDefault {
+func newCheckoutDefault(debug bool, executor executor.ExecutorInterface) *CheckoutDefault {
 	return &CheckoutDefault{
-		Debug: debug,
+		Debug:    debug,
+		Executor: executor,
 	}
 }
 
 func (cd *CheckoutDefault) execute() {
-	g := git.NewGit(cd.Debug)
+	g := git.NewGit(cd.Debug, cd.Executor)
 	branch := g.DefaultBranch()
 	g.Checkout(branch)
 }

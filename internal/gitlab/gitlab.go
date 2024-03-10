@@ -1,10 +1,10 @@
 package gitlab
 
 import (
-	"log"
-	"runtime/debug"
+	"errors"
 
 	"github.com/emmahsax/go-git-helper/internal/configfile"
+	"github.com/emmahsax/go-git-helper/internal/utils"
 	"github.com/xanzy/go-gitlab"
 )
 
@@ -15,12 +15,10 @@ type GitLab struct {
 
 func NewGitLab(debugB bool) *GitLab {
 	cf := configfile.NewConfigFile(debugB)
-	c, err := newGitLabClient(cf.GitLabToken())
+	c, err := newGitLabClient(cf.GitLabToken(), debugB)
 	if err != nil {
-		if debugB {
-			debug.PrintStack()
-		}
-		log.Fatal("Could not create GitLab client: ", err)
+		customErr := errors.New("could not create GitLab client: " + err.Error())
+		utils.HandleError(customErr, debugB, nil)
 		return nil
 	}
 
@@ -30,32 +28,20 @@ func NewGitLab(debugB bool) *GitLab {
 	}
 }
 
-func (c *GitLab) CreateMergeRequest(projectName string, options map[string]string) (*gitlab.MergeRequest, error) {
-	createOpts := &gitlab.CreateMergeRequestOptions{
-		Description:        gitlab.Ptr(options["description"]),
-		RemoveSourceBranch: gitlab.Ptr(true),
-		SourceBranch:       gitlab.Ptr(options["source_branch"]),
-		Squash:             gitlab.Ptr(true),
-		TargetBranch:       gitlab.Ptr(options["target_branch"]),
-		Title:              gitlab.Ptr(options["title"]),
-	}
-
-	mr, _, err := c.Client.MergeRequests.CreateMergeRequest(projectName, createOpts)
+func (c *GitLab) CreateMergeRequest(projectName string, options *gitlab.CreateMergeRequestOptions) (*gitlab.MergeRequest, error) {
+	mr, _, err := c.Client.MergeRequests.CreateMergeRequest(projectName, options)
 	if err != nil {
-		if c.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, c.Debug, nil)
 		return nil, err
 	}
 
 	return mr, nil
 }
 
-func newGitLabClient(token string) (*gitlab.Client, error) {
+func newGitLabClient(token string, debugB bool) (*gitlab.Client, error) {
 	git, err := gitlab.NewClient(token)
 	if err != nil {
-		log.Fatal(err)
+		utils.HandleError(err, debugB, nil)
 		return nil, err
 	}
 	return git, nil

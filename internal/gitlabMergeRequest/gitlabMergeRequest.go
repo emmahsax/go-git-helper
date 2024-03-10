@@ -1,15 +1,17 @@
 package gitlabMergeRequest
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
-	"runtime/debug"
+	"strconv"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/gitlab"
+	"github.com/emmahsax/go-git-helper/internal/utils"
+	go_github "github.com/xanzy/go-gitlab"
 )
 
 type GitLabMergeRequest struct {
@@ -17,6 +19,7 @@ type GitLabMergeRequest struct {
 	Debug        bool
 	GitRootDir   string
 	LocalBranch  string
+	Draft        string
 	LocalProject string
 	NewMrTitle   string
 }
@@ -25,6 +28,7 @@ func NewGitLabMergeRequest(options map[string]string, debug bool) *GitLabMergeRe
 	return &GitLabMergeRequest{
 		BaseBranch:   options["baseBranch"],
 		Debug:        debug,
+		Draft:        options["draft"],
 		GitRootDir:   options["gitRootDir"],
 		LocalBranch:  options["localBranch"],
 		LocalProject: options["localProject"],
@@ -33,25 +37,36 @@ func NewGitLabMergeRequest(options map[string]string, debug bool) *GitLabMergeRe
 }
 
 func (mr *GitLabMergeRequest) Create() {
-	optionsMap := map[string]string{
-		"description":          mr.newMrBody(),
-		"remove_source_branch": "true",
-		"squash":               "true",
-		"source_branch":        mr.LocalBranch,
-		"target_branch":        mr.BaseBranch,
-		"title":                mr.NewMrTitle,
+	t := mr.determineTitle()
+
+	options := go_github.CreateMergeRequestOptions{
+		Description:        go_github.Ptr(mr.newMrBody()),
+		RemoveSourceBranch: go_github.Ptr(true),
+		SourceBranch:       go_github.Ptr(mr.LocalBranch),
+		Squash:             go_github.Ptr(true),
+		TargetBranch:       go_github.Ptr(mr.BaseBranch),
+		Title:              go_github.Ptr(t),
 	}
 
-	fmt.Println("Creating merge request:", mr.NewMrTitle)
-	resp, err := mr.gitlab().CreateMergeRequest(mr.LocalProject, optionsMap)
+	fmt.Println("Creating merge request:", t)
+	resp, err := mr.gitlab().CreateMergeRequest(mr.LocalProject, &options)
 	if err != nil {
-		if mr.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal("Could not create merge request: " + err.Error())
+		customErr := errors.New("could not create merge request: " + err.Error())
+		utils.HandleError(customErr, mr.Debug, nil)
 	}
 
 	fmt.Println("Merge request successfully created:", resp.WebURL)
+}
+
+func (mr *GitLabMergeRequest) determineTitle() string {
+	var t string
+	if d, _ := strconv.ParseBool(mr.Draft); d {
+		t = "Draft: " + mr.NewMrTitle
+	} else {
+		t = mr.NewMrTitle
+	}
+
+	return t
 }
 
 func (mr *GitLabMergeRequest) newMrBody() string {
@@ -59,10 +74,7 @@ func (mr *GitLabMergeRequest) newMrBody() string {
 	if templateName != "" {
 		content, err := os.ReadFile(templateName)
 		if err != nil {
-			if mr.Debug {
-				debug.PrintStack()
-			}
-			log.Fatal(err)
+			utils.HandleError(err, mr.Debug, nil)
 		}
 
 		return string(content)
@@ -94,9 +106,8 @@ func (mr *GitLabMergeRequest) determineTemplate() string {
 			temp = append(temp, modifiedStr)
 		}
 
-		response := commandline.AskMultipleChoice(
-			"Choose a merge request template to be applied", append(temp, "None"),
-		)
+		response := commandline.AskMultipleChoice("Choose a merge request template to be applied", append(temp, "None"))
+
 		if response != "None" {
 			return response
 		}

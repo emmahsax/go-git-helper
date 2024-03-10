@@ -1,0 +1,3 @@
+#!/bin/sh
+
+git-helper set-head-ref $1

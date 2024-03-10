@@ -3,12 +3,11 @@ module github.com/emmahsax/go-git-helper
 go 1.21
 
 require (
-	github.com/google/go-github/v56 v56.0.0
+	github.com/google/go-github/v58 v58.0.0
 	github.com/pterm/pterm v0.12.73
 	github.com/spf13/cobra v1.8.0
-	github.com/stretchr/testify v1.8.4
 	github.com/tidwall/gjson v1.17.0
-	github.com/xanzy/go-gitlab v0.95.2
+	github.com/xanzy/go-gitlab v0.97.0
 	golang.org/x/oauth2 v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -18,7 +17,6 @@ require (
 	atomicgo.dev/keyboard v0.2.9 // indirect
 	atomicgo.dev/schedule v0.1.0 // indirect
 	github.com/containerd/console v1.0.3 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gookit/color v1.5.4 // indirect
@@ -27,7 +25,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tidwall/match v1.1.1 // indirect

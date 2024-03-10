@@ -2,11 +2,12 @@ package github
 
 import (
 	"context"
-	"log"
-	"runtime/debug"
+	"fmt"
+	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/configfile"
-	"github.com/google/go-github/v56/github"
+	"github.com/emmahsax/go-git-helper/internal/utils"
+	"github.com/google/go-github/v58/github"
 	"golang.org/x/oauth2"
 )
 
@@ -25,22 +26,23 @@ func NewGitHub(debugB bool) *GitHub {
 	}
 }
 
-func (c *GitHub) CreatePullRequest(owner, repo string, options map[string]string) (*github.PullRequest, error) {
-	createOpts := &github.NewPullRequest{
-		Base:                github.String(options["base"]),
-		Body:                github.String(options["body"]),
-		Head:                github.String(options["head"]),
-		MaintainerCanModify: github.Bool(true),
-		Title:               github.String(options["title"]),
-	}
+func (c *GitHub) CreatePullRequest(owner, repo string, options *github.NewPullRequest) (*github.PullRequest, error) {
+	var err error
+	var pr *github.PullRequest
 
-	pr, _, err := c.Client.PullRequests.Create(context.Background(), owner, repo, createOpts)
-	if err != nil {
-		if c.Debug {
-			debug.PrintStack()
+	for {
+		pr, _, err = c.Client.PullRequests.Create(context.Background(), owner, repo, options)
+		if err != nil {
+			if strings.Contains(err.Error(), "422 Draft pull requests are not supported in this repository.") {
+				fmt.Println("Draft pull requests are not supported in this repository. Retrying.")
+				options.Draft = github.Bool(false)
+				continue
+			}
+			utils.HandleError(err, c.Debug, nil)
+			return nil, err
 		}
-		log.Fatal(err)
-		return nil, err
+
+		break
 	}
 
 	return pr, nil

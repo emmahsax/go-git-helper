@@ -1,12 +1,14 @@
 package cleanBranches
 
 import (
+	"github.com/emmahsax/go-git-helper/internal/executor"
 	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/spf13/cobra"
 )
 
 type CleanBranches struct {
-	Debug bool
+	Debug    bool
+	Executor executor.ExecutorInterface
 }
 
 func NewCommand() *cobra.Command {
@@ -20,7 +22,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newCleanBranches(debug).execute()
+			newCleanBranches(debug, executor.NewExecutor(debug)).execute()
 			return nil
 		},
 	}
@@ -30,14 +32,15 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func newCleanBranches(debug bool) *CleanBranches {
+func newCleanBranches(debug bool, executor executor.ExecutorInterface) *CleanBranches {
 	return &CleanBranches{
-		Debug: debug,
+		Debug:    debug,
+		Executor: executor,
 	}
 }
 
 func (cb *CleanBranches) execute() {
-	g := git.NewGit(cb.Debug)
+	g := git.NewGit(cb.Debug, cb.Executor)
 	branch := g.DefaultBranch()
 	g.Checkout(branch)
 	g.Pull()

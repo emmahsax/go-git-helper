@@ -1,20 +1,23 @@
 package githubPullRequest
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
-	"runtime/debug"
+	"strconv"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/github"
+	"github.com/emmahsax/go-git-helper/internal/utils"
+	go_github "github.com/google/go-github/v58/github"
 )
 
 type GitHubPullRequest struct {
 	BaseBranch  string
 	Debug       bool
+	Draft       string
 	GitRootDir  string
 	LocalBranch string
 	LocalRepo   string
@@ -25,6 +28,7 @@ func NewGitHubPullRequest(options map[string]string, debug bool) *GitHubPullRequ
 	return &GitHubPullRequest{
 		BaseBranch:  options["baseBranch"],
 		Debug:       debug,
+		Draft:       options["draft"],
 		GitRootDir:  options["gitRootDir"],
 		LocalBranch: options["localBranch"],
 		LocalRepo:   options["localRepo"],
@@ -33,21 +37,23 @@ func NewGitHubPullRequest(options map[string]string, debug bool) *GitHubPullRequ
 }
 
 func (pr *GitHubPullRequest) Create() {
-	optionsMap := map[string]string{
-		"base":  pr.BaseBranch,
-		"body":  pr.newPrBody(),
-		"head":  pr.LocalBranch,
-		"title": pr.NewPrTitle,
+	d, _ := strconv.ParseBool(pr.Draft)
+	options := go_github.NewPullRequest{
+		Base:                go_github.String(pr.BaseBranch),
+		Body:                go_github.String(pr.newPrBody()),
+		Draft:               go_github.Bool(d),
+		Head:                go_github.String(pr.LocalBranch),
+		MaintainerCanModify: go_github.Bool(true),
+		Title:               go_github.String(pr.NewPrTitle),
 	}
+
 	repo := strings.Split(pr.LocalRepo, "/")
 
 	fmt.Println("Creating pull request:", pr.NewPrTitle)
-	resp, err := pr.github().CreatePullRequest(repo[0], repo[1], optionsMap)
+	resp, err := pr.github().CreatePullRequest(repo[0], repo[1], &options)
 	if err != nil {
-		if pr.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal("Could not create pull request: " + err.Error())
+		customErr := errors.New("could not create pull request: " + err.Error())
+		utils.HandleError(customErr, pr.Debug, nil)
 	}
 
 	fmt.Println("Pull request successfully created:", *resp.HTMLURL)
@@ -58,10 +64,7 @@ func (pr *GitHubPullRequest) newPrBody() string {
 	if templateName != "" {
 		content, err := os.ReadFile(templateName)
 		if err != nil {
-			if pr.Debug {
-				debug.PrintStack()
-			}
-			log.Fatal(err)
+			utils.HandleError(err, pr.Debug, nil)
 		}
 
 		return string(content)
@@ -93,9 +96,8 @@ func (pr *GitHubPullRequest) determineTemplate() string {
 			temp = append(temp, modifiedStr)
 		}
 
-		response := commandline.AskMultipleChoice(
-			"Choose a pull request template to be applied", append(temp, "None"),
-		)
+		response := commandline.AskMultipleChoice("Choose a pull request template to be applied", append(temp, "None"))
+
 		if response != "None" {
 			return response
 		}

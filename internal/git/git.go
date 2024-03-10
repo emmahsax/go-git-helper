@@ -1,57 +1,39 @@
 package git
 
 import (
+	"errors"
 	"fmt"
-	"log"
-	"os"
-	"os/exec"
 	"regexp"
-	"runtime/debug"
 	"strings"
+
+	"github.com/emmahsax/go-git-helper/internal/executor"
+	"github.com/emmahsax/go-git-helper/internal/utils"
 )
 
 type Git struct {
-	Debug bool
+	Debug    bool
+	Executor executor.ExecutorInterface
 }
 
-func NewGit(debug bool) *Git {
+func NewGit(debug bool, executor executor.ExecutorInterface) *Git {
 	return &Git{
-		Debug: debug,
+		Debug:    debug,
+		Executor: executor,
 	}
 }
 
 func (g *Git) Checkout(branch string) {
-	cmd := exec.Command("git", "checkout", branch)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "checkout", branch)
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return
 	}
 }
 
 func (g *Git) CleanDeletedBranches() {
-	cmd := exec.Command("git", "branch", "-vv")
-	output, err := cmd.CombinedOutput()
+	output, err := g.Executor.Exec("actionAndOutput", "git", "branch", "-vv")
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return
 	}
 
@@ -63,13 +45,9 @@ func (g *Git) CleanDeletedBranches() {
 
 		if re.MatchString(branch) {
 			b := strings.Fields(branch)[0]
-			cmd = exec.Command("git", "branch", "-D", b)
-			output, err := cmd.CombinedOutput()
+			output, err = g.Executor.Exec("actionAndOutput", "git", "branch", "-D", b)
 			if err != nil {
-				if g.Debug {
-					debug.PrintStack()
-				}
-				log.Fatal(err)
+				utils.HandleError(err, g.Debug, nil)
 				return
 			}
 
@@ -79,61 +57,25 @@ func (g *Git) CleanDeletedBranches() {
 }
 
 func (g *Git) CreateBranch(branch string) {
-	cmd := exec.Command("git", "branch", "--no-track", branch)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "branch", "--no-track", branch)
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return
 	}
 }
 
 func (g *Git) CreateEmptyCommit() {
-	cmd := exec.Command("git", "commit", "--allow-empty", "-m", "Empty commit")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "commit", "--allow-empty", "-m", "Empty commit")
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return
 	}
 }
 
 func (g *Git) CurrentBranch() string {
-	cmd := exec.Command("git", "branch")
-	output, err := cmd.CombinedOutput()
+	output, err := g.Executor.Exec("actionAndOutput", "git", "branch")
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return ""
 	}
 
@@ -148,22 +90,19 @@ func (g *Git) CurrentBranch() string {
 }
 
 func (g *Git) DefaultBranch() string {
-	cmd := exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD")
-	output, err := cmd.CombinedOutput()
+	output, err := g.Executor.Exec("actionAndOutput", "git", "symbolic-ref", "refs/remotes/origin/HEAD")
 	if err != nil {
-		if string(output) == "fatal: ref refs/remotes/origin/HEAD is not a symbolic ref\n" {
+		if strings.Contains(err.Error(), "fatal: ") {
 			fmt.Printf("\nYour symbolic ref is not set up properly. Please run:\n  git-helper set-head-ref [defaultBranch]\n\nAnd then try your command again.\n\n")
 		}
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return ""
 	}
 
 	branch := strings.SplitN(strings.TrimSpace(string(output)), "/", 4)
 	if len(branch) != 4 {
-		log.Fatal("Invalid branch format")
+		err = errors.New("invalid branch format")
+		utils.HandleError(err, g.Debug, nil)
 		return ""
 	}
 
@@ -171,122 +110,62 @@ func (g *Git) DefaultBranch() string {
 }
 
 func (g *Git) Fetch() {
-	cmd := exec.Command("git", "fetch", "-p")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "fetch", "-p")
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return
 	}
 }
 
 func (g *Git) GetGitRootDir() string {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-
-	output, err := cmd.CombinedOutput()
+	output, err := g.Executor.Exec("actionAndOutput", "git", "rev-parse", "--show-toplevel")
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return ""
 	}
 	return strings.TrimSpace(string(output))
 }
 
 func (g *Git) Pull() {
-	cmd := exec.Command("git", "pull")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "pull")
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return
 	}
 }
 
 func (g *Git) PushBranch(branch string) {
-	cmd := exec.Command("git", "push", "--set-upstream", "origin", branch)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "push", "--set-upstream", "origin", branch)
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return
 	}
 }
 
 func (g *Git) RepoName() string {
-	output, err := exec.Command("git", "remote", "-v").Output()
+	output, err := g.Executor.Exec("actionAndOutput", "git", "remote", "-v")
 	if err != nil {
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return ""
 	}
 
 	remoteURL := string(output)
-	re := regexp.MustCompile(`\S\s*\S+.com\S{1}(\S*).git`)
+	re := regexp.MustCompile(`\S\s*\S+.com\S{1}(\S*) \(push\)`)
 	match := re.FindStringSubmatch(remoteURL)
 	if len(match) >= 2 {
-		return match[1]
+		return strings.Split(match[1], ".git")[0]
 	} else {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal("No match found")
+		err = errors.New("no match found")
+		utils.HandleError(err, g.Debug, nil)
 	}
 
 	return ""
 }
 
 func (g *Git) Remotes() []string {
-	cmd := exec.Command("git", "remote", "-v")
-
-	output, err := cmd.CombinedOutput()
+	output, err := g.Executor.Exec("actionAndOutput", "git", "remote", "-v")
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return []string{}
 	}
 
@@ -294,116 +173,35 @@ func (g *Git) Remotes() []string {
 }
 
 func (g *Git) Reset() {
-	cmd := exec.Command("git", "reset", "--hard", "origin/HEAD")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "reset", "--hard", "origin/HEAD")
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return
 	}
 }
 
 func (g *Git) SetHeadRef(defaultBranch string) {
-	cmd := exec.Command("git", "branch", "--set-upstream-to=origin/"+defaultBranch, defaultBranch)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "branch", "--set-upstream-to=origin/"+defaultBranch, defaultBranch)
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return
 	}
 
-	err = cmd.Wait()
+	_, err = g.Executor.Exec("waitAndStdout", "git", "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/"+defaultBranch)
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	cmd = exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/"+defaultBranch)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Start()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return
 	}
 }
 
 func (g *Git) Stash() {
-	cmd := exec.Command("git", "stash")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
+	_, err := g.Executor.Exec("waitAndStdout", "git", "stash")
 	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
+		utils.HandleError(err, g.Debug, nil)
 		return
 	}
 }
 
 func (g *Git) StashDrop() {
-	cmd := exec.Command("git", "stash", "drop")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
-	if err != nil {
-		if g.Debug {
-			debug.PrintStack()
-		}
-		log.Fatal(err)
-		return
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		// The command output an error itself, so we can just be done
-		return
-	}
+	_, _ = g.Executor.Exec("waitAndStdout", "git", "stash", "drop")
 }
