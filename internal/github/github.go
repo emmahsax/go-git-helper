@@ -7,7 +7,7 @@ import (
 
 	"github.com/emmahsax/go-git-helper/internal/configfile"
 	"github.com/emmahsax/go-git-helper/internal/utils"
-	"github.com/google/go-github/v58/github"
+	"github.com/google/go-github/v60/github"
 	"golang.org/x/oauth2"
 )
 
