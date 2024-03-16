@@ -56,12 +56,13 @@ func (g *Git) CleanDeletedBranches() {
 	}
 }
 
-func (g *Git) CreateBranch(branch string) {
+func (g *Git) CreateBranch(branch string) error {
 	_, err := g.Executor.Exec("waitAndStdout", "git", "branch", "--no-track", branch)
 	if err != nil {
-		utils.HandleError(err, g.Debug, nil)
-		return
+		return err
 	}
+
+	return nil
 }
 
 func (g *Git) CreateEmptyCommit() {
