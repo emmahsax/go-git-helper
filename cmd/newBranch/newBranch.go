@@ -2,7 +2,6 @@ package newBranch
 
 import (
 	"fmt"
-	"regexp"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/executor"
@@ -27,7 +26,7 @@ func NewCommand() *cobra.Command {
 		Args:                  cobra.MaximumNArgs(1),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newNewBranch(determineBranch(args, debug), debug, executor.NewExecutor(debug)).execute()
+			newNewBranch(determineBranch(args), debug, executor.NewExecutor(debug)).execute()
 			return nil
 		},
 	}
@@ -45,45 +44,34 @@ func newNewBranch(branch string, debug bool, executor executor.ExecutorInterface
 	}
 }
 
-func determineBranch(args []string, debug bool) string {
+func determineBranch(args []string) string {
 	if len(args) == 0 {
-		return getValidBranch()
+		return askForBranch()
 	} else {
-		if !isValidBranch(args[0]) {
-			fmt.Println("--- Invalid branch provided ---")
-			return getValidBranch()
-		} else {
-			return args[0]
-		}
+		return args[0]
 	}
 }
 
-func isValidBranch(branch string) bool {
-	validPattern := "^[a-zA-Z0-9-_]+$"
-	return regexp.MustCompile(validPattern).MatchString(branch)
-}
-
-func getValidBranch() string {
-	var branch string
-
-	for {
-		branch = commandline.AskOpenEndedQuestion("New branch name", false)
-
-		if isValidBranch(branch) {
-			break
-		}
-
-		fmt.Println("--- Invalid branch ---")
-	}
-
-	return branch
+func askForBranch() string {
+	return commandline.AskOpenEndedQuestion("New branch name", false)
 }
 
 func (nb *NewBranch) execute() {
 	fmt.Println("Attempting to create a new branch:", nb.Branch)
 	g := git.NewGit(nb.Debug, nb.Executor)
 	g.Pull()
-	g.CreateBranch(nb.Branch)
+
+	for {
+		err := g.CreateBranch(nb.Branch)
+
+		if err == nil {
+			break
+		}
+
+		fmt.Println("--- Invalid branch ---")
+		nb.Branch = askForBranch()
+	}
+
 	g.Checkout(nb.Branch)
 	g.PushBranch(nb.Branch)
 }

@@ -24,14 +24,8 @@ func Test_determineBranch(t *testing.T) {
 		args   []string
 		branch string
 	}{
-		{args: []string{}, branch: "hello-world"},
-		{args: []string{"hello-world"}, branch: "hello-world"},
-		{args: []string{"hello_world"}, branch: "hello_world"},
-		{args: []string{"hello world"}, branch: "hello-world"},
-		{args: []string{"hello_world!"}, branch: "hello-world"},
-		{args: []string{"hello_world?"}, branch: "hello-world"},
-		{args: []string{"#HelloWorld"}, branch: "hello-world"},
-		{args: []string{"hello-world*"}, branch: "hello-world"},
+		{args: []string{}, branch: "hello-something-or-other"},
+		{args: []string{"hello-world"}, branch: ""},
 	}
 
 	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
@@ -44,43 +38,25 @@ func Test_determineBranch(t *testing.T) {
 			return test.branch
 		}
 
-		o := determineBranch(test.args, true)
+		o := determineBranch(test.args)
 
-		if o != test.branch {
-			t.Errorf("branch should be %s, but was %s", test.branch, o)
+		if o == test.branch {
+			continue
 		}
+
+		if len(test.args) > 0 && o == test.args[0] {
+			continue
+		}
+
+		t.Errorf("branch should be %s, but was %s", test.branch, o)
 	}
 }
 
-func Test_isValidBranch(t *testing.T) {
+func Test_askForBranch(t *testing.T) {
 	tests := []struct {
 		branch string
-		valid  bool
 	}{
-		{branch: "hello-world", valid: true},
-		{branch: "hello_world", valid: true},
-		{branch: "hello world", valid: false},
-		{branch: "hello_world!", valid: false},
-		{branch: "hello_world?", valid: false},
-		{branch: "#HelloWorld", valid: false},
-		{branch: "hello-world*", valid: false},
-	}
-
-	for _, test := range tests {
-		o := isValidBranch(test.branch)
-
-		if o != test.valid {
-			t.Errorf("branch %s should be %v, but wasn't", test.branch, test.valid)
-		}
-	}
-}
-
-func Test_getValidBranch(t *testing.T) {
-	tests := []struct {
-		branch string
-		valid  bool
-	}{
-		{branch: "hello-world", valid: true},
+		{branch: "hello-world"},
 	}
 
 	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
@@ -93,7 +69,7 @@ func Test_getValidBranch(t *testing.T) {
 			return test.branch
 		}
 
-		o := getValidBranch()
+		o := askForBranch()
 
 		if o != test.branch {
 			t.Errorf("branch should be %s, but was %s", "hello-world", o)
