@@ -63,7 +63,6 @@ func (nb *NewBranch) execute() {
 
 	for {
 		err := g.CreateBranch(nb.Branch)
-
 		if err == nil {
 			break
 		}
