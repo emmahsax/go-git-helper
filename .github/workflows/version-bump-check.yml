@@ -1,0 +1,56 @@
+name: Version Bump Check
+
+on:
+  pull_request:
+
+env:
+  description: version update
+  file: main.go
+  regex: packageVersion\s+=\s+"\S+"
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: -1
+
+      - id: changes
+        name: Check for Changes
+        run: |
+          changed_file="$(git diff ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} ${{ env.file }})"
+          if [ -z "$changed_file" ]; then
+            exit 1
+          else
+            added_match=$(echo "$changed_file" | grep -E '^\+\s+${{ env.regex }}')
+            removed_match=$(echo "$changed_file" | grep -E '^\-\s+${{ env.regex }}')
+            if [[ -n "$added_match" ]] && [[ -n "$removed_match" ]]; then
+              echo "added_match=$added_match" >> $GITHUB_OUTPUT
+              echo "removed_match=$removed_match" >> $GITHUB_OUTPUT
+            else
+              exit 1
+            fi
+          fi
+
+      - if: success()
+        name: Found Change Comment
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          comment_tag: changes
+          message: |
+            :white_check_mark: Found ${{ env.description }} in `${{ env.file }}`:
+
+            ```diff
+            ${{ steps.changes.outputs.removed_match }}
+            ${{ steps.changes.outputs.added_match }}
+            ```
+
+      - if: failure()
+        name: Missing Change Comment
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          comment_tag: changes
+          message: |
+            :warning: Could not find ${{ env.description }} in `${{ env.file }}`
