@@ -21,7 +21,7 @@ import (
 
 var (
 	packageOwner      = "emmahsax"
-	packageVersion    = "0.0.6"
+	packageVersion    = "0.0.7-test"
 	packageRepository = "go-git-helper"
 )
 
