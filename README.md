@@ -278,6 +278,6 @@ When interacting with this repository, please follow [Contributor Covenant's Cod
 
 To make a new release:
 
+1. Verify `main` has or will have the newest version in the `main.go` file
 1. Merge the pull request via the big green button
-2. Run `git tag vX.X.X` and `git push --tag`
-3. Trigger a new workflow from [GitHub Actions](https://github.com/emmahsax/go-git-helper/actions/workflows/release.yml) and pass in the tag name just created
+3. Trigger a new workflow from [GitHub Actions](https://github.com/emmahsax/go-git-helper/actions/workflows/release.yml) and pass in the package version indicated in the `main.go` file (but include the `v` prefix)
