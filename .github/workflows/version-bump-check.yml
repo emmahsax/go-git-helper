@@ -1,4 +1,4 @@
-name: Check for Version Bump
+name: Version Bump Check
 
 on:
   pull_request:
