@@ -233,7 +233,7 @@ git-helper set-head-ref [defaultBranch]
 
 ### `setup`
 
-See [`Setup`](#setup).
+See [`Config Setup`](#config-setup).
 
 ### `update`
 
