@@ -108,18 +108,21 @@ func (u *Update) downloadAndSaveBinary(downloadURL, binaryName string) {
 	resp, err := http.Get(downloadURL)
 	if err != nil {
 		utils.HandleError(err, u.Debug, nil)
+		return
 	}
 	defer resp.Body.Close()
 
 	out, err := os.Create(binaryName)
 	if err != nil {
 		utils.HandleError(err, u.Debug, nil)
+		return
 	}
 	defer out.Close()
 
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
 		utils.HandleError(err, u.Debug, nil)
+		return
 	}
 }
 

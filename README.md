@@ -22,7 +22,7 @@ sudo mv git-helper_darwin_arm64 /usr/local/bin/git-helper
 
 ### Downloading from GitHub Releases
 
-Alternatively, you can download pre-built binaries straight from [GitHub Releases](https://github.com/emmahsax/go-git-helper/releases). After downloading, move them into `/usr/local/bin` and change the permissions. The examples below assume the binaries downloaded to `~/Downlaods`:
+Alternatively, you can download pre-built binaries straight from [GitHub Releases](https://github.com/emmahsax/go-git-helper/releases). After downloading, move them into `/usr/local/bin` and change the permissions. The examples below assume the binaries downloaded to `~/Downloads`:
 
 ```bash
 sudo mv ~/Downloads/git-helper_darwin_arm64 /usr/local/bin/git-helper

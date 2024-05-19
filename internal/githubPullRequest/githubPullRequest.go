@@ -54,6 +54,7 @@ func (pr *GitHubPullRequest) Create() {
 	if err != nil {
 		customErr := errors.New("could not create pull request: " + err.Error())
 		utils.HandleError(customErr, pr.Debug, nil)
+		return
 	}
 
 	fmt.Println("Pull request successfully created:", *resp.HTMLURL)
@@ -65,6 +66,7 @@ func (pr *GitHubPullRequest) newPrBody() string {
 		content, err := os.ReadFile(templateName)
 		if err != nil {
 			utils.HandleError(err, pr.Debug, nil)
+			return ""
 		}
 
 		return string(content)
