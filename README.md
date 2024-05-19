@@ -123,7 +123,7 @@ For a full list of the git aliases I prefer to use, check out my [Git Aliases gi
 
 ### With Completion
 
-To setup completion (auto-filling commands as you type), run:
+To set up completion (auto-filling commands as you type), run:
 
 ```bash
 mkdir -p ~/.git-helper/completions
