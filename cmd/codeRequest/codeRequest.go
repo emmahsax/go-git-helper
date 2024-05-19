@@ -58,6 +58,7 @@ func (cr *CodeRequest) execute() {
 	} else {
 		err := errors.New("could not locate GitHub or GitLab remote URLs")
 		utils.HandleError(err, cr.Debug, nil)
+		return
 	}
 }
 

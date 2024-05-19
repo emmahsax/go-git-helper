@@ -53,6 +53,7 @@ func (mr *GitLabMergeRequest) Create() {
 	if err != nil {
 		customErr := errors.New("could not create merge request: " + err.Error())
 		utils.HandleError(customErr, mr.Debug, nil)
+		return
 	}
 
 	fmt.Println("Merge request successfully created:", resp.WebURL)
@@ -75,6 +76,7 @@ func (mr *GitLabMergeRequest) newMrBody() string {
 		content, err := os.ReadFile(templateName)
 		if err != nil {
 			utils.HandleError(err, mr.Debug, nil)
+			return ""
 		}
 
 		return string(content)

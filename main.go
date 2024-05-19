@@ -21,8 +21,8 @@ import (
 
 var (
 	packageOwner      = "emmahsax"
-	packageVersion    = "0.0.6"
 	packageRepository = "go-git-helper"
+	packageVersion    = "0.0.7"
 )
 
 func main() {
@@ -48,8 +48,8 @@ func newCommand() *cobra.Command {
 	cmd.AddCommand(forgetLocalChanges.NewCommand())
 	cmd.AddCommand(forgetLocalCommits.NewCommand())
 	cmd.AddCommand(newBranch.NewCommand())
-	cmd.AddCommand(setup.NewCommand(packageOwner, packageRepository))
 	cmd.AddCommand(setHeadRef.NewCommand())
+	cmd.AddCommand(setup.NewCommand(packageOwner, packageRepository))
 	cmd.AddCommand(update.NewCommand(packageOwner, packageRepository))
 	cmd.AddCommand(version.NewCommand(packageVersion))
 

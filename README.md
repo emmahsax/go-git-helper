@@ -22,7 +22,7 @@ sudo mv git-helper_darwin_arm64 /usr/local/bin/git-helper
 
 ### Downloading from GitHub Releases
 
-Alternatively, you can download pre-built binaries straight from [GitHub Releases](https://github.com/emmahsax/go-git-helper/releases). After downloading, move them into `/usr/local/bin` and change the permissions. The examples below assume the binaries downloaded to `~/Downlaods`:
+Alternatively, you can download pre-built binaries straight from [GitHub Releases](https://github.com/emmahsax/go-git-helper/releases). After downloading, move them into `/usr/local/bin` and change the permissions. The examples below assume the binaries downloaded to `~/Downloads`:
 
 ```bash
 sudo mv ~/Downloads/git-helper_darwin_arm64 /usr/local/bin/git-helper
@@ -48,7 +48,7 @@ git-helper update
 
 Your `sudo` password may be required, and you may need to verify the package is runable as following the instructions above.
 
-## Setup
+## Config Setup
 
 Some of the commands can be used without any additional configuration. However, others utilize special GitHub or GitLab configuration. To set up access with GitHub/GitLab, run:
 
@@ -82,6 +82,8 @@ Please run with `help` to see more:
 ```bash
 git-helper --help
 ```
+
+In addition, hopefully all these options below make working with git and Go's Git Helper more seamless.
 
 ### With Plugins
 
@@ -119,7 +121,23 @@ And then, running `gnb` maps to `git new-branch`, which again routes to `git-hel
 
 For a full list of the git aliases I prefer to use, check out my [Git Aliases gist](https://gist.github.com/emmahsax/e8744fe253fba1f00a621c01a2bf68f5).
 
-Hopefully all these options makes working with git more seamless.
+### With Completion
+
+To set up completion (auto-filling commands as you type), run:
+
+```bash
+mkdir -p ~/.git-helper/completions
+git-helper completion bash >> ~/.git-helper/completions/completion.bash
+git-helper completion fish >> ~/.git-helper/completions/completion.fish
+git-helper completion powershell >> ~/.git-helper/completions/completion.powershell
+git-helper completion zsh >> ~/.git-helper/completions/completion.zsh
+```
+
+Then load the appropriate completion file for your scripting language to this to your shell file (e.g. load the following into your `~/.zshrc`):
+
+```bash
+source ~/.git-helper/completions/completion.zsh
+```
 
 ## Commands
 

@@ -6,7 +6,7 @@ on:
 env:
   description: version update
   file: main.go
-  regex: packageVersion\s+=\s+"\S+"
+  regex: \s+packageVersion\s+=\s+"\S+"
 
 jobs:
   main:
@@ -21,16 +21,27 @@ jobs:
         name: Check for Changes
         run: |
           changed_file="$(git diff ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} ${{ env.file }})"
+
           if [ -z "$changed_file" ]; then
             exit 1
           else
-            added_match=$(echo "$changed_file" | grep -E '^\+\s+${{ env.regex }}')
-            removed_match=$(echo "$changed_file" | grep -E '^\-\s+${{ env.regex }}')
-            if [[ -n "$added_match" ]] && [[ -n "$removed_match" ]]; then
+            added_match=$(echo "$changed_file" | grep -E '^\+${{ env.regex }}' || true)
+            removed_match=$(echo "$changed_file" | grep -E '^\-${{ env.regex }}' || true)
+
+            if [[ -z "$added_match" ]] && [[ -z "$removed_match" ]]; then
+              exit 1
+            fi
+
+            if [[ -n "$added_match" ]]; then
               echo "added_match=$added_match" >> $GITHUB_OUTPUT
+            else
+              echo "added_match=" >> $GITHUB_OUTPUT
+            fi
+
+            if [[ -n "$removed_match" ]]; then
               echo "removed_match=$removed_match" >> $GITHUB_OUTPUT
             else
-              exit 1
+              echo "removed_match=" >> $GITHUB_OUTPUT
             fi
           fi
 
