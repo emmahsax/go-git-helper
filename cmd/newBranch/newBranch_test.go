@@ -34,7 +34,7 @@ func Test_determineBranch(t *testing.T) {
 	})
 
 	for _, test := range tests {
-		commandline.AskOpenEndedQuestion = func(question string, secret bool) string {
+		commandline.AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string {
 			return test.branch
 		}
 
@@ -65,7 +65,7 @@ func Test_askForBranch(t *testing.T) {
 	})
 
 	for _, test := range tests {
-		commandline.AskOpenEndedQuestion = func(question string, secret bool) string {
+		commandline.AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string {
 			return test.branch
 		}
 

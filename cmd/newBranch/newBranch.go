@@ -53,7 +53,7 @@ func determineBranch(args []string) string {
 }
 
 func askForBranch() string {
-	return commandline.AskOpenEndedQuestion("New branch name", false)
+	return commandline.AskOpenEndedQuestion("New branch name", "", false)
 }
 
 func (nb *NewBranch) execute() {
