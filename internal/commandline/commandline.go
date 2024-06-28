@@ -19,22 +19,31 @@ var AskMultipleChoice = func(question string, choices []string) string {
 	return selectedOption
 }
 
-var AskOpenEndedQuestion = func(question string, secret bool) string {
+var AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string {
 	var result string
 	for {
 		if secret {
 			result, _ = pterm.DefaultInteractiveTextInput.
-				WithMultiLine(false).
 				WithDefaultText(question).
 				WithMask("*").
+				WithMultiLine(false).
+				WithOnInterruptFunc(func() {
+					os.Exit(1)
+				}).
+				Show()
+		} else if defaultVal == "" {
+			result, _ = pterm.DefaultInteractiveTextInput.
+				WithDefaultText(question).
+				WithMultiLine(false).
 				WithOnInterruptFunc(func() {
 					os.Exit(1)
 				}).
 				Show()
 		} else {
 			result, _ = pterm.DefaultInteractiveTextInput.
-				WithMultiLine(false).
 				WithDefaultText(question).
+				WithDefaultValue(defaultVal).
+				WithMultiLine(false).
 				WithOnInterruptFunc(func() {
 					os.Exit(1)
 				}).

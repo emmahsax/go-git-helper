@@ -95,7 +95,7 @@ gitlab_token: hello_world
 		t.Cleanup(func() {
 			commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion
 		})
-		commandline.AskOpenEndedQuestion = func(question string, secret bool) string {
+		commandline.AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string {
 			return "hello_world"
 		}
 
@@ -150,7 +150,7 @@ func Test_generateConfigFileContents(t *testing.T) {
 	t.Cleanup(func() {
 		commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion
 	})
-	commandline.AskOpenEndedQuestion = func(question string, secret bool) string {
+	commandline.AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string {
 		return "hello_world"
 	}
 
