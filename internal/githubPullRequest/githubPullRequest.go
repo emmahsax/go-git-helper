@@ -11,7 +11,7 @@ import (
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/github"
 	"github.com/emmahsax/go-git-helper/internal/utils"
-	go_github "github.com/google/go-github/v60/github"
+	go_github "github.com/google/go-github/v63/github"
 )
 
 type GitHubPullRequest struct {
