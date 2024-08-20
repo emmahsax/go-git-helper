@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -69,8 +70,21 @@ func (pr *GitHubPullRequest) newPrBody() string {
 			return ""
 		}
 
+		re := regexp.MustCompile(`[A-Za-z]+-\d+`)
+		match := re.FindString(pr.NewPrTitle)
+
+		if match != "" {
+			includeJiraLink := commandline.AskYesNoQuestion(
+				fmt.Sprintf("Include a link to the Jira ticket (%s) in the beginning of the pull request body?", match),
+			)
+			if includeJiraLink {
+				return "### [" + match + "]\n\n" + string(content)
+			}
+		}
+
 		return string(content)
 	}
+
 	return ""
 }
 
