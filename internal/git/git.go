@@ -151,7 +151,7 @@ func (g *Git) RepoName() string {
 	}
 
 	remoteURL := string(output)
-	re := regexp.MustCompile(`\S\s*\S+.com\S{1}(\S*) \(push\)`)
+	re := regexp.MustCompile(`\S\s*\S+\.com\S{1}(\S*) \(push\)`)
 	match := re.FindStringSubmatch(remoteURL)
 	if len(match) >= 2 {
 		return strings.Split(match[1], ".git")[0]
