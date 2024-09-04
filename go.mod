@@ -6,9 +6,9 @@ require (
 	github.com/google/go-github/v64 v64.0.0
 	github.com/pterm/pterm v0.12.79
 	github.com/spf13/cobra v1.8.1
-	github.com/tidwall/gjson v1.17.1
-	github.com/xanzy/go-gitlab v0.106.0
-	golang.org/x/oauth2 v0.21.0
+	github.com/tidwall/gjson v1.17.3
+	github.com/xanzy/go-gitlab v0.108.0
+	golang.org/x/oauth2 v0.22.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
