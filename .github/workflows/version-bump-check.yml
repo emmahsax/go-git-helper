@@ -47,7 +47,7 @@ jobs:
 
       - if: success()
         name: Found Change Comment
-        uses: thollander/actions-comment-pull-request@v2
+        uses: thollander/actions-comment-pull-request@v3
         with:
           comment_tag: changes
           message: |
@@ -60,7 +60,7 @@ jobs:
 
       - if: failure()
         name: Missing Change Comment
-        uses: thollander/actions-comment-pull-request@v2
+        uses: thollander/actions-comment-pull-request@v3
         with:
           comment_tag: changes
           message: |
