@@ -47,9 +47,9 @@ jobs:
 
       - if: success()
         name: Found Change Comment
-        uses: thollander/actions-comment-pull-request@v2
+        uses: thollander/actions-comment-pull-request@v3
         with:
-          comment_tag: changes
+          comment-tag: changes
           message: |
             :white_check_mark: Found ${{ env.description }} in `${{ env.file }}`:
 
@@ -60,8 +60,8 @@ jobs:
 
       - if: failure()
         name: Missing Change Comment
-        uses: thollander/actions-comment-pull-request@v2
+        uses: thollander/actions-comment-pull-request@v3
         with:
-          comment_tag: changes
+          comment-tag: changes
           message: |
             :warning: Could not find ${{ env.description }} in `${{ env.file }}`
