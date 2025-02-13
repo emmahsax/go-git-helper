@@ -11,5 +11,12 @@
       "updateTypes": ["patch"],
       "enabled": false
     }
-  ]
+  ],
+  "postUpgradeTasks": {
+    "commands": [
+      "go mod tidy"
+    ],
+    "fileFilters": ["go.mod", "go.sum"],
+    "executionMode": "update"
+  }
 }
