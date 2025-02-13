@@ -40,12 +40,12 @@ func NewGitHubPullRequest(options map[string]string, debug bool) *GitHubPullRequ
 func (pr *GitHubPullRequest) Create() {
 	d, _ := strconv.ParseBool(pr.Draft)
 	options := go_github.NewPullRequest{
-		Base:                go_github.String(pr.BaseBranch),
-		Body:                go_github.String(pr.newPrBody()),
-		Draft:               go_github.Bool(d),
-		Head:                go_github.String(pr.LocalBranch),
-		MaintainerCanModify: go_github.Bool(true),
-		Title:               go_github.String(pr.NewPrTitle),
+		Base:                go_github.Ptr(pr.BaseBranch),
+		Body:                go_github.Ptr(pr.newPrBody()),
+		Draft:               go_github.Ptr(d),
+		Head:                go_github.Ptr(pr.LocalBranch),
+		MaintainerCanModify: go_github.Ptr(true),
+		Title:               go_github.Ptr(pr.NewPrTitle),
 	}
 
 	repo := strings.Split(pr.LocalRepo, "/")
