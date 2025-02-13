@@ -20,4 +20,4 @@ jobs:
     with:
       branch: ${{ needs.setup.outputs.branch }}
       build_command: task build
-      go_version: 1.23
+      go_version: 1.24
