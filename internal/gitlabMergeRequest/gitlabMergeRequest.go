@@ -11,7 +11,7 @@ import (
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/gitlab"
 	"github.com/emmahsax/go-git-helper/internal/utils"
-	go_github "github.com/xanzy/go-gitlab"
+	go_gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 type GitLabMergeRequest struct {
@@ -39,13 +39,13 @@ func NewGitLabMergeRequest(options map[string]string, debug bool) *GitLabMergeRe
 func (mr *GitLabMergeRequest) Create() {
 	t := mr.determineTitle()
 
-	options := go_github.CreateMergeRequestOptions{
-		Description:        go_github.Ptr(mr.newMrBody()),
-		RemoveSourceBranch: go_github.Ptr(true),
-		SourceBranch:       go_github.Ptr(mr.LocalBranch),
-		Squash:             go_github.Ptr(true),
-		TargetBranch:       go_github.Ptr(mr.BaseBranch),
-		Title:              go_github.Ptr(t),
+	options := go_gitlab.CreateMergeRequestOptions{
+		Description:        go_gitlab.Ptr(mr.newMrBody()),
+		RemoveSourceBranch: go_gitlab.Ptr(true),
+		SourceBranch:       go_gitlab.Ptr(mr.LocalBranch),
+		Squash:             go_gitlab.Ptr(true),
+		TargetBranch:       go_gitlab.Ptr(mr.BaseBranch),
+		Title:              go_gitlab.Ptr(t),
 	}
 
 	fmt.Println("Creating merge request:", t)
