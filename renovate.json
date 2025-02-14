@@ -1,11 +1,5 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "allowedCommands" : [
-    "go mod tidy"
-  ],
-  "allowedPostUpgradeCommands" : [
-    "go mod tidy"
-  ],
   "extends": [
     "config:base"
   ],
@@ -17,12 +11,5 @@
       "updateTypes": ["patch"],
       "enabled": false
     }
-  ],
-  "postUpgradeTasks": {
-    "commands": [
-      "go mod tidy"
-    ],
-    "fileFilters": ["go.mod", "go.sum"],
-    "executionMode": "update"
-  }
+  ]
 }
