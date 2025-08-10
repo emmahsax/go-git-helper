@@ -23,13 +23,13 @@ jobs:
           changed_file="$(git diff ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} ${{ env.file }})"
 
           if [ -z "$changed_file" ]; then
-            exit 1
+            echo "no_changes=true" >> $GITHUB_OUTPUT
           else
             added_match=$(echo "$changed_file" | grep -E '^\+${{ env.regex }}' || true)
             removed_match=$(echo "$changed_file" | grep -E '^\-${{ env.regex }}' || true)
 
             if [[ -z "$added_match" ]] && [[ -z "$removed_match" ]]; then
-              exit 1
+              echo "no_changes=true" >> $GITHUB_OUTPUT
             fi
 
             if [[ -n "$added_match" ]]; then
@@ -45,7 +45,7 @@ jobs:
             fi
           fi
 
-      - if: success()
+      - if: ${{ steps.changes.outputs.no_changes != 'true' }}
         name: Found Change Comment
         uses: thollander/actions-comment-pull-request@v3
         with:
@@ -58,7 +58,7 @@ jobs:
             ${{ steps.changes.outputs.added_match }}
             ```
 
-      - if: failure()
+      - if: ${{ steps.changes.outputs.no_changes == 'true' }}
         name: Missing Change Comment
         uses: thollander/actions-comment-pull-request@v3
         with:
