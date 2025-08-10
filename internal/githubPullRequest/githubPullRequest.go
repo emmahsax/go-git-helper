@@ -12,7 +12,7 @@ import (
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/github"
 	"github.com/emmahsax/go-git-helper/internal/utils"
-	go_github "github.com/google/go-github/v69/github"
+	go_github "github.com/google/go-github/v74/github"
 )
 
 type GitHubPullRequest struct {
