@@ -1,6 +1,6 @@
 module github.com/emmahsax/go-git-helper
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/google/go-github/v74 v74.0.0
@@ -8,7 +8,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/tidwall/gjson v1.18.0
 	gitlab.com/gitlab-org/api/client-go v0.137.0
-	golang.org/x/oauth2 v0.30.0
+	golang.org/x/oauth2 v0.33.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
