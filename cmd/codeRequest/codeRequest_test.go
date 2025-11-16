@@ -443,6 +443,73 @@ func Test_applySpecialCapitalization(t *testing.T) {
 			input:    "Enable ssl and tls encryption",
 			expected: "Enable SSL and TLS encryption",
 		},
+		{
+			name:     "CI/CD pipeline",
+			input:    "Setup ci/cd pipeline",
+			expected: "Setup CI/CD pipeline",
+		},
+	}
+
+	executor := &MockExecutor{Debug: true}
+	cr := newCodeRequest(true, executor)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resp := cr.applySpecialCapitalization(test.input)
+			if resp != test.expected {
+				t.Fatalf(`expected %v, but got %v`, test.expected, resp)
+			}
+		})
+	}
+}
+
+func Test_applySpecialCapitalization_noConfig(t *testing.T) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	configDir := filepath.Join(homeDir, ".git-helper")
+	configFile := filepath.Join(configDir, "config.yml")
+
+	// Save existing config if present
+	existingConfig, _ := os.ReadFile(configFile)
+
+	// Remove config file to test no-config behavior
+	os.Remove(configFile)
+
+	// Restore config after test
+	defer func() {
+		if len(existingConfig) > 0 {
+			os.WriteFile(configFile, existingConfig, 0644)
+		}
+	}()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "No config - AWS stays lowercase",
+			input:    "Deploy to aws",
+			expected: "Deploy to aws",
+		},
+		{
+			name:     "No config - GitHub stays as is",
+			input:    "Fix github integration",
+			expected: "Fix github integration",
+		},
+		{
+			name:     "No config - multiple words unchanged",
+			input:    "Update aws and gcp configs",
+			expected: "Update aws and gcp configs",
+		},
+		{
+			name:     "No config - CI/CD unchanged",
+			input:    "Setup ci/cd pipeline",
+			expected: "Setup ci/cd pipeline",
+		},
 	}
 
 	executor := &MockExecutor{Debug: true}

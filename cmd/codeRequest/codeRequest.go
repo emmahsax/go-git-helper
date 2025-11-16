@@ -21,13 +21,6 @@ type CodeRequest struct {
 	Executor executor.ExecutorInterface
 }
 
-var defaultSpecialCapitalization = map[string]string{
-	"github": "GitHub",
-	"gitlab": "GitLab",
-	"go":     "Go",
-	"golang": "Golang",
-}
-
 func NewCommand() *cobra.Command {
 	var (
 		debug bool
@@ -184,7 +177,7 @@ func (cr *CodeRequest) applySpecialCapitalization(title string) string {
 	capitalizationMap := cf.SpecialCapitalization()
 
 	if len(capitalizationMap) == 0 {
-		capitalizationMap = defaultSpecialCapitalization
+		return title
 	}
 
 	words := strings.FieldsFunc(title, func(r rune) bool {
