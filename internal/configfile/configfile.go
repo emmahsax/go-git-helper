@@ -124,19 +124,27 @@ func (cf *ConfigFile) SpecialCapitalization() map[string]string {
 }
 
 func (cf *ConfigFile) configFileContents() map[string]string {
-	var result map[string]string
+	var rawResult map[string]interface{}
 	data, err := os.ReadFile(cf.ConfigFile())
 	if err != nil {
 		customErr := errors.New("error reading file: " + err.Error())
 		utils.HandleError(customErr, cf.Debug, nil)
-		return result
+		return map[string]string{}
 	}
 
-	err = yaml.Unmarshal(data, &result)
+	err = yaml.Unmarshal(data, &rawResult)
 	if err != nil {
 		customErr := errors.New("error unmarshaling YAML: " + err.Error())
 		utils.HandleError(customErr, cf.Debug, nil)
-		return result
+		return map[string]string{}
+	}
+
+	// Convert to map[string]string, skipping non-string values
+	result := make(map[string]string)
+	for key, value := range rawResult {
+		if strValue, ok := value.(string); ok {
+			result[key] = strValue
+		}
 	}
 
 	return result

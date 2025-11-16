@@ -201,6 +201,8 @@ special_capitalization:
 
 If that hash isn't present in the config file, then it won't apply any special capitalization.
 
+**NOTE: If you add the `special_capitalization` hash to your config file and attempt to use the `code-request` command with any Git Helper version < 0.1.0, then the command will fail.**
+
 You can choose whether to accept this title or not. If the title's declined, you can provide your own code request title. In addition, (GitHub PR feature only) if the code notices any match of `[A-Za-z]+-\d+` in the title of the code request, then it'll ask if you'd like to add a link for the _first_ match to your PR body.
 
 The command will also ask you if the default branch of the repository is the proper base branch to use. You can say whether that is correct or not, and if it's incorrect, you can give the command your chosen base branch.
