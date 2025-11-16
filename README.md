@@ -199,7 +199,7 @@ special_capitalization:
   .
 ```
 
-If that has isn't present in the config file, then it won't apply any special capitalization.
+If that hash isn't present in the config file, then it won't apply any special capitalization.
 
 You can choose whether to accept this title or not. If the title's declined, you can provide your own code request title. In addition, (GitHub PR feature only) if the code notices any match of `[A-Za-z]+-\d+` in the title of the code request, then it'll ask if you'd like to add a link for the _first_ match to your PR body.
 
