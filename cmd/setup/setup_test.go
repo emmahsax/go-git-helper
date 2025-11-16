@@ -60,6 +60,10 @@ func (mc *MockConfig) GitLabToken() string {
 	return "random-gitlab-token"
 }
 
+func (mc *MockConfig) SpecialCapitalization() map[string]string {
+	return map[string]string{}
+}
+
 func Test_createOrUpdateConfig(t *testing.T) {
 	tests := []struct {
 		name     string

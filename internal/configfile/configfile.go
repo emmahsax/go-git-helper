@@ -17,6 +17,7 @@ type ConfigFileInterface interface {
 	GitLabUsername() string
 	GitHubToken() string
 	GitLabToken() string
+	SpecialCapitalization() map[string]string
 }
 
 type ConfigFile struct {
@@ -95,6 +96,31 @@ func (cf *ConfigFile) GitLabToken() string {
 	} else {
 		return configFile[":gitlab_token"]
 	}
+}
+
+func (cf *ConfigFile) SpecialCapitalization() map[string]string {
+	var result map[string]interface{}
+	data, err := os.ReadFile(cf.ConfigFile())
+	if err != nil {
+		return map[string]string{}
+	}
+
+	err = yaml.Unmarshal(data, &result)
+	if err != nil {
+		return map[string]string{}
+	}
+
+	if specialCap, ok := result["special_capitalization"].(map[string]interface{}); ok {
+		capitalizations := make(map[string]string)
+		for key, value := range specialCap {
+			if strValue, ok := value.(string); ok {
+				capitalizations[key] = strValue
+			}
+		}
+		return capitalizations
+	}
+
+	return map[string]string{}
 }
 
 func (cf *ConfigFile) configFileContents() map[string]string {

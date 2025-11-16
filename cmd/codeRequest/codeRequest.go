@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
+	"github.com/emmahsax/go-git-helper/internal/configfile"
 	"github.com/emmahsax/go-git-helper/internal/executor"
 	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/emmahsax/go-git-helper/internal/githubPullRequest"
@@ -20,39 +21,11 @@ type CodeRequest struct {
 	Executor executor.ExecutorInterface
 }
 
-var specialCapitalization = map[string]string{
-	"api":        "API",
-	"aws":        "AWS",
-	"cd":         "CD",
-	"ci":         "CI",
-	"css":        "CSS",
-	"gcp":        "GCP",
-	"gh":         "GH",
-	"github":     "GitHub",
-	"gitlab":     "GitLab",
-	"gl":         "GL",
-	"graphql":    "GraphQL",
-	"grpc":       "gRPC",
-	"html":       "HTML",
-	"http":       "HTTP",
-	"https":      "HTTPS",
-	"id":         "ID",
-	"js":         "JS",
-	"json":       "JSON",
-	"jwt":        "JWT",
-	"nosql":      "NoSQL",
-	"oauth":      "OAuth",
-	"postgresql": "PostgreSQL",
-	"rest":       "REST",
-	"saml":       "SAML",
-	"sql":        "SQL",
-	"ts":         "TS",
-	"ui":         "UI",
-	"uri":        "URI",
-	"url":        "URL",
-	"ux":         "UX",
-	"xml":        "XML",
-	"yaml":       "YAML",
+var defaultSpecialCapitalization = map[string]string{
+	"github": "GitHub",
+	"gitlab": "GitLab",
+	"go":     "Go",
+	"golang": "Golang",
 }
 
 func NewCommand() *cobra.Command {
@@ -207,6 +180,13 @@ func (cr *CodeRequest) titleize(s string) string {
 }
 
 func (cr *CodeRequest) applySpecialCapitalization(title string) string {
+	cf := configfile.NewConfigFile(cr.Debug)
+	capitalizationMap := cf.SpecialCapitalization()
+
+	if len(capitalizationMap) == 0 {
+		capitalizationMap = defaultSpecialCapitalization
+	}
+
 	words := strings.FieldsFunc(title, func(r rune) bool {
 		return r == ' ' || r == '-' || r == '_' || r == '/' || r == '\\' || r == '.'
 	})
@@ -219,7 +199,7 @@ func (cr *CodeRequest) applySpecialCapitalization(title string) string {
 	}
 
 	for i, word := range words {
-		if specialCap, ok := specialCapitalization[strings.ToLower(word)]; ok {
+		if specialCap, ok := capitalizationMap[strings.ToLower(word)]; ok {
 			words[i] = specialCap
 		}
 	}
