@@ -20,7 +20,6 @@ type CodeRequest struct {
 	Executor executor.ExecutorInterface
 }
 
-// Map of special words that should have specific capitalization
 var specialCapitalization = map[string]string{
 	"api":        "API",
 	"aws":        "AWS",
@@ -208,12 +207,10 @@ func (cr *CodeRequest) titleize(s string) string {
 }
 
 func (cr *CodeRequest) applySpecialCapitalization(title string) string {
-	// Split on word boundaries (spaces, hyphens, slashes, etc.)
 	words := strings.FieldsFunc(title, func(r rune) bool {
 		return r == ' ' || r == '-' || r == '_' || r == '/' || r == '\\' || r == '.'
 	})
 
-	// Track the delimiters to reconstruct the string properly
 	delimiters := []rune{}
 	for _, char := range title {
 		if char == ' ' || char == '-' || char == '_' || char == '/' || char == '\\' || char == '.' {
@@ -221,14 +218,12 @@ func (cr *CodeRequest) applySpecialCapitalization(title string) string {
 		}
 	}
 
-	// Apply special capitalization where applicable
 	for i, word := range words {
 		if specialCap, ok := specialCapitalization[strings.ToLower(word)]; ok {
 			words[i] = specialCap
 		}
 	}
 
-	// Reconstruct the string with original delimiters
 	if len(words) == 0 {
 		return title
 	}
