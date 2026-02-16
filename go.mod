@@ -1,9 +1,10 @@
 module github.com/emmahsax/go-git-helper
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/google/go-github/v74 v74.0.0
+	github.com/google/go-github/v83 v83.0.0
 	github.com/pterm/pterm v0.12.79
 	github.com/spf13/cobra v1.9.1
 	github.com/tidwall/gjson v1.18.0
@@ -17,7 +18,7 @@ require (
 	atomicgo.dev/keyboard v0.2.9 // indirect
 	atomicgo.dev/schedule v0.1.0 // indirect
 	github.com/containerd/console v1.0.3 // indirect
-	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/gookit/color v1.5.4 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
