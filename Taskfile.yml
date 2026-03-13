@@ -1,6 +1,11 @@
 version: "3"
 
 tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list-all
+
   build:
     desc: Build git-helper for all arches and OSes
     cmds:
