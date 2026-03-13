@@ -22,7 +22,7 @@ import (
 var (
 	packageOwner      = "emmahsax"
 	packageRepository = "go-git-helper"
-	packageVersion    = "0.1.1"
+	packageVersion    = "0.1.2"
 )
 
 func main() {

@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 )
 
 func Test_NewGitLab(t *testing.T) {
