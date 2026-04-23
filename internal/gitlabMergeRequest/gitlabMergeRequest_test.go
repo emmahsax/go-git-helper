@@ -41,6 +41,7 @@ func Test_determineTitle(t *testing.T) {
 				"draft":        test.draft,
 			},
 			false,
+			true,
 		)
 		actual := mr.determineTitle()
 
@@ -76,7 +77,8 @@ func Test_newMrBody(t *testing.T) {
 	}
 
 	mr := &GitLabMergeRequest{
-		GitRootDir: tempDir,
+		GitRootDir:      tempDir,
+		InteractiveMode: true,
 	}
 
 	originalAskYesNoQuestion := commandline.AskYesNoQuestion
@@ -129,7 +131,8 @@ func Test_templateNameToApply(t *testing.T) {
 	}
 
 	mr := &GitLabMergeRequest{
-		GitRootDir: tempDir,
+		GitRootDir:      tempDir,
+		InteractiveMode: true,
 	}
 
 	originalAskYesNoQuestion := commandline.AskYesNoQuestion
@@ -158,7 +161,8 @@ func Test_templateNameToApply(t *testing.T) {
 
 func Test_determineTemplate(t *testing.T) {
 	mr := &GitLabMergeRequest{
-		GitRootDir: "/path/to/repo",
+		GitRootDir:      "/path/to/repo",
+		InteractiveMode: true,
 	}
 
 	originalAskYesNoQuestion := commandline.AskYesNoQuestion

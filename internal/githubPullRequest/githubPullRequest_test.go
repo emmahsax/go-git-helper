@@ -44,6 +44,7 @@ func Test_newPrBody(t *testing.T) {
 			"draft":       "false",
 		},
 		false,
+		true,
 	)
 
 	originalAskYesNoQuestion := commandline.AskYesNoQuestion
@@ -96,7 +97,8 @@ func Test_templateNameToApply(t *testing.T) {
 	}
 
 	mr := &GitHubPullRequest{
-		GitRootDir: tempDir,
+		GitRootDir:      tempDir,
+		InteractiveMode: true,
 	}
 
 	originalAskYesNoQuestion := commandline.AskYesNoQuestion
@@ -125,7 +127,8 @@ func Test_templateNameToApply(t *testing.T) {
 
 func Test_determineTemplate(t *testing.T) {
 	mr := &GitHubPullRequest{
-		GitRootDir: "/path/to/repo",
+		GitRootDir:      "/path/to/repo",
+		InteractiveMode: true,
 	}
 
 	originalAskYesNoQuestion := commandline.AskYesNoQuestion

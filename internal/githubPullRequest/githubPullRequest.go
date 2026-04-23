@@ -16,24 +16,26 @@ import (
 )
 
 type GitHubPullRequest struct {
-	BaseBranch  string
-	Debug       bool
-	Draft       string
-	GitRootDir  string
-	LocalBranch string
-	LocalRepo   string
-	NewPrTitle  string
+	BaseBranch      string
+	Debug           bool
+	Draft           string
+	GitRootDir      string
+	InteractiveMode bool
+	LocalBranch     string
+	LocalRepo       string
+	NewPrTitle      string
 }
 
-func NewGitHubPullRequest(options map[string]string, debug bool) *GitHubPullRequest {
+func NewGitHubPullRequest(options map[string]string, debug, interactiveMode bool) *GitHubPullRequest {
 	return &GitHubPullRequest{
-		BaseBranch:  options["baseBranch"],
-		Debug:       debug,
-		Draft:       options["draft"],
-		GitRootDir:  options["gitRootDir"],
-		LocalBranch: options["localBranch"],
-		LocalRepo:   options["localRepo"],
-		NewPrTitle:  options["newPrTitle"],
+		BaseBranch:      options["baseBranch"],
+		Debug:           debug,
+		Draft:           options["draft"],
+		GitRootDir:      options["gitRootDir"],
+		InteractiveMode: interactiveMode,
+		LocalBranch:     options["localBranch"],
+		LocalRepo:       options["localRepo"],
+		NewPrTitle:      options["newPrTitle"],
 	}
 }
 
@@ -74,9 +76,16 @@ func (pr *GitHubPullRequest) newPrBody() string {
 		match := re.FindString(pr.NewPrTitle)
 
 		if match != "" {
-			includeJiraLink := commandline.AskYesNoQuestion(
-				fmt.Sprintf("Include a link to the Jira ticket (%s) in the beginning of the pull request body?", match),
-			)
+			var includeJiraLink bool
+
+			if pr.InteractiveMode {
+				includeJiraLink = commandline.AskYesNoQuestion(
+					fmt.Sprintf("Include a link to the Jira ticket (%s) in the beginning of the pull request body?", match),
+				)
+			} else {
+				includeJiraLink = true
+			}
+
 			if includeJiraLink {
 				return "### [" + match + "]\n\n" + string(content)
 			}
@@ -99,9 +108,16 @@ func (pr *GitHubPullRequest) templateNameToApply() string {
 
 func (pr *GitHubPullRequest) determineTemplate() string {
 	if len(pr.prTemplateOptions()) == 1 {
-		applySingleTemplate := commandline.AskYesNoQuestion(
-			fmt.Sprintf("Apply the pull request template from %s?", strings.TrimPrefix(pr.prTemplateOptions()[0], pr.GitRootDir+"/")),
-		)
+		var applySingleTemplate bool
+
+		if pr.InteractiveMode {
+			applySingleTemplate = commandline.AskYesNoQuestion(
+				fmt.Sprintf("Apply the pull request template from %s?", strings.TrimPrefix(pr.prTemplateOptions()[0], pr.GitRootDir+"/")),
+			)
+		} else {
+			applySingleTemplate = true
+		}
+
 		if applySingleTemplate {
 			return pr.prTemplateOptions()[0]
 		}
@@ -112,10 +128,14 @@ func (pr *GitHubPullRequest) determineTemplate() string {
 			temp = append(temp, modifiedStr)
 		}
 
-		response := commandline.AskMultipleChoice("Choose a pull request template to be applied", append(temp, "None"))
+		if pr.InteractiveMode {
+			response := commandline.AskMultipleChoice("Choose a pull request template to be applied", append(temp, "None"))
 
-		if response != "None" {
-			return response
+			if response != "None" {
+				return response
+			}
+		} else {
+			return pr.prTemplateOptions()[0]
 		}
 	}
 
