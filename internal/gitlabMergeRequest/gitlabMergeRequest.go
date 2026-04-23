@@ -15,24 +15,26 @@ import (
 )
 
 type GitLabMergeRequest struct {
-	BaseBranch   string
-	Debug        bool
-	Draft        string
-	GitRootDir   string
-	LocalBranch  string
-	LocalProject string
-	NewMrTitle   string
+	BaseBranch      string
+	Debug           bool
+	Draft           string
+	GitRootDir      string
+	LocalBranch     string
+	InteractiveMode bool
+	LocalProject    string
+	NewMrTitle      string
 }
 
-func NewGitLabMergeRequest(options map[string]string, debug bool) *GitLabMergeRequest {
+func NewGitLabMergeRequest(options map[string]string, debug, interactiveMode bool) *GitLabMergeRequest {
 	return &GitLabMergeRequest{
-		BaseBranch:   options["baseBranch"],
-		Debug:        debug,
-		Draft:        options["draft"],
-		GitRootDir:   options["gitRootDir"],
-		LocalBranch:  options["localBranch"],
-		LocalProject: options["localProject"],
-		NewMrTitle:   options["newMrTitle"],
+		BaseBranch:      options["baseBranch"],
+		Debug:           debug,
+		Draft:           options["draft"],
+		GitRootDir:      options["gitRootDir"],
+		LocalBranch:     options["localBranch"],
+		InteractiveMode: interactiveMode,
+		LocalProject:    options["localProject"],
+		NewMrTitle:      options["newMrTitle"],
 	}
 }
 
@@ -95,9 +97,16 @@ func (mr *GitLabMergeRequest) templateNameToApply() string {
 
 func (mr *GitLabMergeRequest) determineTemplate() string {
 	if len(mr.mrTemplateOptions()) == 1 {
-		applySingleTemplate := commandline.AskYesNoQuestion(
-			fmt.Sprintf("Apply the merge request template from %s?", strings.TrimPrefix(mr.mrTemplateOptions()[0], mr.GitRootDir+"/")),
-		)
+		var applySingleTemplate bool
+
+		if mr.InteractiveMode {
+			applySingleTemplate = commandline.AskYesNoQuestion(
+				fmt.Sprintf("Apply the merge request template from %s?", strings.TrimPrefix(mr.mrTemplateOptions()[0], mr.GitRootDir+"/")),
+			)
+		} else {
+			applySingleTemplate = true
+		}
+
 		if applySingleTemplate {
 			return mr.mrTemplateOptions()[0]
 		}
@@ -108,10 +117,14 @@ func (mr *GitLabMergeRequest) determineTemplate() string {
 			temp = append(temp, modifiedStr)
 		}
 
-		response := commandline.AskMultipleChoice("Choose a merge request template to be applied", append(temp, "None"))
+		if mr.InteractiveMode {
+			response := commandline.AskMultipleChoice("Choose a merge request template to be applied", append(temp, "None"))
 
-		if response != "None" {
-			return response
+			if response != "None" {
+				return response
+			}
+		} else {
+			return mr.mrTemplateOptions()[0]
 		}
 	}
 

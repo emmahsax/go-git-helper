@@ -124,6 +124,7 @@ func (g *Git) GetGitRootDir() string {
 		utils.HandleError(err, g.Debug, nil)
 		return ""
 	}
+
 	return strings.TrimSpace(string(output))
 }
 
