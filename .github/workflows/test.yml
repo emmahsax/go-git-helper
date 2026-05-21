@@ -8,6 +8,7 @@ jobs:
   setup:
     outputs:
       branch: ${{ steps.set_branch_variable.outputs.branch }}
+    permissions: {}
     runs-on: ubuntu-latest
     steps:
       - id: set_branch_variable
@@ -16,6 +17,8 @@ jobs:
 
   go-test:
     needs: [ setup ]
+    permissions:
+      contents: read
     uses: emmahsax/github-actions/.github/workflows/go-test.yml@main
     with:
       branch: ${{ needs.setup.outputs.branch }}

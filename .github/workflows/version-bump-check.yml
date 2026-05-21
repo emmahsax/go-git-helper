@@ -5,6 +5,9 @@ on:
 
 jobs:
   version-bump-check:
+    permissions:
+      contents: read
+      pull-requests: write
     uses: emmahsax/github-actions/.github/workflows/version-bump-check.yml@main
     with:
       description: version update
