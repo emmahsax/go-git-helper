@@ -11,7 +11,7 @@ on:
 
 jobs:
   go-release:
-    if: github.ref == 'refs/heads/main'
+    if: ${{ github.ref == 'refs/heads/main' }}
     permissions:
       contents: write
     uses: emmahsax/github-actions/.github/workflows/go-release.yml@main
