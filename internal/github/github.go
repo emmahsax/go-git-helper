@@ -7,8 +7,7 @@ import (
 
 	"github.com/emmahsax/go-git-helper/internal/configfile"
 	"github.com/emmahsax/go-git-helper/internal/utils"
-	"github.com/google/go-github/v84/github"
-	"golang.org/x/oauth2"
+	"github.com/google/go-github/v88/github"
 )
 
 type GitHub struct {
@@ -18,7 +17,7 @@ type GitHub struct {
 
 func NewGitHub(debugB bool) *GitHub {
 	cf := configfile.NewConfigFile(debugB)
-	c := newGitHubClient(cf.GitHubToken())
+	c := newGitHubClient(cf.GitHubToken(), debugB)
 
 	return &GitHub{
 		Debug:  debugB,
@@ -48,10 +47,10 @@ func (c *GitHub) CreatePullRequest(owner, repo string, options *github.NewPullRe
 	return pr, nil
 }
 
-func newGitHubClient(token string) *github.Client {
-	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	tc := oauth2.NewClient(ctx, ts)
-	git := github.NewClient(tc)
-	return git
+func newGitHubClient(token string, debugB bool) *github.Client {
+	client, err := github.NewClient(github.WithAuthToken(token))
+	if err != nil {
+		utils.HandleError(err, debugB, nil)
+	}
+	return client
 }
