@@ -19,7 +19,7 @@ jobs:
     needs: [ setup ]
     permissions:
       contents: read
-    uses: emmahsax/github-actions/.github/workflows/go-test.yml@renovate/ko-build-setup-ko-0.x
+    uses: emmahsax/github-actions/.github/workflows/go-test.yml@main
     with:
       branch: ${{ needs.setup.outputs.branch }}
       build_command: task build
