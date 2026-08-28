@@ -2,10 +2,12 @@ name: Test
 
 on:
   pull_request:
+    types: [opened, ready_for_review, reopened, synchronize]
   workflow_dispatch:
 
 jobs:
   setup:
+    if: ${{ !github.event.pull_request.draft }}
     outputs:
       branch: ${{ steps.set_branch_variable.outputs.branch }}
     permissions: {}
