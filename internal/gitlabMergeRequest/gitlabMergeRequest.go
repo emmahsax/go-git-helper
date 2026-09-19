@@ -42,12 +42,12 @@ func (mr *GitLabMergeRequest) Create() {
 	t := mr.determineTitle()
 
 	options := go_gitlab.CreateMergeRequestOptions{
-		Description:        go_gitlab.Ptr(mr.newMrBody()),
-		RemoveSourceBranch: go_gitlab.Ptr(true),
-		SourceBranch:       go_gitlab.Ptr(mr.LocalBranch),
-		Squash:             go_gitlab.Ptr(true),
-		TargetBranch:       go_gitlab.Ptr(mr.BaseBranch),
-		Title:              go_gitlab.Ptr(t),
+		Description:        new(mr.newMrBody()),
+		RemoveSourceBranch: new(true),
+		SourceBranch:       new(mr.LocalBranch),
+		Squash:             new(true),
+		TargetBranch:       new(mr.BaseBranch),
+		Title:              new(t),
 	}
 
 	fmt.Println("Creating merge request:", t)
