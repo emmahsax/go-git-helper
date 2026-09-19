@@ -60,42 +60,24 @@ func (cf *ConfigFile) ConfigFileExists() bool {
 	return err == nil
 }
 
-// TODO: pull from the values w/o the : at the beginning, as that's leftover from ruby to go migration
-
 func (cf *ConfigFile) GitHubUsername() string {
 	configFile := cf.configFileContents()
-	if configFile["github_username"] != "" {
-		return configFile["github_username"]
-	} else {
-		return configFile[":github_user"]
-	}
+	return configFile["github_username"]
 }
 
 func (cf *ConfigFile) GitLabUsername() string {
 	configFile := cf.configFileContents()
-	if configFile["gitlab_username"] != "" {
-		return configFile["gitlab_username"]
-	} else {
-		return configFile[":gitlab_user"]
-	}
+	return configFile["gitlab_username"]
 }
 
 func (cf *ConfigFile) GitHubToken() string {
 	configFile := cf.configFileContents()
-	if configFile["github_token"] != "" {
-		return configFile["github_token"]
-	} else {
-		return configFile[":github_token"]
-	}
+	return configFile["github_token"]
 }
 
 func (cf *ConfigFile) GitLabToken() string {
 	configFile := cf.configFileContents()
-	if configFile["gitlab_token"] != "" {
-		return configFile["gitlab_token"]
-	} else {
-		return configFile[":gitlab_token"]
-	}
+	return configFile["gitlab_token"]
 }
 
 func (cf *ConfigFile) SpecialCapitalization() map[string]string {

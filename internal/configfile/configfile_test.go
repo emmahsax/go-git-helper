@@ -158,17 +158,6 @@ func Test_GitHubUsername_NewFormat(t *testing.T) {
 	}
 }
 
-func Test_GitHubUsername_LegacyFormat(t *testing.T) {
-	_, cleanup := createTestConfigFile(t, ":github_user: legacyuser\n")
-	defer cleanup()
-
-	cf := NewConfigFile(false)
-	username := cf.GitHubUsername()
-	if username != "legacyuser" {
-		t.Errorf("Expected username 'legacyuser', got '%s'", username)
-	}
-}
-
 func Test_GitLabUsername_NewFormat(t *testing.T) {
 	_, cleanup := createTestConfigFile(t, "gitlab_username: gitlabuser\n")
 	defer cleanup()
@@ -177,17 +166,6 @@ func Test_GitLabUsername_NewFormat(t *testing.T) {
 	username := cf.GitLabUsername()
 	if username != "gitlabuser" {
 		t.Errorf("Expected username 'gitlabuser', got '%s'", username)
-	}
-}
-
-func Test_GitLabUsername_LegacyFormat(t *testing.T) {
-	_, cleanup := createTestConfigFile(t, ":gitlab_user: legacygitlabuser\n")
-	defer cleanup()
-
-	cf := NewConfigFile(false)
-	username := cf.GitLabUsername()
-	if username != "legacygitlabuser" {
-		t.Errorf("Expected username 'legacygitlabuser', got '%s'", username)
 	}
 }
 
@@ -201,18 +179,6 @@ func Test_GitHubToken_NewFormat(t *testing.T) {
 		t.Errorf("Expected token 'ghp_token123', got '%s'", token)
 	}
 }
-
-func Test_GitHubToken_LegacyFormat(t *testing.T) {
-	_, cleanup := createTestConfigFile(t, ":github_token: legacy_token\n")
-	defer cleanup()
-
-	cf := NewConfigFile(false)
-	token := cf.GitHubToken()
-	if token != "legacy_token" {
-		t.Errorf("Expected token 'legacy_token', got '%s'", token)
-	}
-}
-
 func Test_GitLabToken_NewFormat(t *testing.T) {
 	_, cleanup := createTestConfigFile(t, "gitlab_token: glpat-token123\n")
 	defer cleanup()
@@ -221,17 +187,6 @@ func Test_GitLabToken_NewFormat(t *testing.T) {
 	token := cf.GitLabToken()
 	if token != "glpat-token123" {
 		t.Errorf("Expected token 'glpat-token123', got '%s'", token)
-	}
-}
-
-func Test_GitLabToken_LegacyFormat(t *testing.T) {
-	_, cleanup := createTestConfigFile(t, ":gitlab_token: legacy_gitlab_token\n")
-	defer cleanup()
-
-	cf := NewConfigFile(false)
-	token := cf.GitLabToken()
-	if token != "legacy_gitlab_token" {
-		t.Errorf("Expected token 'legacy_gitlab_token', got '%s'", token)
 	}
 }
 
