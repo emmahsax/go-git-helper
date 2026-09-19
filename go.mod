@@ -1,6 +1,6 @@
 module github.com/emmahsax/go-git-helper
 
-go 1.26.1
+go 1.27.1
 
 require (
 	github.com/google/go-github/v91 v91.0.0
