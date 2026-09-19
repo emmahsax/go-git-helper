@@ -3,7 +3,6 @@ module github.com/emmahsax/go-git-helper
 go 1.26.1
 
 require (
-	github.com/google/go-github/v88 v88.0.0
 	github.com/google/go-github/v91 v91.0.0
 	github.com/pterm/pterm v0.12.79
 	github.com/spf13/cobra v1.10.2
