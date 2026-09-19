@@ -7,7 +7,7 @@ import (
 
 	"github.com/emmahsax/go-git-helper/internal/configfile"
 	"github.com/emmahsax/go-git-helper/internal/utils"
-	"github.com/google/go-github/v88/github"
+	"github.com/google/go-github/v91/github"
 )
 
 type GitHub struct {
@@ -25,16 +25,16 @@ func NewGitHub(debugB bool) *GitHub {
 	}
 }
 
-func (c *GitHub) CreatePullRequest(owner, repo string, options *github.NewPullRequest) (*github.PullRequest, error) {
+func (c *GitHub) CreatePullRequest(owner, repo string, options *github.CreatePullRequest) (*github.PullRequest, error) {
 	var err error
 	var pr *github.PullRequest
 
 	for {
-		pr, _, err = c.Client.PullRequests.Create(context.Background(), owner, repo, options)
+		pr, _, err = c.Client.PullRequests.Create(context.Background(), owner, repo, *options)
 		if err != nil {
 			if strings.Contains(err.Error(), "422 Draft pull requests are not supported in this repository.") {
 				fmt.Println("Draft pull requests are not supported in this repository. Retrying.")
-				options.Draft = github.Ptr(false)
+				options.Draft = new(false)
 				continue
 			}
 			utils.HandleError(err, c.Debug, nil)

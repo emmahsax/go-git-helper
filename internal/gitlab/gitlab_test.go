@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v3"
 )
 
 func Test_NewGitLab(t *testing.T) {
@@ -75,10 +75,10 @@ func Test_CreateMergeRequest_Success(t *testing.T) {
 	}
 
 	options := &gitlab.CreateMergeRequestOptions{
-		Title:        gitlab.Ptr("Test MR"),
-		Description:  gitlab.Ptr("Test MR body"),
-		SourceBranch: gitlab.Ptr("feature-branch"),
-		TargetBranch: gitlab.Ptr("main"),
+		Title:        new("Test MR"),
+		Description:  new("Test MR body"),
+		SourceBranch: new("feature-branch"),
+		TargetBranch: new("main"),
 	}
 
 	mr, err := gl.CreateMergeRequest("owner/repo", options)
