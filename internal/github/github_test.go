@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/google/go-github/v88/github"
+	"github.com/google/go-github/v91/github"
 )
 
 func Test_NewGitHub(t *testing.T) {
@@ -73,12 +73,12 @@ func Test_CreatePullRequest_Success(t *testing.T) {
 		Client: client,
 	}
 
-	options := &github.NewPullRequest{
-		Title: github.Ptr("Test PR"),
-		Body:  github.Ptr("Test PR body"),
-		Head:  github.Ptr("feature-branch"),
-		Base:  github.Ptr("main"),
-		Draft: github.Ptr(false),
+	options := &github.CreatePullRequest{
+		Title: new("Test PR"),
+		Body:  new("Test PR body"),
+		Head:  "feature-branch",
+		Base:  "main",
+		Draft: new(false),
 	}
 
 	pr, err := gh.CreatePullRequest("owner", "repo", options)
@@ -127,12 +127,12 @@ func Test_CreatePullRequest_DraftNotSupported(t *testing.T) {
 		Client: client,
 	}
 
-	options := &github.NewPullRequest{
-		Title: github.Ptr("Test PR"),
-		Body:  github.Ptr("Test PR body"),
-		Head:  github.Ptr("feature-branch"),
-		Base:  github.Ptr("main"),
-		Draft: github.Ptr(true),
+	options := &github.CreatePullRequest{
+		Title: new("Test PR"),
+		Body:  new("Test PR body"),
+		Head:  "feature-branch",
+		Base:  "main",
+		Draft: new(true),
 	}
 
 	pr, err := gh.CreatePullRequest("owner", "repo", options)
