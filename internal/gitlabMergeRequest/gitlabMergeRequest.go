@@ -11,7 +11,7 @@ import (
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/gitlab"
 	"github.com/emmahsax/go-git-helper/internal/utils"
-	go_gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	go_gitlab "gitlab.com/gitlab-org/api/client-go/v3"
 )
 
 type GitLabMergeRequest struct {
