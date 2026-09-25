@@ -7,7 +7,7 @@ require (
 	github.com/pterm/pterm v0.12.79
 	github.com/spf13/cobra v1.10.2
 	github.com/tidwall/gjson v1.19.0
-	gitlab.com/gitlab-org/api/client-go/v3 v3.6.0
+	gitlab.com/gitlab-org/api/client-go/v3 v3.12.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
