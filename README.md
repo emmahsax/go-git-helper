@@ -16,15 +16,19 @@ After downloading, follow the steps under [Installing](#installing) to move it o
 
 ### Building Locally
 
-You need [Go](https://go.dev/) and [Task](https://taskfile.dev/). To build for every supported platform into `dist/`, run this from the root directory of this repository:
+Building locally requires **[Go](https://go.dev/), [Task](https://taskfile.dev/) and [GoReleaser](https://goreleaser.com/install/)**. The exact Go and GoReleaser versions the project uses are in [`.tool-versions`](.tool-versions), so with [asdf](https://asdf-vm.com/) you can run `asdf install` from the root directory of this repository.
+
+To build for every supported platform into `dist/`, run this from the root directory of this repository:
 
 ```bash
 task build
 ```
 
-This produces one binary per platform, named `git-helper_<os>_<arch>` (with `.exe` on Windows), e.g. `dist/git-helper_linux_amd64`. Locally built binaries report their version as `dev`.
+GoReleaser puts each binary in its own directory, named `dist/<build>_<os>_<arch>/git-helper` (with `.exe` on Windows), e.g. `dist/matrix_linux_amd64_v1/git-helper`. Locally built binaries report a snapshot version such as `1.0.4-SNAPSHOT-1a2b3c4`.
 
-To build only for your machine, you can also run `go build -o git-helper .`.
+To see exactly what a release would publish (the named binaries and `checksums.txt`, without uploading anything), run `task build:release`.
+
+To build only for your machine, without Task or GoReleaser, you can also run `go build -o git-helper .` (this reports its version as `dev`).
 
 ### Installing
 

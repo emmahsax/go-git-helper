@@ -7,33 +7,18 @@ tasks:
       - task --list-all
 
   build:
-    desc: Build git-helper for every supported OS and architecture into dist/
+    desc: Build git-helper for every supported OS and architecture into dist/ (uses GoReleaser)
     cmds:
-      - task: build:target
-        vars: { GOOS: darwin, GOARCH: arm64 }
-      - task: build:target
-        vars: { GOOS: darwin, GOARCH: amd64 }
-      - task: build:target
-        vars: { GOOS: linux, GOARCH: amd64 }
-      - task: build:target
-        vars: { GOOS: linux, GOARCH: arm64 }
-      - task: build:target
-        vars: { GOOS: windows, GOARCH: amd64 }
-      - task: build:target
-        vars: { GOOS: windows, GOARCH: arm64 }
+      - goreleaser build --snapshot --clean
 
-  build:target:
-    internal: true
-    env:
-      CGO_ENABLED: "0"
-      GOARCH: "{{.GOARCH}}"
-      GOOS: "{{.GOOS}}"
+  build:release:
+    desc: Dry run of a release, without publishing, to see exactly what would be uploaded to dist/ (uses GoReleaser)
     cmds:
-      - go build -trimpath -ldflags "-s -w" -o dist/git-helper_{{.GOOS}}_{{.GOARCH}}{{if eq .GOOS "windows"}}.exe{{end}} .
+      - goreleaser release --snapshot --clean --skip=publish
 
   build:test:
-    desc: Build test-git-helper for this machine and install it for testing purposes
+    desc: Build test-git-helper for this machine and install it for testing purposes (uses GoReleaser)
     cmds:
-      - cmd: go build -o test-git-helper{{exeExt}} .
+      - goreleaser build --snapshot --clean --single-target --id release --output test-git-helper{{exeExt}}
       - cmd: sudo mv test-git-helper /usr/local/bin/test-git-helper
         platforms: [darwin, linux]
