@@ -48,9 +48,6 @@ func actionAndOutput(command string, args []string) ([]byte, error) {
 }
 
 func waitAndStdout(command string, args []string) error {
-	origStdout := os.Stdout
-	origStderr := os.Stderr
-
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -64,9 +61,6 @@ func waitAndStdout(command string, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	os.Stdout = origStdout
-	os.Stderr = origStderr
 
 	return nil
 }

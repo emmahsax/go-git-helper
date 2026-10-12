@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/emmahsax/go-git-helper/internal/testutil"
 )
 
 func Test_NewConfigFile(t *testing.T) {
@@ -27,6 +29,7 @@ func Test_NewConfigFile_WithDebug(t *testing.T) {
 }
 
 func Test_ConfigDir(t *testing.T) {
+	testutil.IsolateHome(t)
 	cf := NewConfigFile(false)
 	dir := cf.ConfigDir()
 
@@ -35,13 +38,14 @@ func Test_ConfigDir(t *testing.T) {
 	}
 
 	homeDir, _ := os.UserHomeDir()
-	expectedDir := homeDir + "/.git-helper"
+	expectedDir := filepath.Join(homeDir, ".git-helper")
 	if dir != expectedDir {
 		t.Errorf("Expected directory '%s', got '%s'", expectedDir, dir)
 	}
 }
 
 func Test_ConfigDirExists(t *testing.T) {
+	testutil.IsolateHome(t)
 	cf := NewConfigFile(false)
 
 	_, err := os.Stat(cf.ConfigDir())
@@ -66,6 +70,7 @@ func Test_ConfigDirExists(t *testing.T) {
 }
 
 func Test_ConfigFile(t *testing.T) {
+	testutil.IsolateHome(t)
 	cf := NewConfigFile(false)
 	file := cf.ConfigFile()
 
@@ -74,13 +79,14 @@ func Test_ConfigFile(t *testing.T) {
 	}
 
 	homeDir, _ := os.UserHomeDir()
-	expectedFile := homeDir + "/.git-helper/config.yml"
+	expectedFile := filepath.Join(homeDir, ".git-helper", "config.yml")
 	if file != expectedFile {
 		t.Errorf("Expected file '%s', got '%s'", expectedFile, file)
 	}
 }
 
 func Test_ConfigFileExists(t *testing.T) {
+	testutil.IsolateHome(t)
 	cf := NewConfigFile(false)
 
 	_, err := os.Stat(cf.ConfigFile())
@@ -128,9 +134,9 @@ func createTestConfigFile(t *testing.T, content string) (string, func()) {
 		t.Fatal(err)
 	}
 
-	// Set HOME to tempDir so ConfigDir() returns tempDir/.git-helper
-	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tempDir)
+	// Point the home directory at tempDir so ConfigDir() returns tempDir/.git-helper
+	t.Setenv("HOME", tempDir)
+	t.Setenv("USERPROFILE", tempDir)
 
 	// Create .git-helper directory in temp
 	gitHelperDir := filepath.Join(tempDir, ".git-helper")
@@ -140,9 +146,7 @@ func createTestConfigFile(t *testing.T, content string) (string, func()) {
 	finalConfigFile := filepath.Join(gitHelperDir, "config.yml")
 	os.Rename(configFile, finalConfigFile)
 
-	cleanup := func() {
-		os.Setenv("HOME", originalHome)
-	}
+	cleanup := func() {}
 
 	return tempDir, cleanup
 }
@@ -233,10 +237,7 @@ func Test_SpecialCapitalization_Empty(t *testing.T) {
 
 func Test_SpecialCapitalization_FileNotFound(t *testing.T) {
 	// Use a temp directory without creating config file
-	tempDir := t.TempDir()
-	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tempDir)
-	defer os.Setenv("HOME", originalHome)
+	testutil.IsolateHome(t)
 
 	cf := NewConfigFile(true) // Use debug mode to avoid exit
 	caps := cf.SpecialCapitalization()

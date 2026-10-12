@@ -2,19 +2,16 @@ package github
 
 import (
 	"fmt"
+	"github.com/emmahsax/go-git-helper/internal/testutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/google/go-github/v91/github"
 )
 
 func Test_NewGitHub(t *testing.T) {
-	// Skip if config file doesn't exist (e.g., in CI)
-	if _, err := os.Stat(os.Getenv("HOME") + "/.git-helper/config.yml"); os.IsNotExist(err) {
-		t.Skip("Skipping test: config file not found")
-	}
+	testutil.WriteConfig(t, testutil.IsolateHome(t), "github_token: test_token\n")
 
 	// This test requires a valid config file with GitHub token
 	// We'll test that the struct is created properly
@@ -34,10 +31,7 @@ func Test_NewGitHub(t *testing.T) {
 }
 
 func Test_NewGitHub_WithDebug(t *testing.T) {
-	// Skip if config file doesn't exist (e.g., in CI)
-	if _, err := os.Stat(os.Getenv("HOME") + "/.git-helper/config.yml"); os.IsNotExist(err) {
-		t.Skip("Skipping test: config file not found")
-	}
+	testutil.WriteConfig(t, testutil.IsolateHome(t), "github_token: test_token\n")
 
 	gh := NewGitHub(true)
 
