@@ -12,7 +12,7 @@ tasks:
       - goreleaser release --snapshot --clean --skip=publish
 
   build:test:
-    desc: Build test-git-helper for this machine and install it for testing purposes (uses GoReleaser)
+    desc: Build test-git-helper for this machine and install it for local testing (uses GoReleaser)
     cmds:
       - goreleaser build --snapshot --clean --single-target --id release --output test-git-helper{{exeExt}}
       - cmd: sudo mv test-git-helper /usr/local/bin/test-git-helper
