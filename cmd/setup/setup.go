@@ -63,7 +63,7 @@ func (s *Setup) setupConfig() {
 	var create bool
 
 	if s.Config.ConfigFileExists() {
-		create = commandline.AskYesNoQuestion("The " + s.Config.ConfigFile() + " file already exists. Do you wish to replace it?")
+		create = commandline.AskYesNoQuestion("The " + s.Config.ConfigFile() + " file already exists... do you wish to replace it?")
 	} else {
 		create = true
 	}
