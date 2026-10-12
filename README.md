@@ -22,7 +22,7 @@ You need [Go](https://go.dev/) and [Task](https://taskfile.dev/). To build for e
 task build
 ```
 
-This produces one binary per platform, named `git-helper_<os>_<arch>` (with `.exe` on Windows), for example `dist/git-helper_linux_amd64`. Locally built binaries report their version as `dev`.
+This produces one binary per platform, named `git-helper_<os>_<arch>` (with `.exe` on Windows), e.g. `dist/git-helper_linux_amd64`. Locally built binaries report their version as `dev`.
 
 To build only for your machine, you can also run `go build -o git-helper .`.
 
@@ -79,7 +79,7 @@ Assuming you already have Go's Git Helper installed, to update your version of G
 git-helper update
 ```
 
-This replaces the `git-helper` binary that is currently running. To replace a binary somewhere else, pass `--install-path`. If the directory is not writable by your user (for example `/usr/local/bin` on macOS and Linux), it asks for your `sudo` password. Windows never needs `sudo`; the old binary is renamed to `git-helper.exe.old` and removed the next time you run `update`.
+This replaces the `git-helper` binary that is currently running. To replace a binary somewhere else, pass `--install-path`. If the directory is not writable by your user (e.g. `/usr/local/bin` on macOS and Linux), it asks for your `sudo` password. Windows never needs `sudo`; the old binary is renamed to `git-helper.exe.old` and removed the next time you run `update`.
 
 The update downloads the asset matching your OS and architecture from the latest release, so it only works on platforms that have published binaries (see above). On macOS you may need to allow the new binary as described above.
 
