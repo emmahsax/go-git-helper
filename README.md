@@ -4,37 +4,58 @@ Making it easier to work with Git on the command-line.
 
 ## Installation
 
-> All `task build`s and pre-built packages are built specifically using the flags `GOOS=darwin GOARCH=arm64`, only for Apple Silicon. To obtain any other build setups, either build your own or contact me at https://emmasax.com/contact-me/. I do not guarantee the performance of this package on any systems that are not Apple Silicon.
+Git Helper is a single static binary that runs on macOS (Apple Silicon and Intel), Linux and Windows (amd64 and arm64 for each). It needs `git` on your `PATH`. On Windows, install [Git for Windows](https://gitforwindows.org/).
+
+> Pre-built binaries in [GitHub Releases](https://github.com/emmahsax/go-git-helper/releases) are currently published only for macOS on Apple Silicon (`git-helper_darwin_arm64`). The other platforms are compiled on every change to prove they build, and the tests run on them, but they are not published yet. On those platforms, build from source as described below.
 
 ### Building Locally
 
-You can build the binary locally by running this from the root directory of this repository:
+You need [Go](https://go.dev/) and [Task](https://taskfile.dev/). To build for every supported platform into `dist/`, run this from the root directory of this repository:
 
 ```bash
 task build
 ```
 
-Then, you can move that to `/usr/local/bin`:
+This produces one binary per platform, named `git-helper_<os>_<arch>` (with `.exe` on Windows), for example `dist/git-helper_linux_amd64`. Locally built binaries report their version as `dev`.
+
+To build only for your machine, you can also run `go build -o git-helper .`.
+
+### Installing
+
+Move the binary for your platform onto your `PATH` as `git-helper`. The examples assume the binary is in your current directory.
+
+**macOS**
 
 ```bash
-sudo mv git-helper_darwin_arm64 /usr/local/bin/git-helper
-```
-
-### Downloading from GitHub Releases
-
-Alternatively, you can download pre-built binaries straight from [GitHub Releases](https://github.com/emmahsax/go-git-helper/releases). After downloading, move them into `/usr/local/bin` and change the permissions. The examples below assume the binaries downloaded to `~/Downloads`:
-
-```bash
-sudo mv ~/Downloads/git-helper_darwin_arm64 /usr/local/bin/git-helper
-sudo chown $(whoami):staff /usr/local/bin/git-helper
+sudo mv git-helper_darwin_arm64 /usr/local/bin/git-helper   # git-helper_darwin_amd64 on Intel
 sudo chmod +x /usr/local/bin/git-helper
 ```
 
-When you run the binary for the first time, you may get a pop-up from Apple saying the binary can't be verified by Apple. If you wish to continue, follow these instructions to allow it to run:
+When you run a downloaded binary for the first time, you may get a pop-up from Apple saying the binary can't be verified. Binaries are not signed or notarized. If you wish to continue, follow these instructions to allow it to run:
 
 * Click `Show in Finder`
 * Right-click on the binary, and select `Open`
 * When you get another pop-up, select `Open`
+
+**Linux**
+
+```bash
+# Without root, if ~/.local/bin is on your PATH
+install -m 0755 git-helper_linux_amd64 ~/.local/bin/git-helper   # git-helper_linux_arm64 on ARM
+
+# Or system-wide
+sudo install -m 0755 git-helper_linux_amd64 /usr/local/bin/git-helper
+```
+
+**Windows (PowerShell)**
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\bin" | Out-Null
+Move-Item git-helper_windows_amd64.exe "$env:USERPROFILE\bin\git-helper.exe"   # git-helper_windows_arm64.exe on ARM
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";$env:USERPROFILE\bin", "User")
+```
+
+Then open a new terminal. Windows SmartScreen may warn about an unsigned binary the first time; choose `More info` and then `Run anyway`.
 
 ### Updating Git Helper
 
@@ -46,7 +67,9 @@ To update your version of Git Helper to the latest version available in GitHub, 
 git-helper update
 ```
 
-Your `sudo` password may be required, and you may need to verify the package is runable as following the instructions above.
+This replaces the `git-helper` binary that is currently running. To replace a binary somewhere else, pass `--install-path`. If the directory is not writable by your user (for example `/usr/local/bin` on macOS and Linux), it asks for your `sudo` password. Windows never needs `sudo`; the old binary is renamed to `git-helper.exe.old` and removed the next time you run `update`.
+
+The update downloads the asset matching your OS and architecture from the latest release, so it only works on platforms that have published binaries (see above). On macOS you may need to allow the new binary as described above.
 
 ## Config Setup
 
@@ -58,7 +81,7 @@ git-helper setup
 
 This will give you the option to set up credentials at GitHub and/or GitLab, as well as give you the choice to set up Git Helper as a plugin or not (see below).
 
-The final result will be a `~/.git-helper/config.yml` file with the contents in this form:
+The final result will be a `~/.git-helper/config.yml` file (in your home directory on every OS, e.g. `C:\Users\you\.git-helper\config.yml` on Windows) that only your user can read, with the contents in this form:
 
 ```
 github_user:  GITHUB-USERNAME
@@ -99,7 +122,7 @@ git clean-branches
 git code-request
 ```
 
-Running the `git-helper setup` command will give you the option to set plugins up.
+Running the `git-helper setup` command will give you the option to set plugins up. The plugin scripts are built into the binary and are written to `~/.git-helper/plugins`; `setup` then prints how to add that directory to your `PATH` for your OS. On Windows it also writes `git-<name>.cmd` shims so the commands work from `cmd.exe` and PowerShell.
 
 ### With Aliases
 
@@ -111,10 +134,16 @@ git config --global alias.nb new-branch
 
 And then running `git nb` maps to `git new-branch`, which through the plugin, maps to `git-helper new-branch`.
 
-Or you can set the alias through your `~/.zshrc` (which is my preferred method because it can make the command even shorter, and doesn't require the plugin usage). To do this, add lines like this to the `~/.zshrc` file and run `source ~/.zshrc`:
+Or you can set the alias through your shell's startup file (which is my preferred method because it can make the command even shorter, and doesn't require the plugin usage). For zsh, add lines like this to `~/.zshrc` and run `source ~/.zshrc`:
 
 ```bash
 alias gnb="git new-branch"
+```
+
+The same line works in `~/.bashrc` for bash. In fish, use `abbr -a gnb git new-branch`. PowerShell aliases can't take arguments, so define a function in your `$PROFILE` instead:
+
+```powershell
+function gnb { git new-branch @args }
 ```
 
 And then, running `gnb` maps to `git new-branch`, which again routes to `git-helper new-branch`.
