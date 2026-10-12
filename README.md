@@ -48,6 +48,8 @@ Per Apple, macOS then saves `git-helper` as an exception, and you can run it nor
 
 #### Linux
 
+> These installation instructions have not been tried by hand on physical hardware. If you run into a platform-specific problem, please [open an issue](https://github.com/emmahsax/go-git-helper/issues/new).
+
 ```bash
 # Without root, if ~/.local/bin is on your PATH
 install -m 0755 git-helper_linux_amd64 ~/.local/bin/git-helper   # git-helper_linux_arm64 on ARM
@@ -57,6 +59,8 @@ sudo install -m 0755 git-helper_linux_amd64 /usr/local/bin/git-helper
 ```
 
 #### Windows (PowerShell)
+
+> These installation instructions have not been tried by hand on physical hardware. If you run into a platform-specific problem, please [open an issue](https://github.com/emmahsax/go-git-helper/issues/new).
 
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\bin" | Out-Null
@@ -68,9 +72,7 @@ Then open a new terminal. Windows SmartScreen may warn about an unsigned binary 
 
 ### Updating Git Helper
 
-> This section assumes you already have Go's Git Helper installed.
-
-To update your version of Git Helper to the latest version available in GitHub, you can run:
+Assuming you already have Go's Git Helper installed, to update your version of Git Helper to the latest version available in GitHub, you can run:
 
 ```bash
 git-helper update
