@@ -1,13 +1,14 @@
 package update
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
-	"os/user"
+	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/executor"
 	"github.com/emmahsax/go-git-helper/internal/utils"
@@ -16,20 +17,19 @@ import (
 )
 
 type Update struct {
-	Debug      bool
-	Executor   executor.ExecutorInterface
-	Owner      string
-	Repository string
+	Debug       bool
+	Executor    executor.ExecutorInterface
+	GOARCH      string
+	GOOS        string
+	InstallPath string
+	Owner       string
+	Repository  string
 }
-
-var (
-	asset   = "git-helper_" + runtime.GOOS + "_" + runtime.GOARCH
-	newPath = "/usr/local/bin/git-helper" // This is for linux and mac based systems only
-)
 
 func NewCommand(packageOwner, packageRepository string) *cobra.Command {
 	var (
-		debug bool
+		debug       bool
+		installPath string
 	)
 
 	cmd := &cobra.Command{
@@ -38,12 +38,15 @@ func NewCommand(packageOwner, packageRepository string) *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newUpdate(packageOwner, packageRepository, debug, executor.NewExecutor(debug)).execute()
+			u := newUpdate(packageOwner, packageRepository, debug, executor.NewExecutor(debug))
+			u.InstallPath = installPath
+			u.execute()
 			return nil
 		},
 	}
 
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug mode")
+	cmd.Flags().StringVar(&installPath, "install-path", "", "path of the git-helper binary to replace (defaults to the currently running binary)")
 
 	return cmd
 }
@@ -52,116 +55,212 @@ func newUpdate(owner, repository string, debug bool, executor executor.ExecutorI
 	return &Update{
 		Debug:      debug,
 		Executor:   executor,
+		GOARCH:     runtime.GOARCH,
+		GOOS:       runtime.GOOS,
 		Owner:      owner,
 		Repository: repository,
 	}
 }
 
 func (u *Update) execute() {
-	u.downloadGitHelper()
-	u.moveGitHelper()
-	u.setPermissions()
-	u.outputNewVersion()
-}
+	target, err := u.installPath()
+	if err != nil {
+		utils.HandleError(err, u.Debug, nil)
+		return
+	}
 
-func (u *Update) downloadGitHelper() {
+	u.removeStaleBinary(target)
+
 	fmt.Println("Installing latest git-helper version")
 
 	releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", u.Owner, u.Repository)
-	downloadURL := u.getDownloadURL(u.fetchReleaseBody(releaseURL))
-	binaryName := strings.Split(downloadURL, "/")[len(strings.Split(downloadURL, "/"))-1]
-	u.downloadAndSaveBinary(downloadURL, binaryName)
+	body, err := u.fetchReleaseBody(releaseURL)
+	if err != nil {
+		utils.HandleError(err, u.Debug, nil)
+		return
+	}
+
+	downloadURL, err := u.getDownloadURL(body)
+	if err != nil {
+		utils.HandleError(err, u.Debug, nil)
+		return
+	}
+
+	downloaded, err := u.downloadBinary(downloadURL)
+	if err != nil {
+		utils.HandleError(err, u.Debug, nil)
+		return
+	}
+	defer os.Remove(downloaded)
+
+	if err = u.install(downloaded, target); err != nil {
+		utils.HandleError(err, u.Debug, nil)
+		return
+	}
+
+	u.outputNewVersion(target)
 }
 
-func (u *Update) fetchReleaseBody(releaseURL string) []byte {
+// assetName is the release asset for a platform, e.g. git-helper_linux_amd64 or
+// git-helper_windows_arm64.exe.
+func assetName(goos, goarch string) string {
+	name := "git-helper_" + goos + "_" + goarch
+	if goos == "windows" {
+		name += ".exe"
+	}
+
+	return name
+}
+
+// installPath is the binary to replace: --install-path if given, otherwise the
+// binary that is currently running.
+func (u *Update) installPath() (string, error) {
+	if u.InstallPath != "" {
+		return filepath.Abs(u.InstallPath)
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.EvalSymlinks(exe)
+}
+
+// removeStaleBinary deletes the renamed old binary left behind by a previous
+// Windows update (a running .exe can be renamed but not overwritten).
+func (u *Update) removeStaleBinary(target string) {
+	_ = os.Remove(target + ".old")
+}
+
+func (u *Update) fetchReleaseBody(releaseURL string) ([]byte, error) {
 	resp, err := http.Get(releaseURL)
 	if err != nil {
-		utils.HandleError(err, u.Debug, nil)
-		return []byte{}
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		utils.HandleError(err, u.Debug, nil)
-		return []byte{}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fetching %s: unexpected status %s", releaseURL, resp.Status)
 	}
 
-	return body
+	return io.ReadAll(resp.Body)
 }
 
-func (u *Update) getDownloadURL(body []byte) string {
-	var downloadURL string
-	switch runtime.GOOS {
-	case "darwin":
-		downloadURL = gjson.Get(string(body), "assets.#(name==\""+asset+"\").browser_download_url").String()
-	case "linux":
-		downloadURL = gjson.Get(string(body), "assets.#(name==\""+asset+"\").browser_download_url").String()
-	default:
-		fmt.Println("Unsupported operating system:", runtime.GOOS)
+func (u *Update) getDownloadURL(body []byte) (string, error) {
+	name := assetName(u.GOOS, u.GOARCH)
+	downloadURL := gjson.GetBytes(body, "assets.#(name==\""+name+"\").browser_download_url").String()
+	if downloadURL == "" {
+		return "", fmt.Errorf("the latest release has no %s asset (unsupported platform %s/%s?)", name, u.GOOS, u.GOARCH)
 	}
 
-	return downloadURL
+	return downloadURL, nil
 }
 
-func (u *Update) downloadAndSaveBinary(downloadURL, binaryName string) {
+// downloadBinary saves the release asset to a temporary file and returns its path.
+func (u *Update) downloadBinary(downloadURL string) (string, error) {
 	resp, err := http.Get(downloadURL)
 	if err != nil {
-		utils.HandleError(err, u.Debug, nil)
-		return
+		return "", err
 	}
 	defer resp.Body.Close()
 
-	out, err := os.Create(binaryName)
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("downloading %s: unexpected status %s", downloadURL, resp.Status)
+	}
+
+	out, err := os.CreateTemp("", "git-helper-download-*")
 	if err != nil {
-		utils.HandleError(err, u.Debug, nil)
-		return
+		return "", err
 	}
 	defer out.Close()
 
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		utils.HandleError(err, u.Debug, nil)
-		return
+	if _, err = io.Copy(out, resp.Body); err != nil {
+		os.Remove(out.Name())
+		return "", err
 	}
+
+	return out.Name(), nil
 }
 
-func (u *Update) moveGitHelper() {
-	output, err := u.Executor.Exec("actionAndOutput", "sudo", "mv", "./"+asset, newPath)
+// install replaces target with the downloaded binary. The new binary is first
+// staged next to the target so the final step is an atomic rename.
+func (u *Update) install(downloaded, target string) error {
+	staged, err := stageBinary(downloaded, filepath.Dir(target))
 	if err != nil {
-		utils.HandleError(err, u.Debug, nil)
-		return
+		if u.GOOS != "windows" && errors.Is(err, fs.ErrPermission) {
+			return u.sudoInstall(downloaded, target)
+		}
+
+		return err
+	}
+	defer os.Remove(staged)
+
+	if u.GOOS == "windows" {
+		return replaceRunningBinary(staged, target)
 	}
 
-	fmt.Printf("%s", string(output))
+	return os.Rename(staged, target)
 }
 
-func (u *Update) setPermissions() {
-	currentUser, err := user.Current()
+func stageBinary(src, dir string) (string, error) {
+	in, err := os.Open(src)
 	if err != nil {
-		utils.HandleError(err, u.Debug, nil)
-		return
+		return "", err
+	}
+	defer in.Close()
+
+	out, err := os.CreateTemp(dir, ".git-helper-update-*")
+	if err != nil {
+		return "", err
 	}
 
-	output, err := u.Executor.Exec("actionAndOutput", "sudo", "chown", currentUser.Username+":staff", newPath)
-	if err != nil {
-		utils.HandleError(err, u.Debug, nil)
-		return
+	if _, err = io.Copy(out, in); err != nil {
+		out.Close()
+		os.Remove(out.Name())
+		return "", err
 	}
 
-	fmt.Printf("%s", string(output))
-
-	output, err = u.Executor.Exec("actionAndOutput", "sudo", "chmod", "+x", newPath)
-	if err != nil {
-		utils.HandleError(err, u.Debug, nil)
-		return
+	if err = out.Close(); err != nil {
+		os.Remove(out.Name())
+		return "", err
 	}
 
-	fmt.Printf("%s", string(output))
+	if err = os.Chmod(out.Name(), 0755); err != nil {
+		os.Remove(out.Name())
+		return "", err
+	}
+
+	return out.Name(), nil
 }
 
-func (u *Update) outputNewVersion() {
-	output, err := u.Executor.Exec("actionAndOutput", "git-helper", "version")
+// replaceRunningBinary swaps in the new binary on Windows, where the running
+// executable cannot be overwritten but can be renamed.
+func replaceRunningBinary(staged, target string) error {
+	old := target + ".old"
+	_ = os.Remove(old)
+
+	if err := os.Rename(target, old); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+
+	if err := os.Rename(staged, target); err != nil {
+		_ = os.Rename(old, target)
+		return err
+	}
+
+	return nil
+}
+
+func (u *Update) sudoInstall(downloaded, target string) error {
+	fmt.Printf("%s is not writable by the current user; using sudo to install it.\n", filepath.Dir(target))
+
+	_, err := u.Executor.Exec("waitAndStdout", "sudo", "install", "-m", "0755", downloaded, target)
+	return err
+}
+
+func (u *Update) outputNewVersion(target string) {
+	output, err := u.Executor.Exec("actionAndOutput", target, "version")
 	if err != nil {
 		utils.HandleError(err, u.Debug, nil)
 		return
