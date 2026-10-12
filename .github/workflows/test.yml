@@ -21,9 +21,10 @@ jobs:
     needs: [ setup ]
     permissions:
       contents: read
-    uses: emmahsax/github-actions/.github/workflows/go-test.yml@main
+    uses: emmahsax/github-actions/.github/workflows/go-test.yml@go-release-goreleaser-and-test-matrix
     with:
       branch: ${{ needs.setup.outputs.branch }}
       build_command: task build
       go_version: 1.27
+      staticcheck_version: master
       runners: '["ubuntu-latest", "ubuntu-24.04-arm", "macos-latest", "macos-15-intel", "windows-latest", "windows-11-arm"]'

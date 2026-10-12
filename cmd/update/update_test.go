@@ -57,16 +57,81 @@ func Test_installPath_override(t *testing.T) {
 	}
 }
 
-func Test_installPath_runningBinary(t *testing.T) {
+func Test_isGoRunBinary(t *testing.T) {
+	tests := []struct {
+		path     string
+		expected bool
+	}{
+		{"/var/folders/xy/T/go-build123456/b001/exe/main", true},
+		{"/tmp/go-build987/b001/exe/git-helper", true},
+		{`C:\Users\me\AppData\Local\Temp\go-build42\b001\exe\main.exe`, true},
+		{"/Users/me/Library/Caches/go-build/96/968ede4d83a5675950c1ca6b91d089c7bae6bcb4131de946f0bed85e52cd36e6-d/main", true},
+		{"/home/me/.cache/go-build/ab/abcdef-d/main", true},
+		{`C:\Users\me\AppData\Local\go-build\ab\abcdef-d\main.exe`, true},
+		{"/usr/local/bin/git-helper", false},
+		{"/home/me/go-builder/bin/git-helper", false},
+	}
+
+	for _, test := range tests {
+		if got := isGoRunBinary(test.path); got != test.expected {
+			t.Errorf("isGoRunBinary(%q) = %v, expected %v", test.path, got, test.expected)
+		}
+	}
+}
+
+func Test_installPath_goRunUsesBinaryOnPath(t *testing.T) {
+	installed := filepath.Join(t.TempDir(), "git-helper")
+	writeFile(t, installed, "installed")
+
 	u := newUpdate("owner", "repo", true, &MockExecutor{})
+	u.Executable = func() (string, error) { return "/tmp/go-build123/b001/exe/main", nil }
+	u.LookPath = func(name string) (string, error) {
+		if name != "git-helper" {
+			t.Errorf("expected a lookup of git-helper, got %s", name)
+		}
+		return installed, nil
+	}
 
 	got, err := u.installPath()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !filepath.IsAbs(got) {
-		t.Errorf("expected an absolute path, got %s", got)
+	want, _ := filepath.EvalSymlinks(installed)
+	if got != want {
+		t.Errorf("expected %s, got %s", want, got)
+	}
+}
+
+func Test_installPath_goRunWithoutInstalledBinary(t *testing.T) {
+	u := newUpdate("owner", "repo", true, &MockExecutor{})
+	u.Executable = func() (string, error) { return "/tmp/go-build123/b001/exe/main", nil }
+	u.LookPath = func(string) (string, error) { return "", os.ErrNotExist }
+
+	if _, err := u.installPath(); err == nil {
+		t.Error("expected an error when go run is used and no git-helper is on PATH")
+	}
+}
+
+func Test_installPath_runningBinary(t *testing.T) {
+	installed := filepath.Join(t.TempDir(), "git-helper")
+	writeFile(t, installed, "installed")
+
+	u := newUpdate("owner", "repo", true, &MockExecutor{})
+	u.Executable = func() (string, error) { return installed, nil }
+	u.LookPath = func(string) (string, error) {
+		t.Error("did not expect a PATH lookup for a normally installed binary")
+		return "", os.ErrNotExist
+	}
+
+	got, err := u.installPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want, _ := filepath.EvalSymlinks(installed)
+	if got != want {
+		t.Errorf("expected %s, got %s", want, got)
 	}
 }
 
@@ -218,6 +283,28 @@ func Test_install(t *testing.T) {
 	}
 }
 
+func Test_removeStaleBinary_onlyOnWindows(t *testing.T) {
+	for _, goos := range []string{"linux", "darwin", "windows"} {
+		t.Run(goos, func(t *testing.T) {
+			target := filepath.Join(t.TempDir(), "git-helper")
+			writeFile(t, target+".old", "unrelated backup")
+
+			u := newUpdate("owner", "repo", true, &MockExecutor{})
+			u.GOOS = goos
+			u.removeStaleBinary(target)
+
+			_, err := os.Stat(target + ".old")
+			if goos == "windows" && !os.IsNotExist(err) {
+				t.Errorf("expected the stale binary to be removed on windows")
+			}
+
+			if goos != "windows" && err != nil {
+				t.Errorf("expected %s.old to be left alone on %s: %v", target, goos, err)
+			}
+		})
+	}
+}
+
 func Test_install_missingTarget(t *testing.T) {
 	dir := t.TempDir()
 	downloaded := filepath.Join(dir, "downloaded")
@@ -235,7 +322,11 @@ func Test_install_missingTarget(t *testing.T) {
 	}
 }
 
-func Test_install_fallsBackToSudo(t *testing.T) {
+// readOnlyDir returns a directory the current user cannot create files in, or
+// skips the test when the platform or user ignores permission bits.
+func readOnlyDir(t *testing.T) string {
+	t.Helper()
+
 	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
 		t.Skip("requires a non-root Unix user")
 	}
@@ -244,7 +335,18 @@ func Test_install_fallsBackToSudo(t *testing.T) {
 	if err := os.Chmod(dir, 0555); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chmod(dir, 0755)
+	t.Cleanup(func() { os.Chmod(dir, 0755) })
+
+	if f, err := os.CreateTemp(dir, "probe-*"); err == nil {
+		f.Close()
+		t.Skip("directory permissions are not enforced here")
+	}
+
+	return dir
+}
+
+func Test_install_fallsBackToSudo(t *testing.T) {
+	dir := readOnlyDir(t)
 
 	downloaded := filepath.Join(t.TempDir(), "downloaded")
 	target := filepath.Join(dir, "git-helper")
@@ -275,15 +377,7 @@ func Test_install_fallsBackToSudo(t *testing.T) {
 }
 
 func Test_install_windowsNeverUsesSudo(t *testing.T) {
-	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
-		t.Skip("requires a non-root Unix user")
-	}
-
-	dir := t.TempDir()
-	if err := os.Chmod(dir, 0555); err != nil {
-		t.Fatal(err)
-	}
-	defer os.Chmod(dir, 0755)
+	dir := readOnlyDir(t)
 
 	downloaded := filepath.Join(t.TempDir(), "downloaded")
 	writeFile(t, downloaded, "new")

@@ -7,8 +7,12 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strings"
+	"time"
 
 	"github.com/emmahsax/go-git-helper/internal/executor"
 	"github.com/emmahsax/go-git-helper/internal/utils"
@@ -16,12 +20,17 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// httpClient bounds how long a stalled connection can hang the update.
+var httpClient = &http.Client{Timeout: 5 * time.Minute}
+
 type Update struct {
 	Debug       bool
+	Executable  func() (string, error)
 	Executor    executor.ExecutorInterface
 	GOARCH      string
 	GOOS        string
 	InstallPath string
+	LookPath    func(string) (string, error)
 	Owner       string
 	Repository  string
 }
@@ -54,9 +63,11 @@ func NewCommand(packageOwner, packageRepository string) *cobra.Command {
 func newUpdate(owner, repository string, debug bool, executor executor.ExecutorInterface) *Update {
 	return &Update{
 		Debug:      debug,
+		Executable: os.Executable,
 		Executor:   executor,
 		GOARCH:     runtime.GOARCH,
 		GOOS:       runtime.GOOS,
+		LookPath:   exec.LookPath,
 		Owner:      owner,
 		Repository: repository,
 	}
@@ -71,7 +82,7 @@ func (u *Update) execute() {
 
 	u.removeStaleBinary(target)
 
-	fmt.Println("Installing latest git-helper version")
+	fmt.Printf("Installing latest git-helper version to %s\n", target)
 
 	releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", u.Owner, u.Repository)
 	body, err := u.fetchReleaseBody(releaseURL)
@@ -113,28 +124,58 @@ func assetName(goos, goarch string) string {
 }
 
 // installPath is the binary to replace: --install-path if given, otherwise the
-// binary that is currently running.
+// binary that is currently running. When running through `go run`, the running
+// binary is a throwaway build, so the installed git-helper on PATH is used.
 func (u *Update) installPath() (string, error) {
 	if u.InstallPath != "" {
 		return filepath.Abs(u.InstallPath)
 	}
 
-	exe, err := os.Executable()
+	exe, err := u.Executable()
 	if err != nil {
 		return "", err
+	}
+
+	if isGoRunBinary(exe) {
+		onPath, err := u.LookPath("git-helper")
+		if err != nil {
+			return "", fmt.Errorf("running through `go run` and no installed git-helper was found on PATH; pass --install-path to say where to install it")
+		}
+
+		exe = onPath
 	}
 
 	return filepath.EvalSymlinks(exe)
 }
 
+// isGoRunBinary reports whether path is a throwaway binary built by `go run`.
+// Depending on the Go version it lives either in a go-build<digits> directory
+// under the temp dir, or in the build cache (a directory named go-build, e.g.
+// ~/Library/Caches/go-build/96/<hash>-d/main).
+func isGoRunBinary(path string) bool {
+	for _, part := range strings.Split(strings.ReplaceAll(path, `\`, "/"), "/") {
+		if goBuildDir.MatchString(part) {
+			return true
+		}
+	}
+
+	return false
+}
+
+var goBuildDir = regexp.MustCompile(`^go-build\d*$`)
+
 // removeStaleBinary deletes the renamed old binary left behind by a previous
 // Windows update (a running .exe can be renamed but not overwritten).
 func (u *Update) removeStaleBinary(target string) {
+	if u.GOOS != "windows" {
+		return
+	}
+
 	_ = os.Remove(target + ".old")
 }
 
 func (u *Update) fetchReleaseBody(releaseURL string) ([]byte, error) {
-	resp, err := http.Get(releaseURL)
+	resp, err := httpClient.Get(releaseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +200,7 @@ func (u *Update) getDownloadURL(body []byte) (string, error) {
 
 // downloadBinary saves the release asset to a temporary file and returns its path.
 func (u *Update) downloadBinary(downloadURL string) (string, error) {
-	resp, err := http.Get(downloadURL)
+	resp, err := httpClient.Get(downloadURL)
 	if err != nil {
 		return "", err
 	}
@@ -256,7 +297,11 @@ func (u *Update) sudoInstall(downloaded, target string) error {
 	fmt.Printf("%s is not writable by the current user; using sudo to install it.\n", filepath.Dir(target))
 
 	_, err := u.Executor.Exec("waitAndStdout", "sudo", "install", "-m", "0755", downloaded, target)
-	return err
+	if err != nil {
+		return fmt.Errorf("installing %s with sudo: %w (run git-helper update --install-path with a writable path to avoid sudo)", target, err)
+	}
+
+	return nil
 }
 
 func (u *Update) outputNewVersion(target string) {

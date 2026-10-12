@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
+	"github.com/emmahsax/go-git-helper/internal/testutil"
 	"github.com/emmahsax/go-git-helper/plugins"
 )
 
@@ -201,7 +202,7 @@ func Test_createOrUpdatePlugins(t *testing.T) {
 					t.Fatalf("expected plugin %s to be installed: %s", name, err)
 				}
 
-				if string(installed) != string(embedded) {
+				if string(installed) != string(lfLineEndings(embedded)) {
 					t.Errorf("expected plugin %s to match the embedded script", name)
 				}
 
@@ -239,6 +240,15 @@ func Test_embeddedPluginsCallMatchingCommand(t *testing.T) {
 		if !strings.Contains(string(content), expected) {
 			t.Errorf("expected %s to contain %q, got %q", name, expected, content)
 		}
+	}
+}
+
+func Test_lfLineEndings(t *testing.T) {
+	got := string(lfLineEndings([]byte("#!/bin/sh\r\n\r\ngit-helper new-branch \"$@\"\r\n")))
+	expected := "#!/bin/sh\n\ngit-helper new-branch \"$@\"\n"
+
+	if got != expected {
+		t.Errorf("expected %q, got %q", expected, got)
 	}
 }
 
@@ -280,14 +290,26 @@ func Test_createOrUpdateConfig_permissions(t *testing.T) {
 }
 
 func Test_instructions(t *testing.T) {
+	home := testutil.IsolateHome(t)
+
 	windowsPath := pluginPathInstructions("windows", `C:\Users\me\.git-helper\plugins`)
-	if !strings.Contains(windowsPath, "SetEnvironmentVariable") || !strings.Contains(windowsPath, `C:\Users\me\.git-helper\plugins`) {
+	if !strings.Contains(windowsPath, `C:\Users\me\.git-helper\plugins`) || !strings.Contains(windowsPath, `GetEnvironmentVariable("Path", "User")`) {
 		t.Errorf("unexpected Windows PATH instructions: %s", windowsPath)
 	}
 
-	unixPath := pluginPathInstructions("linux", "/home/me/.git-helper/plugins")
-	if !strings.Contains(unixPath, `export PATH="/home/me/.git-helper/plugins:$PATH"`) {
+	// It must extend only the user's own PATH, never copy the merged process PATH into it
+	if strings.Contains(windowsPath, "$env:Path") {
+		t.Errorf("Windows PATH instructions must not use the process PATH: %s", windowsPath)
+	}
+
+	unixPath := pluginPathInstructions("linux", filepath.Join(home, ".git-helper", "plugins"))
+	if !strings.Contains(unixPath, `export PATH="$HOME/.git-helper/plugins:$PATH"`) {
 		t.Errorf("unexpected Unix PATH instructions: %s", unixPath)
+	}
+
+	outside := pluginPathInstructions("linux", "/opt/git-helper/plugins")
+	if !strings.Contains(outside, `export PATH="/opt/git-helper/plugins:$PATH"`) {
+		t.Errorf("expected a path outside the home directory to be unchanged: %s", outside)
 	}
 
 	windowsCompletion := completionInstructions("windows", "dir")
@@ -295,11 +317,62 @@ func Test_instructions(t *testing.T) {
 		t.Errorf("unexpected Windows completion instructions: %s", windowsCompletion)
 	}
 
-	unixCompletion := completionInstructions("darwin", "dir")
+	unixCompletion := completionInstructions("darwin", filepath.Join(home, "with space", "completions"))
 	for _, sh := range []string{"zsh", "bash", "fish"} {
-		if !strings.Contains(unixCompletion, "completion."+sh) {
-			t.Errorf("expected Unix completion instructions to mention %s: %s", sh, unixCompletion)
+		if !strings.Contains(unixCompletion, `"$HOME/with space/completions/completion.`+sh+`"`) {
+			t.Errorf("expected a quoted, $HOME-relative path for %s: %s", sh, unixCompletion)
 		}
+	}
+}
+
+func Test_shellPath(t *testing.T) {
+	home := testutil.IsolateHome(t)
+
+	tests := []struct {
+		path     string
+		expected string
+	}{
+		{filepath.Join(home, ".git-helper", "plugins"), "$HOME/.git-helper/plugins"},
+		{home, home},
+		{filepath.Dir(home), filepath.Dir(home)},
+		{"/opt/elsewhere", "/opt/elsewhere"},
+	}
+
+	for _, test := range tests {
+		if got := shellPath(test.path); got != test.expected {
+			t.Errorf("shellPath(%q) = %q, expected %q", test.path, got, test.expected)
+		}
+	}
+}
+
+func Test_createOrUpdateConfig_tightensExistingDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file modes are not enforced on Windows")
+	}
+
+	originalAskYesNoQuestion := commandline.AskYesNoQuestion
+	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
+	t.Cleanup(func() {
+		commandline.AskYesNoQuestion = originalAskYesNoQuestion
+		commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion
+	})
+	commandline.AskYesNoQuestion = func(question string) bool { return true }
+	commandline.AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string { return "x" }
+
+	configFile := &MockConfig{Dir: t.TempDir(), Debug: true}
+	if err := os.Chmod(configFile.Dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	newSetup(true, &MockExecutor{}, configFile).createOrUpdateConfig()
+
+	info, err := os.Stat(configFile.Dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Mode().Perm() != 0700 {
+		t.Errorf("expected config directory mode 0700, got %v", info.Mode().Perm())
 	}
 }
 
