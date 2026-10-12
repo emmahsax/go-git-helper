@@ -34,6 +34,7 @@ Move the binary for your platform onto your `PATH` as `git-helper`. The examples
 
 ```bash
 sudo mv git-helper_darwin_arm64 /usr/local/bin/git-helper   # git-helper_darwin_amd64 on Intel
+sudo chown $(whoami):staff /usr/local/bin/git-helper
 sudo chmod +x /usr/local/bin/git-helper
 ```
 

@@ -101,7 +101,7 @@ func (s *Setup) createOrUpdateConfig() {
 		return
 	}
 
-	fmt.Printf("\nDone setting up %s!\n\n", s.Config.ConfigFile())
+	fmt.Printf("\nDone setting up %s\n\n", s.Config.ConfigFile())
 }
 
 func (s *Setup) generateConfigFileContents() string {
