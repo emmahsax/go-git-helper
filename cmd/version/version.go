@@ -2,9 +2,28 @@ package version
 
 import (
 	"fmt"
+	"runtime/debug"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+// Resolve returns the version to report. It prefers the version injected at
+// build time, then the module version recorded by `go install`, and falls back
+// to "dev" for local builds.
+func Resolve(injected string) string {
+	if injected != "" && injected != "dev" {
+		return injected
+	}
+
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if v := info.Main.Version; v != "" && v != "(devel)" {
+			return strings.TrimPrefix(v, "v")
+		}
+	}
+
+	return "dev"
+}
 
 func NewCommand(packageVersion string) *cobra.Command {
 	cmd := &cobra.Command{

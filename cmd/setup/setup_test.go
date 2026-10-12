@@ -117,22 +117,9 @@ gitlab_token: hello_world
 		}
 		s := newSetup(true, executor, configFile)
 
-		_, err := os.Stat(configFile.ConfigFile())
-		if err != nil {
-			err := os.MkdirAll(configFile.ConfigDir(), 0755)
-			if err != nil {
-				t.Fatal(err)
-			}
-			tempDir, err := os.MkdirTemp(configFile.ConfigDir(), "")
-			if err != nil {
-				t.Fatal(err)
-			}
-			tempFile, err := os.Create(configFile.ConfigFile())
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(tempDir)
-			defer os.Remove(tempFile.Name())
+		// The config file already exists
+		if err := os.WriteFile(configFile.ConfigFile(), []byte("existing"), 0600); err != nil {
+			t.Fatal(err)
 		}
 
 		s.createOrUpdateConfig()

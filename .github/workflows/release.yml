@@ -14,11 +14,8 @@ jobs:
     if: ${{ github.ref == 'refs/heads/main' }}
     permissions:
       contents: write
-    uses: emmahsax/github-actions/.github/workflows/go-release.yml@main
+    uses: emmahsax/github-actions/.github/workflows/go-release.yml@go-release-goreleaser-and-test-matrix
     with:
-      build_command: task build
-      files: |
-        git-helper_darwin_arm64
       go_version: 1.27
       tag_name: ${{ inputs.tag_name }}
-      upload: true
+      use_goreleaser: true

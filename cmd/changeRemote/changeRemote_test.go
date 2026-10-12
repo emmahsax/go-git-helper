@@ -23,12 +23,9 @@ func (me *MockExecutor) Exec(execType string, command string, args ...string) ([
 }
 
 func Test_execute(t *testing.T) {
-	tmpDir := t.TempDir()
-	err := os.Chdir(tmpDir)
-
-	if err != nil {
-		t.Errorf("error was found: %s", err.Error())
-	}
+	// t.Chdir restores the working directory afterwards, which Windows needs
+	// before it can delete the temporary directory.
+	t.Chdir(t.TempDir())
 
 	cr := newChangeRemote("oldOwner", "newOwner", true, &MockExecutor{Debug: true})
 	cr.execute()

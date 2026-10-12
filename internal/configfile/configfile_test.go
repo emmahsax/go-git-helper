@@ -91,27 +91,14 @@ func Test_ConfigFile(t *testing.T) {
 }
 
 func Test_ConfigFileExists(t *testing.T) {
-	testutil.IsolateHome(t)
+	home := testutil.IsolateHome(t)
 	cf := NewConfigFile(false)
 
-	_, err := os.Stat(cf.ConfigFile())
-	if err != nil {
-		err := os.MkdirAll(cf.ConfigDir(), 0755)
-		if err != nil {
-			t.Fatal(err)
-		}
-		tempDir, err := os.MkdirTemp(cf.ConfigDir(), "")
-		if err != nil {
-			t.Fatal(err)
-		}
-		tempFile, err := os.Create(cf.ConfigFile())
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer os.RemoveAll(cf.ConfigDir())
-		defer os.RemoveAll(tempDir)
-		defer os.Remove(tempFile.Name())
+	if cf.ConfigFileExists() {
+		t.Errorf("Expected ConfigFileExists to return false before the file is created")
 	}
+
+	testutil.WriteConfig(t, home, "github_username: testuser\n")
 
 	if !cf.ConfigFileExists() {
 		t.Errorf("Expected ConfigFileExists to return true, got false")

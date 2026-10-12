@@ -72,3 +72,18 @@ func Test_NewCommand_WithArgs_ShouldFail(t *testing.T) {
 		t.Errorf("Expected error with extra args, got nil")
 	}
 }
+
+func Test_Resolve_injectedVersion(t *testing.T) {
+	if got := Resolve("1.2.3"); got != "1.2.3" {
+		t.Errorf("expected 1.2.3, got %s", got)
+	}
+}
+
+func Test_Resolve_localBuild(t *testing.T) {
+	// Test binaries have no module version, so both an empty and a "dev" value fall back to dev
+	for _, injected := range []string{"", "dev"} {
+		if got := Resolve(injected); got != "dev" {
+			t.Errorf("expected dev for %q, got %s", injected, got)
+		}
+	}
+}
