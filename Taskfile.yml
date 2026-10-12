@@ -11,11 +11,6 @@ tasks:
     cmds:
       - goreleaser build --snapshot --clean
 
-  build:release:
-    desc: Dry run of a release, without publishing, to see exactly what would be uploaded to dist/ (uses GoReleaser)
-    cmds:
-      - goreleaser release --snapshot --clean --skip=publish
-
   build:test:
     desc: Build test-git-helper for this machine and install it for testing purposes (uses GoReleaser)
     cmds:
