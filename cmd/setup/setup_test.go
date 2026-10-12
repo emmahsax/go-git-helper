@@ -1,13 +1,14 @@
 package setup
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
+	"github.com/emmahsax/go-git-helper/plugins"
 )
 
 type MockExecutor struct {
@@ -26,10 +27,11 @@ func (me *MockExecutor) Exec(execType string, command string, args ...string) ([
 type MockConfig struct {
 	Contents map[string]string
 	Debug    bool
+	Dir      string
 }
 
 func (mc *MockConfig) ConfigDir() string {
-	return "./git-helper-test"
+	return mc.Dir
 }
 
 func (mc *MockConfig) ConfigDirExists() bool {
@@ -37,7 +39,7 @@ func (mc *MockConfig) ConfigDirExists() bool {
 }
 
 func (mc *MockConfig) ConfigFile() string {
-	return mc.ConfigDir() + "/config-test.yml"
+	return filepath.Join(mc.ConfigDir(), "config-test.yml")
 }
 
 func (mc *MockConfig) ConfigFileExists() bool {
@@ -105,13 +107,14 @@ gitlab_token: hello_world
 
 		executor := &MockExecutor{Debug: true}
 		configFile := &MockConfig{
+			Dir:   t.TempDir(),
 			Debug: true,
 			Contents: map[string]string{
 				"github_username": "test_user",
 				"github_token":    "test_token",
 			},
 		}
-		s := newSetup("owner", "repo", true, executor, configFile)
+		s := newSetup(true, executor, configFile)
 
 		_, err := os.Stat(configFile.ConfigFile())
 		if err != nil {
@@ -127,7 +130,6 @@ gitlab_token: hello_world
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer os.RemoveAll(configFile.ConfigDir())
 			defer os.RemoveAll(tempDir)
 			defer os.Remove(tempFile.Name())
 		}
@@ -160,13 +162,14 @@ func Test_generateConfigFileContents(t *testing.T) {
 
 	executor := &MockExecutor{Debug: true}
 	configFile := &MockConfig{
+		Dir:   t.TempDir(),
 		Debug: true,
 		Contents: map[string]string{
 			"github_username": "test_user",
 			"github_token":    "test_token",
 		},
 	}
-	s := newSetup("owner", "repo", true, executor, configFile)
+	s := newSetup(true, executor, configFile)
 	contents := s.generateConfigFileContents()
 
 	expectedContents := "github_username: hello_world\ngithub_token: hello_world\ngitlab_username: hello_world\ngitlab_token: hello_world\n"
@@ -175,71 +178,142 @@ func Test_generateConfigFileContents(t *testing.T) {
 	}
 }
 
-func Test_CceateOrUpdatePlugins(t *testing.T) {
-	executor := &MockExecutor{Debug: true}
-	configFile := &MockConfig{
-		Debug: true,
-		Contents: map[string]string{
-			"github_username": "test_user",
-			"github_token":    "test_token",
-		},
+func Test_createOrUpdatePlugins(t *testing.T) {
+	for _, goos := range []string{"darwin", "linux", "windows"} {
+		t.Run(goos, func(t *testing.T) {
+			configFile := &MockConfig{Dir: t.TempDir(), Debug: true}
+			s := newSetup(true, &MockExecutor{Debug: true}, configFile)
+			s.GOOS = goos
+
+			s.createOrUpdatePlugins()
+
+			entries, err := plugins.FS.ReadDir(".")
+			if err != nil || len(entries) == 0 {
+				t.Fatalf("expected embedded plugins, got %d (err: %v)", len(entries), err)
+			}
+
+			for _, entry := range entries {
+				name := entry.Name()
+				embedded, _ := plugins.FS.ReadFile(name)
+
+				installed, err := os.ReadFile(filepath.Join(configFile.ConfigDir(), "plugins", name))
+				if err != nil {
+					t.Fatalf("expected plugin %s to be installed: %s", name, err)
+				}
+
+				if string(installed) != string(embedded) {
+					t.Errorf("expected plugin %s to match the embedded script", name)
+				}
+
+				if runtime.GOOS != "windows" {
+					info, _ := os.Stat(filepath.Join(configFile.ConfigDir(), "plugins", name))
+					if info.Mode().Perm() != 0755 {
+						t.Errorf("expected plugin %s to be executable, got %v", name, info.Mode().Perm())
+					}
+				}
+
+				shim, shimErr := os.ReadFile(filepath.Join(configFile.ConfigDir(), "plugins", name+".cmd"))
+				if goos == "windows" {
+					expected := "@git-helper " + strings.TrimPrefix(name, "git-") + " %*\r\n"
+					if shimErr != nil || string(shim) != expected {
+						t.Errorf("expected shim %q for %s, got %q (err: %v)", expected, name, shim, shimErr)
+					}
+				} else if shimErr == nil {
+					t.Errorf("did not expect a .cmd shim for %s on %s", name, goos)
+				}
+			}
+		})
 	}
-	s := newSetup("owner", "repo", true, executor, configFile)
+}
 
-	serverPlugin1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("plugin1 content"))
-	}))
-	defer serverPlugin1.Close()
+// Each plugin must call the git-helper subcommand matching its file name, and
+// pass arguments through safely (quoted).
+func Test_embeddedPluginsCallMatchingCommand(t *testing.T) {
+	entries, _ := plugins.FS.ReadDir(".")
 
-	serverPlugin2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("plugin2 content"))
-	}))
-	defer serverPlugin2.Close()
+	for _, entry := range entries {
+		name := entry.Name()
+		content, _ := plugins.FS.ReadFile(name)
+		expected := "git-helper " + strings.TrimPrefix(name, "git-") + ` "$@"`
 
-	response := []map[string]string{
-		{
-			"name":         "plugin1",
-			"download_url": serverPlugin1.URL,
-		},
-		{
-			"name":         "plugin2",
-			"download_url": serverPlugin2.URL,
-		},
+		if !strings.Contains(string(content), expected) {
+			t.Errorf("expected %s to contain %q, got %q", name, expected, content)
+		}
+	}
+}
+
+func Test_createOrUpdateConfig_permissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file modes are not enforced on Windows")
 	}
 
-	jsonData, _ := json.Marshal(response)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(jsonData))
-	}))
-	defer server.Close()
-	defer os.RemoveAll(configFile.ConfigDir())
+	originalAskYesNoQuestion := commandline.AskYesNoQuestion
+	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
+	t.Cleanup(func() {
+		commandline.AskYesNoQuestion = originalAskYesNoQuestion
+		commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion
+	})
+	commandline.AskYesNoQuestion = func(question string) bool { return true }
+	commandline.AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string { return "x" }
 
-	s.createOrUpdatePlugins(server.URL)
+	configFile := &MockConfig{Dir: filepath.Join(t.TempDir(), "new-dir"), Debug: true}
+	configFile.Dir, _ = filepath.Abs(configFile.Dir)
 
-	resPlugin1, _ := os.ReadFile(configFile.ConfigDir() + "/plugins/plugin1")
-
-	if string(resPlugin1) != "plugin1 content" {
-		t.Errorf("expected output to be '%s', but got '%s'", "plugin1 content", resPlugin1)
+	// A config file left over from an older version with loose permissions
+	if err := os.MkdirAll(configFile.ConfigDir(), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configFile.ConfigFile(), []byte("old"), 0644); err != nil {
+		t.Fatal(err)
 	}
 
-	resPlugin2, _ := os.ReadFile(configFile.ConfigDir() + "/plugins/plugin2")
+	newSetup(true, &MockExecutor{}, configFile).createOrUpdateConfig()
 
-	if string(resPlugin2) != "plugin2 content" {
-		t.Errorf("expected output to be '%s', but got '%s'", "plugin2 content", resPlugin2)
+	info, err := os.Stat(configFile.ConfigFile())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Mode().Perm() != 0600 {
+		t.Errorf("expected config file mode 0600, got %v", info.Mode().Perm())
+	}
+}
+
+func Test_instructions(t *testing.T) {
+	windowsPath := pluginPathInstructions("windows", `C:\Users\me\.git-helper\plugins`)
+	if !strings.Contains(windowsPath, "SetEnvironmentVariable") || !strings.Contains(windowsPath, `C:\Users\me\.git-helper\plugins`) {
+		t.Errorf("unexpected Windows PATH instructions: %s", windowsPath)
+	}
+
+	unixPath := pluginPathInstructions("linux", "/home/me/.git-helper/plugins")
+	if !strings.Contains(unixPath, `export PATH="/home/me/.git-helper/plugins:$PATH"`) {
+		t.Errorf("unexpected Unix PATH instructions: %s", unixPath)
+	}
+
+	windowsCompletion := completionInstructions("windows", "dir")
+	if !strings.Contains(windowsCompletion, "$PROFILE") || strings.Contains(windowsCompletion, "zsh") {
+		t.Errorf("unexpected Windows completion instructions: %s", windowsCompletion)
+	}
+
+	unixCompletion := completionInstructions("darwin", "dir")
+	for _, sh := range []string{"zsh", "bash", "fish"} {
+		if !strings.Contains(unixCompletion, "completion."+sh) {
+			t.Errorf("expected Unix completion instructions to mention %s: %s", sh, unixCompletion)
+		}
 	}
 }
 
 func Test_createOrUpdateCompletion(t *testing.T) {
 	executor := &MockExecutor{Debug: true}
 	configFile := &MockConfig{
+		Dir:   t.TempDir(),
 		Debug: true,
 		Contents: map[string]string{
 			"github_username": "test_user",
 			"github_token":    "test_token",
 		},
 	}
-	s := newSetup("owner", "repo", true, executor, configFile)
-	defer os.RemoveAll(configFile.ConfigDir())
+	s := newSetup(true, executor, configFile)
 
 	s.createOrUpdateCompletion()
 
