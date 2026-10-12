@@ -37,7 +37,7 @@ func (g *Git) CleanDeletedBranches() {
 		return
 	}
 
-	branches := strings.Split(string(output), "\n")
+	branches := utils.SplitLines(string(output))
 	pattern := "origin/.*: gone"
 
 	for _, branch := range branches {
@@ -171,7 +171,7 @@ func (g *Git) Remotes() []string {
 		return []string{}
 	}
 
-	return strings.Split(string(output), "\n")
+	return utils.SplitLines(string(output))
 }
 
 func (g *Git) Reset() {

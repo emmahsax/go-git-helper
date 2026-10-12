@@ -3,6 +3,7 @@ package configfile
 import (
 	"errors"
 	"os"
+	"path/filepath"
 
 	"github.com/emmahsax/go-git-helper/internal/utils"
 	yaml "gopkg.in/yaml.v3"
@@ -37,22 +38,20 @@ func (cf *ConfigFile) ConfigDir() string {
 		return ""
 	}
 
-	return homeDir + "/.git-helper"
+	return filepath.Join(homeDir, ".git-helper")
 }
 
 func (cf *ConfigFile) ConfigDirExists() bool {
 	info, err := os.Stat(cf.ConfigDir())
 	if err != nil {
-		if os.IsNotExist(err) {
-			return false
-		}
+		return false
 	}
 
 	return info.IsDir()
 }
 
 func (cf *ConfigFile) ConfigFile() string {
-	return cf.ConfigDir() + "/config.yml"
+	return filepath.Join(cf.ConfigDir(), "config.yml")
 }
 
 func (cf *ConfigFile) ConfigFileExists() bool {

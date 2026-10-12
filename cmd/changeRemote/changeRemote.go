@@ -96,7 +96,7 @@ func (cr *ChangeRemote) processGitRepository() map[string]map[string]string {
 		return fullRemoteInfo
 	}
 
-	remotes := strings.Split(string(output), "\n")
+	remotes := utils.SplitLines(string(output))
 
 	for _, remote := range remotes {
 		if remote == "" {

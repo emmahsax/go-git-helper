@@ -4,17 +4,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
+	"github.com/emmahsax/go-git-helper/internal/testutil"
 	gitlab "gitlab.com/gitlab-org/api/client-go/v3"
 )
 
 func Test_NewGitLab(t *testing.T) {
-	// Skip if config file doesn't exist (e.g., in CI)
-	if _, err := os.Stat(os.Getenv("HOME") + "/.git-helper/config.yml"); os.IsNotExist(err) {
-		t.Skip("Skipping test: config file not found")
-	}
+	testutil.WriteConfig(t, testutil.IsolateHome(t), "gitlab_token: test_token\n")
 
 	// This test requires a valid config file with GitLab token
 	// We'll test that the struct is created properly
@@ -34,10 +31,7 @@ func Test_NewGitLab(t *testing.T) {
 }
 
 func Test_NewGitLab_WithDebug(t *testing.T) {
-	// Skip if config file doesn't exist (e.g., in CI)
-	if _, err := os.Stat(os.Getenv("HOME") + "/.git-helper/config.yml"); os.IsNotExist(err) {
-		t.Skip("Skipping test: config file not found")
-	}
+	testutil.WriteConfig(t, testutil.IsolateHome(t), "gitlab_token: test_token\n")
 
 	gl := NewGitLab(true)
 
