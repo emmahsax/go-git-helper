@@ -94,7 +94,7 @@ func (g *Git) DefaultBranch() string {
 	output, err := g.Executor.Exec("actionAndOutput", "git", "symbolic-ref", "refs/remotes/origin/HEAD")
 	if err != nil {
 		if strings.Contains(err.Error(), "fatal: ") {
-			fmt.Printf("\nYour symbolic ref is not set up properly. Please run:\n  git-helper set-head-ref [defaultBranch]\n\nAnd then try your command again.\n\n")
+			fmt.Printf("\nYour symbolic ref is not set up properly. Please run:\n  git-helper set-head-ref [defaultBranch]\n\nAnd then try your command again\n\n")
 		}
 		utils.HandleError(err, g.Debug, nil)
 		return ""

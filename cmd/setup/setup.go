@@ -101,7 +101,7 @@ func (s *Setup) createOrUpdateConfig() {
 		return
 	}
 
-	fmt.Printf("\nDone setting up %s!\n\n", s.Config.ConfigFile())
+	fmt.Printf("\nDone setting up %s\n\n", s.Config.ConfigFile())
 }
 
 func (s *Setup) generateConfigFileContents() string {
@@ -173,7 +173,7 @@ func (s *Setup) createOrUpdatePlugins() {
 		}
 	}
 
-	fmt.Printf("\nDone setting up plugins at %s!\n", pluginsDir)
+	fmt.Printf("\nDone setting up plugins at %s\n", pluginsDir)
 	fmt.Printf("\n%s\n\n", pluginPathInstructions(s.GOOS, pluginsDir))
 }
 
@@ -198,7 +198,7 @@ func pluginPathInstructions(goos, pluginsDir string) string {
 			"  $dir = \"" + pluginsDir + "\"\n" +
 			"  $parts = @([Environment]::GetEnvironmentVariable(\"Path\", \"User\") -split \";\" | Where-Object { $_ })\n" +
 			"  if ($parts -notcontains $dir) { [Environment]::SetEnvironmentVariable(\"Path\", (($parts + $dir) -join \";\"), \"User\") }\n" +
-			"Then open a new terminal."
+			"Then open a new terminal"
 	}
 
 	dir := shellPath(pluginsDir)
@@ -252,7 +252,7 @@ func (s *Setup) createOrUpdateCompletion() {
 		}
 	}
 
-	fmt.Printf("\nCompletions (for bash, fish, powershell, and zsh) generated in %s.\n\n%s\n\n", completionsDir, completionInstructions(s.GOOS, completionsDir))
+	fmt.Printf("\nCompletions (for bash, fish, powershell, and zsh) generated in %s\n\n%s\n\n", completionsDir, completionInstructions(s.GOOS, completionsDir))
 }
 
 func completionInstructions(goos, completionsDir string) string {

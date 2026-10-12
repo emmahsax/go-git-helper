@@ -71,7 +71,7 @@ func (cr *CodeRequest) askForClarification() {
 	var answer string
 
 	if cr.InteractiveMode {
-		answer = commandline.AskMultipleChoice("Found git remotes for both GitHub and GitLab. Choose one to proceed with", []string{"GitHub", "GitLab"})
+		answer = commandline.AskMultipleChoice("Found git remotes for both GitHub and GitLab. Choose one to proceed with:", []string{"GitHub", "GitLab"})
 	} else {
 		answer = "GitHub"
 	}
