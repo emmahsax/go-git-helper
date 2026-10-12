@@ -1,8 +1,7 @@
 version: 2
 project_name: git-helper
 
-# Publish the bare binaries, named git-helper_<os>_<arch> (plus .exe on Windows),
-# which is the asset name `git-helper update` looks for.
+# Publish the bare binaries, named git-helper_<os>_<arch> (plus .exe on Windows), which is the asset name `git-helper update` looks for.
 archives:
   - formats:
       - binary
@@ -29,8 +28,7 @@ builds:
       - -s -w -X main.packageVersion={{ .Version }}
     main: .
 
-  # Every other supported platform. These are built on every run to prove that
-  # they compile, but are not archived or uploaded (see `archives.ids` below).
+  # Every other supported platform. These are built on every run to prove they compile, but are not archived or uploaded (see `archives.ids` below).
   - binary: git-helper
     env:
       - CGO_ENABLED=0
@@ -51,10 +49,8 @@ builds:
       - -s -w -X main.packageVersion={{ .Version }}
     main: .
 
-# Let GitHub generate the release notes, as `generate_release_notes: true` did.
 changelog:
   use: github-native
 
-# Covers every archive above, so it follows `archives.ids` automatically.
 checksum:
   name_template: checksums.txt

@@ -369,6 +369,5 @@ When interacting with this repository, please follow [Contributor Covenant's Cod
 
 To make a new release:
 
-1. Verify `main` has or will have the newest version in the `main.go` file
 1. Merge the pull request via the big green button
-3. Trigger a new workflow from [GitHub Actions](https://github.com/emmahsax/go-git-helper/actions/workflows/release.yml) and pass in the package version indicated in the `main.go` file (but include the `v` prefix)
+1. Trigger a new workflow from [GitHub Actions](https://github.com/emmahsax/go-git-helper/actions/workflows/release.yml) and pass in the next sensible semantic version (including the `v` prefix). [GoReleaser](https://goreleaser.com) builds and publishes the binaries indicated in the `goreleaser.yaml` file and `checksums.txt`
