@@ -148,8 +148,10 @@ func (u *Update) installPath() (string, error) {
 	return filepath.EvalSymlinks(exe)
 }
 
-// isGoRunBinary reports whether path is a temporary binary built by `go run`,
-// which lives in a go-build directory under the temp dir.
+// isGoRunBinary reports whether path is a throwaway binary built by `go run`.
+// Depending on the Go version it lives either in a go-build<digits> directory
+// under the temp dir, or in the build cache (a directory named go-build, e.g.
+// ~/Library/Caches/go-build/96/<hash>-d/main).
 func isGoRunBinary(path string) bool {
 	for _, part := range strings.Split(strings.ReplaceAll(path, `\`, "/"), "/") {
 		if goBuildDir.MatchString(part) {
@@ -160,7 +162,7 @@ func isGoRunBinary(path string) bool {
 	return false
 }
 
-var goBuildDir = regexp.MustCompile(`^go-build\d+$`)
+var goBuildDir = regexp.MustCompile(`^go-build\d*$`)
 
 // removeStaleBinary deletes the renamed old binary left behind by a previous
 // Windows update (a running .exe can be renamed but not overwritten).

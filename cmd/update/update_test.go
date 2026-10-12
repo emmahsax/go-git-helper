@@ -65,6 +65,9 @@ func Test_isGoRunBinary(t *testing.T) {
 		{"/var/folders/xy/T/go-build123456/b001/exe/main", true},
 		{"/tmp/go-build987/b001/exe/git-helper", true},
 		{`C:\Users\me\AppData\Local\Temp\go-build42\b001\exe\main.exe`, true},
+		{"/Users/me/Library/Caches/go-build/96/968ede4d83a5675950c1ca6b91d089c7bae6bcb4131de946f0bed85e52cd36e6-d/main", true},
+		{"/home/me/.cache/go-build/ab/abcdef-d/main", true},
+		{`C:\Users\me\AppData\Local\go-build\ab\abcdef-d\main.exe`, true},
 		{"/usr/local/bin/git-helper", false},
 		{"/home/me/go-builder/bin/git-helper", false},
 	}
