@@ -22,7 +22,8 @@ import (
 var (
 	packageOwner      = "emmahsax"
 	packageRepository = "go-git-helper"
-	packageVersion    = "1.0.0"
+	// packageVersion is set at build time by GoReleaser (-X main.packageVersion=...)
+	packageVersion = "dev"
 )
 
 func main() {
@@ -51,7 +52,7 @@ func newCommand() *cobra.Command {
 	cmd.AddCommand(setHeadRef.NewCommand())
 	cmd.AddCommand(setup.NewCommand())
 	cmd.AddCommand(update.NewCommand(packageOwner, packageRepository))
-	cmd.AddCommand(version.NewCommand(packageVersion))
+	cmd.AddCommand(version.NewCommand(version.Resolve(packageVersion)))
 
 	return cmd
 }
