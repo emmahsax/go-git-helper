@@ -26,5 +26,5 @@ jobs:
       branch: ${{ needs.setup.outputs.branch }}
       build_command: task build
       go_version: 1.27
+      runners: '["macos-15-intel", "macos-latest", "ubuntu-24.04-arm", "ubuntu-latest", "windows-11-arm", "windows-latest"]'
       staticcheck_version: master
-      runners: '["ubuntu-latest", "ubuntu-24.04-arm", "macos-latest", "macos-15-intel", "windows-latest", "windows-11-arm"]'

@@ -1,44 +1,5 @@
 version: 2
-
 project_name: git-helper
-
-builds:
-  # The platform that is published in releases
-  - id: release
-    main: .
-    binary: git-helper
-    env:
-      - CGO_ENABLED=0
-    flags:
-      - -trimpath
-    ldflags:
-      - -s -w -X main.packageVersion={{ .Version }}
-    goos:
-      - darwin
-    goarch:
-      - arm64
-
-  # Every other supported platform. These are built on every run to prove that
-  # they compile, but are not archived or uploaded (see `archives.ids` below).
-  - id: matrix
-    main: .
-    binary: git-helper
-    env:
-      - CGO_ENABLED=0
-    flags:
-      - -trimpath
-    ldflags:
-      - -s -w -X main.packageVersion={{ .Version }}
-    goos:
-      - darwin
-      - linux
-      - windows
-    goarch:
-      - amd64
-      - arm64
-    ignore:
-      - goos: darwin
-        goarch: arm64
 
 # Publish the bare binaries, named git-helper_<os>_<arch> (plus .exe on Windows),
 # which is the asset name `git-helper update` looks for.
@@ -46,16 +7,54 @@ archives:
   - formats:
       - binary
     ids:
-      - release
-      # Uncomment to publish the other platforms (macOS Intel, Linux, Windows) in releases.
-      # They are built on every run to prove they compile, but not uploaded yet.
+      # # Uncomment to publish the other platforms (macOS Intel, Linux, Windows) in releases.
+      # # They are built on every run to prove they compile, but not uploaded yet.
       # - matrix
+      - release
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 
-# Covers every archive above, so it follows `archives.ids` automatically.
-checksum:
-  name_template: checksums.txt
+builds:
+  # The platform that is published in releases
+  - binary: git-helper
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    goarch:
+      - arm64
+    goos:
+      - darwin
+    id: release
+    ldflags:
+      - -s -w -X main.packageVersion={{ .Version }}
+    main: .
+
+  # Every other supported platform. These are built on every run to prove that
+  # they compile, but are not archived or uploaded (see `archives.ids` below).
+  - binary: git-helper
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    goarch:
+      - amd64
+      - arm64
+    goos:
+      - darwin
+      - linux
+      - windows
+    id: matrix
+    ignore:
+      - goarch: arm64
+        goos: darwin
+    ldflags:
+      - -s -w -X main.packageVersion={{ .Version }}
+    main: .
 
 # Let GitHub generate the release notes, as `generate_release_notes: true` did.
 changelog:
   use: github-native
+
+# Covers every archive above, so it follows `archives.ids` automatically.
+checksum:
+  name_template: checksums.txt
