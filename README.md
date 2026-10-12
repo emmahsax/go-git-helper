@@ -66,7 +66,9 @@ sudo install -m 0755 git-helper_linux_amd64 /usr/local/bin/git-helper
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\bin" | Out-Null
 Move-Item git-helper_windows_amd64.exe "$env:USERPROFILE\bin\git-helper.exe"   # git-helper_windows_arm64.exe on ARM
-[Environment]::SetEnvironmentVariable("Path", $env:Path + ";$env:USERPROFILE\bin", "User")
+$dir = "$env:USERPROFILE\bin"
+$parts = @([Environment]::GetEnvironmentVariable("Path", "User") -split ";" | Where-Object { $_ })
+if ($parts -notcontains $dir) { [Environment]::SetEnvironmentVariable("Path", (($parts + $dir) -join ";"), "User") }
 ```
 
 Then open a new terminal. Windows SmartScreen may warn about an unsigned binary the first time; choose `More info` and then `Run anyway`.
