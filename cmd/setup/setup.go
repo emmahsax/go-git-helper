@@ -198,7 +198,7 @@ func pluginPathInstructions(goos, pluginsDir string) string {
 			"  $dir = \"" + pluginsDir + "\"\n" +
 			"  $parts = @([Environment]::GetEnvironmentVariable(\"Path\", \"User\") -split \";\" | Where-Object { $_ })\n" +
 			"  if ($parts -notcontains $dir) { [Environment]::SetEnvironmentVariable(\"Path\", (($parts + $dir) -join \";\"), \"User\") }\n" +
-			"Then open a new terminal."
+			"Then open a new terminal"
 	}
 
 	dir := shellPath(pluginsDir)

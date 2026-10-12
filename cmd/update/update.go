@@ -295,7 +295,7 @@ func replaceRunningBinary(staged, target string) error {
 }
 
 func (u *Update) sudoInstall(downloaded, target string) error {
-	fmt.Printf("%s is not writable by the current user; using sudo to install it.\n", filepath.Dir(target))
+	fmt.Printf("%s is not writable by the current user; using sudo to install it\n", filepath.Dir(target))
 
 	args := []string{"install", "-m", "0755"}
 
