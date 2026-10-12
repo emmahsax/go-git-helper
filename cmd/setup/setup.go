@@ -1,30 +1,29 @@
 package setup
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/configfile"
 	"github.com/emmahsax/go-git-helper/internal/executor"
 	"github.com/emmahsax/go-git-helper/internal/utils"
+	"github.com/emmahsax/go-git-helper/plugins"
 	"github.com/spf13/cobra"
 )
 
 type Setup struct {
-	Debug      bool
-	Executor   executor.ExecutorInterface
-	Config     configfile.ConfigFileInterface
-	Owner      string
-	Repository string
+	Debug    bool
+	Executor executor.ExecutorInterface
+	Config   configfile.ConfigFileInterface
+	GOOS     string
 }
 
-func NewCommand(packageOwner, packageRepository string) *cobra.Command {
+func NewCommand() *cobra.Command {
 	var (
 		debug bool
 	)
@@ -35,7 +34,7 @@ func NewCommand(packageOwner, packageRepository string) *cobra.Command {
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			newSetup(packageOwner, packageRepository, debug, executor.NewExecutor(debug), configfile.NewConfigFile(debug)).execute()
+			newSetup(debug, executor.NewExecutor(debug), configfile.NewConfigFile(debug)).execute()
 			return nil
 		},
 	}
@@ -45,13 +44,12 @@ func NewCommand(packageOwner, packageRepository string) *cobra.Command {
 	return cmd
 }
 
-func newSetup(owner, repository string, debug bool, executor executor.ExecutorInterface, config configfile.ConfigFileInterface) *Setup {
+func newSetup(debug bool, executor executor.ExecutorInterface, config configfile.ConfigFileInterface) *Setup {
 	return &Setup{
-		Debug:      debug,
-		Executor:   executor,
-		Config:     config,
-		Owner:      owner,
-		Repository: repository,
+		Debug:    debug,
+		Executor: executor,
+		Config:   config,
+		GOOS:     runtime.GOOS,
 	}
 }
 
@@ -79,14 +77,25 @@ func (s *Setup) createOrUpdateConfig() {
 	content := s.generateConfigFileContents()
 
 	if !s.Config.ConfigDirExists() {
-		err := os.Mkdir(s.Config.ConfigDir(), 0755)
+		err := os.MkdirAll(s.Config.ConfigDir(), 0700)
 		if err != nil {
 			utils.HandleError(err, s.Debug, nil)
 			return
 		}
 	}
 
-	err := os.WriteFile(s.Config.ConfigFile(), []byte(content), 0644)
+	// Also tighten a directory created by an older version with looser permissions.
+	if err := os.Chmod(s.Config.ConfigDir(), 0700); err != nil {
+		utils.HandleError(err, s.Debug, nil)
+		return
+	}
+
+	// The config file holds access tokens, so keep it private to the user. The
+	// explicit chmod also tightens a file left over from an older version.
+	err := os.WriteFile(s.Config.ConfigFile(), []byte(content), 0600)
+	if err == nil {
+		err = os.Chmod(s.Config.ConfigFile(), 0600)
+	}
 	if err != nil {
 		utils.HandleError(err, s.Debug, nil)
 		return
@@ -121,65 +130,97 @@ func (s *Setup) setupPlugins() {
 	setup := commandline.AskYesNoQuestion("Do you wish to set up the Git Helper plugins?")
 
 	if setup {
-		s.createOrUpdatePlugins(fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/plugins", s.Owner, s.Repository))
+		s.createOrUpdatePlugins()
 	}
 }
 
-func (s *Setup) createOrUpdatePlugins(pluginsURL string) {
-	pluginsDir := s.Config.ConfigDir() + "/plugins"
+func (s *Setup) createOrUpdatePlugins() {
+	pluginsDir := filepath.Join(s.Config.ConfigDir(), "plugins")
 
 	if err := os.MkdirAll(pluginsDir, 0755); err != nil {
 		utils.HandleError(err, s.Debug, nil)
 		return
 	}
 
-	resp, err := http.Get(pluginsURL)
+	entries, err := plugins.FS.ReadDir(".")
 	if err != nil {
 		utils.HandleError(err, s.Debug, nil)
 		return
 	}
-	defer resp.Body.Close()
 
-	var allPlugins []map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&allPlugins); err != nil {
-		utils.HandleError(err, s.Debug, nil)
-		return
-	}
+	for _, entry := range entries {
+		name := entry.Name()
 
-	for _, plugin := range allPlugins {
-		pluginURL := plugin["download_url"].(string)
-		pluginName := plugin["name"].(string)
-
-		resp, err := http.Get(pluginURL)
+		content, err := plugins.FS.ReadFile(name)
 		if err != nil {
 			utils.HandleError(err, s.Debug, nil)
-			continue
-		}
-		defer resp.Body.Close()
-
-		pluginPath := filepath.Join(pluginsDir, pluginName)
-		file, err := os.Create(pluginPath)
-		if err != nil {
-			utils.HandleError(err, s.Debug, nil)
-			continue
-		}
-		defer file.Close()
-
-		_, err = io.Copy(file, resp.Body)
-		if err != nil {
-			utils.HandleError(err, s.Debug, nil)
-			continue
-		}
-
-		err = os.Chmod(pluginPath, 0755)
-		if err != nil {
-			fmt.Println("Error:", err)
 			return
+		}
+
+		if err := writeExecutable(filepath.Join(pluginsDir, name), lfLineEndings(content)); err != nil {
+			utils.HandleError(err, s.Debug, nil)
+			return
+		}
+
+		// cmd.exe and PowerShell can't run the sh script, so also provide a shim
+		// that they will find through PATHEXT.
+		if s.GOOS == "windows" {
+			shim := "@git-helper " + strings.TrimPrefix(name, "git-") + " %*\r\n"
+			if err := writeExecutable(filepath.Join(pluginsDir, name+".cmd"), []byte(shim)); err != nil {
+				utils.HandleError(err, s.Debug, nil)
+				return
+			}
 		}
 	}
 
 	fmt.Printf("\nDone setting up plugins at %s!\n", pluginsDir)
-	fmt.Printf("\nNow add this line to your Unix shell file (e.g. ~/.zshrc):\n  export PATH=\"$HOME/.git-helper/plugins:$PATH\"\n\n")
+	fmt.Printf("\n%s\n\n", pluginPathInstructions(s.GOOS, pluginsDir))
+}
+
+// lfLineEndings strips carriage returns so the sh scripts still run when the
+// binary was built from a checkout that converted them to CRLF (as Git for
+// Windows can), where `#!/bin/sh\r` would fail to execute.
+func lfLineEndings(content []byte) []byte {
+	return bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
+}
+
+func writeExecutable(path string, content []byte) error {
+	if err := os.WriteFile(path, content, 0755); err != nil {
+		return err
+	}
+
+	return os.Chmod(path, 0755)
+}
+
+func pluginPathInstructions(goos, pluginsDir string) string {
+	if goos == "windows" {
+		return "Now add the plugins directory to your PATH. In PowerShell:\n" +
+			"  $dir = \"" + pluginsDir + "\"\n" +
+			"  $parts = @([Environment]::GetEnvironmentVariable(\"Path\", \"User\") -split \";\" | Where-Object { $_ })\n" +
+			"  if ($parts -notcontains $dir) { [Environment]::SetEnvironmentVariable(\"Path\", (($parts + $dir) -join \";\"), \"User\") }\n" +
+			"Then open a new terminal."
+	}
+
+	dir := shellPath(pluginsDir)
+
+	return "Now add this line to your shell's startup file (e.g. ~/.zshrc or ~/.bashrc):\n  export PATH=\"" + dir + ":$PATH\"\nFor fish, run:\n  fish_add_path \"" + dir + "\""
+}
+
+// shellPath writes a path under the home directory as $HOME/..., so the line
+// users copy into their shell startup files also works when those are shared
+// between machines. Other paths are returned unchanged.
+func shellPath(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return path
+	}
+
+	rel, err := filepath.Rel(home, path)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return path
+	}
+
+	return "$HOME/" + filepath.ToSlash(rel)
 }
 
 func (s *Setup) setupCompletion() {
@@ -192,7 +233,7 @@ func (s *Setup) setupCompletion() {
 
 func (s *Setup) createOrUpdateCompletion() {
 	shes := []string{"bash", "fish", "powershell", "zsh"}
-	completionsDir := s.Config.ConfigDir() + "/completions"
+	completionsDir := filepath.Join(s.Config.ConfigDir(), "completions")
 	if err := os.MkdirAll(completionsDir, 0755); err != nil {
 		utils.HandleError(err, s.Debug, nil)
 		return
@@ -205,21 +246,26 @@ func (s *Setup) createOrUpdateCompletion() {
 			return
 		}
 
-		filename := completionsDir + "/completion." + sh
-
-		file, err := os.Create(filename)
-		if err != nil {
-			utils.HandleError(err, s.Debug, nil)
-			return
-		}
-		defer file.Close()
-
-		_, err = file.WriteString(string(output))
-		if err != nil {
+		if err := os.WriteFile(filepath.Join(completionsDir, "completion."+sh), output, 0644); err != nil {
 			utils.HandleError(err, s.Debug, nil)
 			return
 		}
 	}
 
-	fmt.Println("\nCompletions (for bash, fish, powershell, and zsh) generated in " + completionsDir + ". Please activate the proper completion for your Unix shell. E.g. add the following to your ~/.zshrc file:\n  [ -f ~/.git-helper/completions/completion.zsh ] && source ~/.git-helper/completions/completion.zsh\n")
+	fmt.Printf("\nCompletions (for bash, fish, powershell, and zsh) generated in %s.\n\n%s\n\n", completionsDir, completionInstructions(s.GOOS, completionsDir))
+}
+
+func completionInstructions(goos, completionsDir string) string {
+	if goos == "windows" {
+		return "To activate completion in PowerShell, add this line to your profile (run `notepad $PROFILE` to open it):\n  . \"" + filepath.Join(completionsDir, "completion.powershell") + "\""
+	}
+
+	file := func(sh string) string {
+		return "\"" + shellPath(filepath.Join(completionsDir, "completion."+sh)) + "\""
+	}
+
+	return "To activate completion, add the line for your shell to its startup file:\n" +
+		"  zsh  (~/.zshrc):                   [ -f " + file("zsh") + " ] && source " + file("zsh") + "\n" +
+		"  bash (~/.bashrc):                  [ -f " + file("bash") + " ] && source " + file("bash") + "\n" +
+		"  fish (~/.config/fish/config.fish): test -f " + file("fish") + "; and source " + file("fish")
 }
