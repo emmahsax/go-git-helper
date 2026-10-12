@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -150,7 +151,7 @@ func (s *Setup) createOrUpdatePlugins() {
 			return
 		}
 
-		if err := writeExecutable(filepath.Join(pluginsDir, name), content); err != nil {
+		if err := writeExecutable(filepath.Join(pluginsDir, name), lfLineEndings(content)); err != nil {
 			utils.HandleError(err, s.Debug, nil)
 			return
 		}
@@ -168,6 +169,13 @@ func (s *Setup) createOrUpdatePlugins() {
 
 	fmt.Printf("\nDone setting up plugins at %s!\n", pluginsDir)
 	fmt.Printf("\n%s\n\n", pluginPathInstructions(s.GOOS, pluginsDir))
+}
+
+// lfLineEndings strips carriage returns so the sh scripts still run when the
+// binary was built from a checkout that converted them to CRLF (as Git for
+// Windows can), where `#!/bin/sh\r` would fail to execute.
+func lfLineEndings(content []byte) []byte {
+	return bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
 }
 
 func writeExecutable(path string, content []byte) error {

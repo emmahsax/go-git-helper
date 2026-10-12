@@ -242,6 +242,15 @@ func Test_embeddedPluginsCallMatchingCommand(t *testing.T) {
 	}
 }
 
+func Test_lfLineEndings(t *testing.T) {
+	got := string(lfLineEndings([]byte("#!/bin/sh\r\n\r\ngit-helper new-branch \"$@\"\r\n")))
+	expected := "#!/bin/sh\n\ngit-helper new-branch \"$@\"\n"
+
+	if got != expected {
+		t.Errorf("expected %q, got %q", expected, got)
+	}
+}
+
 func Test_createOrUpdateConfig_permissions(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("file modes are not enforced on Windows")
