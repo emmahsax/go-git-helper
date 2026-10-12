@@ -49,7 +49,7 @@ func newCommand() *cobra.Command {
 	cmd.AddCommand(forgetLocalCommits.NewCommand())
 	cmd.AddCommand(newBranch.NewCommand())
 	cmd.AddCommand(setHeadRef.NewCommand())
-	cmd.AddCommand(setup.NewCommand(packageOwner, packageRepository))
+	cmd.AddCommand(setup.NewCommand())
 	cmd.AddCommand(update.NewCommand(packageOwner, packageRepository))
 	cmd.AddCommand(version.NewCommand(packageVersion))
 
