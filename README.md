@@ -8,11 +8,11 @@ Git Helper is a single static binary that runs on macOS (Apple Silicon and Intel
 
 > **Testing status:** Git Helper is developed and used day to day on macOS with Apple Silicon. The Intel macOS, Linux and Windows builds are compiled and run through the automated test suite on real GitHub-hosted machines for each of those platforms on every change, but they have not been tried by hand on physical hardware. If you run into a platform-specific problem, please [open an issue](https://github.com/emmahsax/go-git-helper/issues/new).
 
-> Pre-built binaries in [GitHub Releases](https://github.com/emmahsax/go-git-helper/releases) are currently published only for macOS on Apple Silicon (`git-helper_darwin_arm64`). The other platforms are compiled on every change to prove they build, and the tests run on them, but they are not published yet. On those platforms, build from source as described below.
-
 ### Downloading from GitHub Releases
 
-You can still download a pre-built binary straight from [GitHub Releases](https://github.com/emmahsax/go-git-helper/releases) if there is one for your platform (for now, that is `git-helper_darwin_arm64` for macOS on Apple Silicon). After downloading, follow the steps under [Installing](#installing) to move it onto your `PATH` and make it executable. The examples there assume the binary is in your current directory, so either `cd` to where it downloaded (for example `cd ~/Downloads`) or adjust the paths.
+You can download a pre-built binary straight from [GitHub Releases](https://github.com/emmahsax/go-git-helper/releases) if there is one for your platform. Currently, only binaries for macOS on Apple Silicon (`git-helper_darwin_arm64`) are published. The other platforms are compiled on every change to prove they build, and the tests run on them, but they are not published yet. On those platforms, build from source as described below, or [open an issue](https://github.com/emmahsax/go-git-helper/issues/new).
+
+After downloading, follow the steps under [Installing](#installing) to move it onto your `PATH` and make it executable. The examples there assume the binary is in your current directory, so either `cd` to where it downloaded (e.g. `cd ~/Downloads`) or adjust the paths.
 
 ### Building Locally
 
@@ -30,7 +30,7 @@ To build only for your machine, you can also run `go build -o git-helper .`.
 
 Move the binary for your platform onto your `PATH` as `git-helper`. The examples assume the binary is in your current directory.
 
-**macOS**
+#### macOS
 
 ```bash
 sudo mv git-helper_darwin_arm64 /usr/local/bin/git-helper   # git-helper_darwin_amd64 on Intel
@@ -46,7 +46,7 @@ The first time you run a downloaded binary, macOS may block it with a message th
 
 Per Apple, macOS then saves `git-helper` as an exception, and you can run it normally from then on.
 
-**Linux**
+#### Linux
 
 ```bash
 # Without root, if ~/.local/bin is on your PATH
@@ -56,7 +56,7 @@ install -m 0755 git-helper_linux_amd64 ~/.local/bin/git-helper   # git-helper_li
 sudo install -m 0755 git-helper_linux_amd64 /usr/local/bin/git-helper
 ```
 
-**Windows (PowerShell)**
+#### Windows (PowerShell)
 
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\bin" | Out-Null
