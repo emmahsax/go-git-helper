@@ -84,6 +84,12 @@ func (s *Setup) createOrUpdateConfig() {
 		}
 	}
 
+	// Also tighten a directory created by an older version with looser permissions.
+	if err := os.Chmod(s.Config.ConfigDir(), 0700); err != nil {
+		utils.HandleError(err, s.Debug, nil)
+		return
+	}
+
 	// The config file holds access tokens, so keep it private to the user. The
 	// explicit chmod also tightens a file left over from an older version.
 	err := os.WriteFile(s.Config.ConfigFile(), []byte(content), 0600)
@@ -188,10 +194,33 @@ func writeExecutable(path string, content []byte) error {
 
 func pluginPathInstructions(goos, pluginsDir string) string {
 	if goos == "windows" {
-		return "Now add the plugins directory to your PATH. In PowerShell:\n  [Environment]::SetEnvironmentVariable(\"Path\", $env:Path + \";" + pluginsDir + "\", \"User\")\nThen open a new terminal."
+		return "Now add the plugins directory to your PATH. In PowerShell:\n" +
+			"  $dir = \"" + pluginsDir + "\"\n" +
+			"  $parts = @([Environment]::GetEnvironmentVariable(\"Path\", \"User\") -split \";\" | Where-Object { $_ })\n" +
+			"  if ($parts -notcontains $dir) { [Environment]::SetEnvironmentVariable(\"Path\", (($parts + $dir) -join \";\"), \"User\") }\n" +
+			"Then open a new terminal."
 	}
 
-	return "Now add this line to your shell's startup file (e.g. ~/.zshrc or ~/.bashrc):\n  export PATH=\"" + pluginsDir + ":$PATH\"\nFor fish, run:\n  fish_add_path " + pluginsDir
+	dir := shellPath(pluginsDir)
+
+	return "Now add this line to your shell's startup file (e.g. ~/.zshrc or ~/.bashrc):\n  export PATH=\"" + dir + ":$PATH\"\nFor fish, run:\n  fish_add_path \"" + dir + "\""
+}
+
+// shellPath writes a path under the home directory as $HOME/..., so the line
+// users copy into their shell startup files also works when those are shared
+// between machines. Other paths are returned unchanged.
+func shellPath(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return path
+	}
+
+	rel, err := filepath.Rel(home, path)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return path
+	}
+
+	return "$HOME/" + filepath.ToSlash(rel)
 }
 
 func (s *Setup) setupCompletion() {
@@ -227,14 +256,16 @@ func (s *Setup) createOrUpdateCompletion() {
 }
 
 func completionInstructions(goos, completionsDir string) string {
-	file := func(sh string) string { return filepath.Join(completionsDir, "completion."+sh) }
-
 	if goos == "windows" {
-		return "To activate completion in PowerShell, add this line to your profile (run `notepad $PROFILE` to open it):\n  . \"" + file("powershell") + "\""
+		return "To activate completion in PowerShell, add this line to your profile (run `notepad $PROFILE` to open it):\n  . \"" + filepath.Join(completionsDir, "completion.powershell") + "\""
+	}
+
+	file := func(sh string) string {
+		return "\"" + shellPath(filepath.Join(completionsDir, "completion."+sh)) + "\""
 	}
 
 	return "To activate completion, add the line for your shell to its startup file:\n" +
-		"  zsh  (~/.zshrc):                [ -f " + file("zsh") + " ] && source " + file("zsh") + "\n" +
-		"  bash (~/.bashrc):               [ -f " + file("bash") + " ] && source " + file("bash") + "\n" +
+		"  zsh  (~/.zshrc):                   [ -f " + file("zsh") + " ] && source " + file("zsh") + "\n" +
+		"  bash (~/.bashrc):                  [ -f " + file("bash") + " ] && source " + file("bash") + "\n" +
 		"  fish (~/.config/fish/config.fish): test -f " + file("fish") + "; and source " + file("fish")
 }
