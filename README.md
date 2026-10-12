@@ -16,15 +16,17 @@ After downloading, follow the steps under [Installing](#installing) to move it o
 
 ### Building Locally
 
-You need [Go](https://go.dev/) and [Task](https://taskfile.dev/). To build for every supported platform into `dist/`, run this from the root directory of this repository:
+Building locally requires [Go](https://go.dev/), [Task](https://taskfile.dev/), and [GoReleaser](https://goreleaser.com/install/). The exact Go and GoReleaser versions the project uses are in [`.tool-versions`](.tool-versions), so with [asdf](https://asdf-vm.com/) you can run `asdf install` from the root directory of this repository.
+
+To build for every supported platform into `dist/`, run this from the root directory of this repository:
 
 ```bash
 task build
 ```
 
-This produces one binary per platform, named `git-helper_<os>_<arch>` (with `.exe` on Windows), e.g. `dist/git-helper_linux_amd64`. Locally built binaries report their version as `dev`.
+GoReleaser puts each binary in its own directory, named `dist/<build>_<os>_<arch>/git-helper` (with `.exe` on Windows), e.g. `dist/matrix_linux_amd64_v1/git-helper`. Locally built binaries report a snapshot version such as `1.0.4-SNAPSHOT-1a2b3c4`.
 
-To build only for your machine, you can also run `go build -o git-helper .`.
+To build only for your machine, without Task or GoReleaser, you can also run `go build -o git-helper .` (this reports its version as `dev`).
 
 ### Installing
 
@@ -365,6 +367,5 @@ When interacting with this repository, please follow [Contributor Covenant's Cod
 
 To make a new release:
 
-1. Verify `main` has or will have the newest version in the `main.go` file
 1. Merge the pull request via the big green button
-3. Trigger a new workflow from [GitHub Actions](https://github.com/emmahsax/go-git-helper/actions/workflows/release.yml) and pass in the package version indicated in the `main.go` file (but include the `v` prefix)
+1. Trigger a new workflow from [GitHub Actions](https://github.com/emmahsax/go-git-helper/actions/workflows/release.yml) and pass in the next sensible semantic version (including the `v` prefix). [GoReleaser](https://goreleaser.com) builds and publishes the binaries indicated in the `goreleaser.yaml` file and `checksums.txt`
