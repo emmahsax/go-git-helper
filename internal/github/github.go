@@ -32,8 +32,8 @@ func (c *GitHub) CreatePullRequest(owner, repo string, options *github.CreatePul
 	for {
 		pr, _, err = c.Client.PullRequests.Create(context.Background(), owner, repo, *options)
 		if err != nil {
-			if strings.Contains(err.Error(), "422 Draft pull requests are not supported in this repository.") {
-				fmt.Println("Draft pull requests are not supported in this repository. Retrying.")
+			if strings.Contains(err.Error(), "422 Draft pull requests are not supported in this repository") {
+				fmt.Println("Draft pull requests are not supported in this repository... retrying")
 				options.Draft = new(false)
 				continue
 			}

@@ -127,7 +127,7 @@ func (cr *ChangeRemote) processRemote(remote, host, repo, remoteName string) {
 		newRemote = fmt.Sprintf("%s/%s/%s", host, cr.NewOwner, repo)
 	}
 
-	fmt.Printf("  Changing the remote URL '%s' to be '%s'.\n", remote, newRemote)
+	fmt.Printf("  Changing the remote URL '%s' to be '%s'\n", remote, newRemote)
 
 	output, err := cr.Executor.Exec("actionAndOutput", "git", "remote", "set-url", remoteName, newRemote)
 	if err != nil {

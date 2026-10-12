@@ -173,7 +173,7 @@ func (s *Setup) createOrUpdatePlugins() {
 		}
 	}
 
-	fmt.Printf("\nDone setting up plugins at %s!\n", pluginsDir)
+	fmt.Printf("\nDone setting up plugins at %s\n", pluginsDir)
 	fmt.Printf("\n%s\n\n", pluginPathInstructions(s.GOOS, pluginsDir))
 }
 
@@ -252,7 +252,7 @@ func (s *Setup) createOrUpdateCompletion() {
 		}
 	}
 
-	fmt.Printf("\nCompletions (for bash, fish, powershell, and zsh) generated in %s.\n\n%s\n\n", completionsDir, completionInstructions(s.GOOS, completionsDir))
+	fmt.Printf("\nCompletions (for bash, fish, powershell, and zsh) generated in %s\n\n%s\n\n", completionsDir, completionInstructions(s.GOOS, completionsDir))
 }
 
 func completionInstructions(goos, completionsDir string) string {

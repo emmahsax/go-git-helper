@@ -98,7 +98,7 @@ func Test_CreatePullRequest_DraftNotSupported(t *testing.T) {
 		if callCount == 1 {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			fmt.Fprint(w, `{
-				"message": "422 Draft pull requests are not supported in this repository."
+				"message": "422 Draft pull requests are not supported in this repository"
 			}`)
 		} else {
 			w.WriteHeader(http.StatusCreated)
