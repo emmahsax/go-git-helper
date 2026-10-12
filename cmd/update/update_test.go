@@ -114,15 +114,24 @@ func Test_installPath_goRunWithoutInstalledBinary(t *testing.T) {
 }
 
 func Test_installPath_runningBinary(t *testing.T) {
+	installed := filepath.Join(t.TempDir(), "git-helper")
+	writeFile(t, installed, "installed")
+
 	u := newUpdate("owner", "repo", true, &MockExecutor{})
+	u.Executable = func() (string, error) { return installed, nil }
+	u.LookPath = func(string) (string, error) {
+		t.Error("did not expect a PATH lookup for a normally installed binary")
+		return "", os.ErrNotExist
+	}
 
 	got, err := u.installPath()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !filepath.IsAbs(got) {
-		t.Errorf("expected an absolute path, got %s", got)
+	want, _ := filepath.EvalSymlinks(installed)
+	if got != want {
+		t.Errorf("expected %s, got %s", want, got)
 	}
 }
 
