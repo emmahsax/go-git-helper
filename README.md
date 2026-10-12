@@ -4,9 +4,15 @@ Making it easier to work with Git on the command-line.
 
 ## Installation
 
-Git Helper is a single static binary that runs on macOS (Apple Silicon and Intel), Linux and Windows (amd64 and arm64 for each). It needs `git` on your `PATH`. On Windows, install [Git for Windows](https://gitforwindows.org/).
+Git Helper is a single static binary that runs on macOS (Apple Silicon and Intel), Linux (amd64 and arm64), and Windows (amd64 and arm64). It needs `git` on your `PATH`. On Windows, install [Git for Windows](https://gitforwindows.org/).
+
+> **Testing status:** Git Helper is developed and used day to day on macOS with Apple Silicon. The Intel macOS, Linux and Windows builds are compiled and run through the automated test suite on real GitHub-hosted machines for each of those platforms on every change, but they have not been tried by hand on physical hardware. If you run into a platform-specific problem, please [open an issue](https://github.com/emmahsax/go-git-helper/issues/new).
 
 > Pre-built binaries in [GitHub Releases](https://github.com/emmahsax/go-git-helper/releases) are currently published only for macOS on Apple Silicon (`git-helper_darwin_arm64`). The other platforms are compiled on every change to prove they build, and the tests run on them, but they are not published yet. On those platforms, build from source as described below.
+
+### Downloading from GitHub Releases
+
+You can still download a pre-built binary straight from [GitHub Releases](https://github.com/emmahsax/go-git-helper/releases) if there is one for your platform (for now, that is `git-helper_darwin_arm64` for macOS on Apple Silicon). After downloading, follow the steps under [Installing](#installing) to move it onto your `PATH` and make it executable. The examples there assume the binary is in your current directory, so either `cd` to where it downloaded (for example `cd ~/Downloads`) or adjust the paths.
 
 ### Building Locally
 
@@ -31,11 +37,14 @@ sudo mv git-helper_darwin_arm64 /usr/local/bin/git-helper   # git-helper_darwin_
 sudo chmod +x /usr/local/bin/git-helper
 ```
 
-When you run a downloaded binary for the first time, you may get a pop-up from Apple saying the binary can't be verified. Binaries are not signed or notarized. If you wish to continue, follow these instructions to allow it to run:
+The first time you run a downloaded binary, macOS may block it with a message that it can't be verified. Binaries are not signed or notarized. If you trust the binary and wish to continue, follow [Apple's steps for opening an app that was blocked](https://support.apple.com/en-us/102445):
 
-* Click `Show in Finder`
-* Right-click on the binary, and select `Open`
-* When you get another pop-up, select `Open`
+* Run `git-helper` once, so macOS shows the warning and registers the block
+* Open **System Settings** and click **Privacy & Security**
+* Scroll down and click **Open Anyway** next to the message about `git-helper`
+* When the warning appears again, click **Open**
+
+Per Apple, macOS then saves `git-helper` as an exception, and you can run it normally from then on.
 
 **Linux**
 
