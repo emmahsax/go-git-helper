@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -296,12 +297,38 @@ func replaceRunningBinary(staged, target string) error {
 func (u *Update) sudoInstall(downloaded, target string) error {
 	fmt.Printf("%s is not writable by the current user; using sudo to install it.\n", filepath.Dir(target))
 
-	_, err := u.Executor.Exec("waitAndStdout", "sudo", "install", "-m", "0755", downloaded, target)
+	args := []string{"install", "-m", "0755"}
+
+	// Without this, sudo leaves the binary owned by root. Keep the current user
+	// and their primary group as the owner, like any binary they installed themselves.
+	if owner, group, err := currentOwner(); err == nil {
+		args = append(args, "-o", owner, "-g", group)
+	}
+
+	args = append(args, downloaded, target)
+
+	_, err := u.Executor.Exec("waitAndStdout", "sudo", args...)
 	if err != nil {
 		return fmt.Errorf("installing %s with sudo: %w (run git-helper update --install-path with a writable path to avoid sudo)", target, err)
 	}
 
 	return nil
+}
+
+// currentOwner is the current user and their primary group, by name where the
+// group can be looked up and by numeric id otherwise (install accepts both).
+func currentOwner() (string, string, error) {
+	current, err := user.Current()
+	if err != nil {
+		return "", "", err
+	}
+
+	group := current.Gid
+	if g, err := user.LookupGroupId(current.Gid); err == nil {
+		group = g.Name
+	}
+
+	return current.Username, group, nil
 }
 
 func (u *Update) outputNewVersion(target string) {

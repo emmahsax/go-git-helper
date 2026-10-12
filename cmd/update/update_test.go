@@ -360,7 +360,14 @@ func Test_install_fallsBackToSudo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expected := []string{"install", "-m", "0755", downloaded, target}
+	// The binary must stay owned by the current user and their primary group,
+	// not end up owned by root
+	owner, group, err := currentOwner()
+	if err != nil {
+		t.Skipf("cannot determine the current user: %s", err)
+	}
+
+	expected := []string{"install", "-m", "0755", "-o", owner, "-g", group, downloaded, target}
 	if executor.Command != "sudo" {
 		t.Errorf("expected sudo, got %s", executor.Command)
 	}
