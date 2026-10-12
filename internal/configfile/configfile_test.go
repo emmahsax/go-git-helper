@@ -48,24 +48,29 @@ func Test_ConfigDirExists(t *testing.T) {
 	testutil.IsolateHome(t)
 	cf := NewConfigFile(false)
 
-	_, err := os.Stat(cf.ConfigDir())
-	if err != nil {
-		if os.IsNotExist(err) {
-			err := os.MkdirAll(cf.ConfigDir(), 0755)
-			if err != nil {
-				t.Fatal(err)
-			}
-			tempDir, err := os.MkdirTemp(cf.ConfigDir(), "")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(cf.ConfigDir())
-			defer os.RemoveAll(tempDir)
-		}
+	if cf.ConfigDirExists() {
+		t.Errorf("Expected ConfigDirExists to return false before the directory is created")
+	}
+
+	if err := os.MkdirAll(cf.ConfigDir(), 0755); err != nil {
+		t.Fatal(err)
 	}
 
 	if !cf.ConfigDirExists() {
 		t.Errorf("Expected ConfigDirExists to return true, got false")
+	}
+}
+
+func Test_ConfigDirExists_FileInsteadOfDirectory(t *testing.T) {
+	testutil.IsolateHome(t)
+	cf := NewConfigFile(false)
+
+	if err := os.WriteFile(cf.ConfigDir(), []byte("not a directory"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if cf.ConfigDirExists() {
+		t.Errorf("Expected ConfigDirExists to return false when the path is a file")
 	}
 }
 
@@ -125,7 +130,7 @@ func Test_ConfigFileExists_False(t *testing.T) {
 }
 
 // Helper function to create a test config file
-func createTestConfigFile(t *testing.T, content string) (string, func()) {
+func createTestConfigFile(t *testing.T, content string) string {
 	tempDir := t.TempDir()
 	configFile := filepath.Join(tempDir, "config.yml")
 
@@ -146,14 +151,11 @@ func createTestConfigFile(t *testing.T, content string) (string, func()) {
 	finalConfigFile := filepath.Join(gitHelperDir, "config.yml")
 	os.Rename(configFile, finalConfigFile)
 
-	cleanup := func() {}
-
-	return tempDir, cleanup
+	return tempDir
 }
 
 func Test_GitHubUsername_NewFormat(t *testing.T) {
-	_, cleanup := createTestConfigFile(t, "github_username: testuser\n")
-	defer cleanup()
+	createTestConfigFile(t, "github_username: testuser\n")
 
 	cf := NewConfigFile(false)
 	username := cf.GitHubUsername()
@@ -163,8 +165,7 @@ func Test_GitHubUsername_NewFormat(t *testing.T) {
 }
 
 func Test_GitLabUsername_NewFormat(t *testing.T) {
-	_, cleanup := createTestConfigFile(t, "gitlab_username: gitlabuser\n")
-	defer cleanup()
+	createTestConfigFile(t, "gitlab_username: gitlabuser\n")
 
 	cf := NewConfigFile(false)
 	username := cf.GitLabUsername()
@@ -174,8 +175,7 @@ func Test_GitLabUsername_NewFormat(t *testing.T) {
 }
 
 func Test_GitHubToken_NewFormat(t *testing.T) {
-	_, cleanup := createTestConfigFile(t, "github_token: ghp_token123\n")
-	defer cleanup()
+	createTestConfigFile(t, "github_token: ghp_token123\n")
 
 	cf := NewConfigFile(false)
 	token := cf.GitHubToken()
@@ -184,8 +184,7 @@ func Test_GitHubToken_NewFormat(t *testing.T) {
 	}
 }
 func Test_GitLabToken_NewFormat(t *testing.T) {
-	_, cleanup := createTestConfigFile(t, "gitlab_token: glpat-token123\n")
-	defer cleanup()
+	createTestConfigFile(t, "gitlab_token: glpat-token123\n")
 
 	cf := NewConfigFile(false)
 	token := cf.GitLabToken()
@@ -200,8 +199,7 @@ func Test_SpecialCapitalization(t *testing.T) {
   aws: AWS
   github: GitHub
 `
-	_, cleanup := createTestConfigFile(t, content)
-	defer cleanup()
+	createTestConfigFile(t, content)
 
 	cf := NewConfigFile(false)
 	caps := cf.SpecialCapitalization()
@@ -224,8 +222,7 @@ func Test_SpecialCapitalization(t *testing.T) {
 }
 
 func Test_SpecialCapitalization_Empty(t *testing.T) {
-	_, cleanup := createTestConfigFile(t, "github_username: testuser\n")
-	defer cleanup()
+	createTestConfigFile(t, "github_username: testuser\n")
 
 	cf := NewConfigFile(false)
 	caps := cf.SpecialCapitalization()
@@ -253,8 +250,7 @@ func Test_configFileContents_InvalidYAML(t *testing.T) {
 }
 
 func Test_configFileContents_ValidYAML(t *testing.T) {
-	_, cleanup := createTestConfigFile(t, "github_username: testuser\ngithub_token: token123\n")
-	defer cleanup()
+	createTestConfigFile(t, "github_username: testuser\ngithub_token: token123\n")
 
 	cf := NewConfigFile(false)
 	contents := cf.configFileContents()

@@ -2,11 +2,11 @@ package gitlab
 
 import (
 	"fmt"
-	"github.com/emmahsax/go-git-helper/internal/testutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/emmahsax/go-git-helper/internal/testutil"
 	gitlab "gitlab.com/gitlab-org/api/client-go/v3"
 )
 

@@ -2,11 +2,11 @@ package github
 
 import (
 	"fmt"
-	"github.com/emmahsax/go-git-helper/internal/testutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/emmahsax/go-git-helper/internal/testutil"
 	"github.com/google/go-github/v91/github"
 )
 
