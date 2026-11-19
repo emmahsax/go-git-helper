@@ -46,10 +46,18 @@ func Test_newPrBody(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pr := &ForgejoPullRequest{
-		GitRootDir:      tempDir,
-		InteractiveMode: true,
-	}
+	pr := NewForgejoPullRequest(
+		map[string]string{
+			"baseBranch":  "main",
+			"localRepo":   "repo",
+			"localBranch": "feature",
+			"gitRootDir":  tempDir,
+			"newPrTitle":  "hello world",
+			"draft":       "false",
+		},
+		false,
+		true,
+	)
 
 	originalAskYesNoQuestion := commandline.AskYesNoQuestion
 	t.Cleanup(func() {
