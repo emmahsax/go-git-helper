@@ -16,7 +16,7 @@ func Test_NewGitHub(t *testing.T) {
 
 	// This test requires a valid config file with GitHub token
 	// We'll test that the struct is created properly
-	gh := NewGitHub(PublicHost, false)
+	gh := NewGitHub(PublicHost, "", false)
 
 	if gh == nil {
 		t.Fatal("Expected NewGitHub to return a non-nil GitHub struct")
@@ -34,7 +34,7 @@ func Test_NewGitHub(t *testing.T) {
 func Test_NewGitHub_WithDebug(t *testing.T) {
 	testutil.WriteConfig(t, testutil.IsolateHome(t), "providers:\n  - name: github\n    token: test_token\n")
 
-	gh := NewGitHub(PublicHost, true)
+	gh := NewGitHub(PublicHost, "", true)
 
 	if gh == nil {
 		t.Fatal("Expected NewGitHub to return a non-nil GitHub struct")
@@ -51,11 +51,12 @@ func Test_NewGitHub_EnterpriseAccount(t *testing.T) {
     token: public_token
   - name: github
     token: enterprise_token
-    hosts:
+    remote_hosts:
       - github.example.com
+    api_host: github.example.com
 `)
 
-	gh := NewGitHub("github.example.com", false)
+	gh := NewGitHub("github.example.com", "", false)
 
 	if gh == nil {
 		t.Fatal("Expected NewGitHub to return a non-nil GitHub struct")
@@ -63,6 +64,53 @@ func Test_NewGitHub_EnterpriseAccount(t *testing.T) {
 
 	if got := gh.Client.BaseURL(); !strings.Contains(got, "github.example.com") {
 		t.Errorf("Expected BaseURL to contain 'github.example.com', got '%s'", got)
+	}
+}
+
+func Test_NewGitHub_SSHAliasKeepsPublicAPI(t *testing.T) {
+	// A host that's only an SSH config alias (no api_host set) must still
+	// hit the real public API, not be mistaken for an Enterprise server.
+	testutil.WriteConfig(t, testutil.IsolateHome(t), `providers:
+  - name: github
+    token: personal_token
+  - name: github
+    token: work_token
+    remote_hosts:
+      - github.com-work
+`)
+
+	gh := NewGitHub("github.com-work", "", false)
+
+	if gh == nil {
+		t.Fatal("Expected NewGitHub to return a non-nil GitHub struct")
+	}
+
+	if got := gh.Client.BaseURL(); strings.Contains(got, "github.com-work") {
+		t.Errorf("Expected the real public API BaseURL, not the SSH alias, got '%s'", got)
+	}
+}
+
+func Test_NewGitHub_DisambiguatesByUsername(t *testing.T) {
+	// Which account's token actually gets used for a given username is
+	// covered at the configfile layer (Test_GitHubAccounts_TwoAccountsSameHost);
+	// this just confirms NewGitHub builds a client without erroring when
+	// username picks among tied accounts.
+	testutil.WriteConfig(t, testutil.IsolateHome(t), `providers:
+  - name: github
+    username: personal_user
+    token: personal_token
+  - name: github
+    username: work_user
+    token: work_token
+`)
+
+	gh := NewGitHub(PublicHost, "work_user", false)
+
+	if gh == nil {
+		t.Fatal("Expected NewGitHub to return a non-nil GitHub struct")
+	}
+	if gh.Client == nil {
+		t.Error("Expected GitHub client to be initialized")
 	}
 }
 
@@ -194,8 +242,8 @@ func Test_newGitHubClient_EmptyToken(t *testing.T) {
 	t.Skip("Skipping test that would call os.Exit on an empty token")
 }
 
-func Test_newGitHubClient_PublicHostExplicit(t *testing.T) {
-	client := newGitHubClient("test-token", PublicHost, false)
+func Test_newGitHubClient_EmptyAPIHost(t *testing.T) {
+	client := newGitHubClient("test-token", "", false)
 
 	if client == nil {
 		t.Fatal("Expected client to be non-nil")

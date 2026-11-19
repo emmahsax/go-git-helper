@@ -24,6 +24,7 @@ type GitHubPullRequest struct {
 	LocalBranch     string
 	LocalRepo       string
 	NewPrTitle      string
+	Username        string
 }
 
 func NewGitHubPullRequest(options map[string]string, debug, interactiveMode bool) *GitHubPullRequest {
@@ -37,6 +38,7 @@ func NewGitHubPullRequest(options map[string]string, debug, interactiveMode bool
 		LocalBranch:     options["localBranch"],
 		LocalRepo:       options["localRepo"],
 		NewPrTitle:      options["newPrTitle"],
+		Username:        options["username"],
 	}
 }
 
@@ -54,7 +56,7 @@ func (pr *GitHubPullRequest) Create() {
 	repo := strings.Split(pr.LocalRepo, "/")
 
 	fmt.Println("Creating pull request:", pr.NewPrTitle)
-	resp, err := NewGitHub(pr.Host, pr.Debug).CreatePullRequest(repo[0], repo[1], &options)
+	resp, err := NewGitHub(pr.Host, pr.Username, pr.Debug).CreatePullRequest(repo[0], repo[1], &options)
 	if err != nil {
 		customErr := errors.New("could not create pull request: " + err.Error())
 		utils.HandleError(customErr, pr.Debug, nil)

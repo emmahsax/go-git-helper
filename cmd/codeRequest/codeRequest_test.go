@@ -295,7 +295,7 @@ func Test_matchedGitHubHost_PublicAndEnterpriseConfigured(t *testing.T) {
   - name: github
     username: work-user
     token: work-token
-    hosts:
+    remote_hosts:
       - github.example.com
 `)
 
@@ -389,7 +389,7 @@ func Test_matchedGitLabHost_PublicAndSelfHostedConfigured(t *testing.T) {
   - name: gitlab
     username: work-user
     token: work-token
-    hosts:
+    remote_hosts:
       - gitlab.example.com
 `)
 
@@ -454,12 +454,12 @@ func Test_matchedGitLabHost_OneHostIsSubstringOfAnother(t *testing.T) {
   - name: gitlab
     username: short-user
     token: short-token
-    hosts:
+    remote_hosts:
       - git.example.com
   - name: gitlab
     username: long-user
     token: long-token
-    hosts:
+    remote_hosts:
       - sub.git.example.com
 `)
 

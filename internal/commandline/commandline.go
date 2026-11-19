@@ -19,7 +19,26 @@ var AskMultipleChoice = func(question string, choices []string) string {
 	return selectedOption
 }
 
-var AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string {
+// AskMultiSelect asks question with a checkbox-style list: zero, one, or
+// several of choices can be picked (space to toggle, enter to confirm).
+var AskMultiSelect = func(question string, choices []string) []string {
+	selectedOptions, _ := pterm.DefaultInteractiveMultiselect.
+		WithDefaultText(question).
+		WithOnInterruptFunc(func() {
+			os.Exit(1)
+		}).
+		WithOptions(choices).
+		Show()
+
+	return selectedOptions
+}
+
+// AskOpenEndedQuestion asks question, pre-filling defaultVal if it's
+// non-empty (accepted as-is on Enter). If required is true, a blank answer
+// (no defaultVal, nothing typed) re-asks the question instead of returning;
+// if false, a blank answer is returned immediately as a valid "no answer"
+// (e.g. "leave this blank to skip").
+var AskOpenEndedQuestion = func(question, defaultVal string, secret, required bool) string {
 	var result string
 	for {
 		if secret {
@@ -50,7 +69,7 @@ var AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string
 				Show()
 		}
 
-		if result != "" {
+		if result != "" || !required {
 			break
 		}
 

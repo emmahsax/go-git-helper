@@ -95,7 +95,14 @@ Some of the commands can be used without any additional configuration. However, 
 git-helper setup
 ```
 
-This will give you the option to set up credentials at GitHub and/or GitLab, as well as give you the choice to set up Git Helper as a plugin or not (see below).
+This will show a checklist of every supported provider (GitHub, GitLab) so you can pick any number of them to set up credentials for in one go, as well as give you the choice to set up Git Helper as a plugin or not (see below).
+
+If `~/.git-helper/config.yml` already exists, `git-helper setup` asks what you want to do:
+
+- **Add a new account** -- appends one account for a provider you pick, without touching any account already configured. The normal way to add a second account later, e.g. a work account alongside a personal one.
+- **Edit or remove an account** -- pick a provider, then pick which configured account (by username), then either update its token/`remote_hosts`/`api_host` (re-asking everything fresh) or delete it. The normal way to rotate an expired token, rename an account, or drop a stale one.
+- **Replace everything** -- starts over from scratch, discarding every existing account.
+- **Leave it as is**.
 
 The final result will be a `~/.git-helper/config.yml` file (in your home directory on every OS, e.g. `C:\Users\you\.git-helper\config.yml` on Windows) that only your user can read, with the contents in this form:
 
@@ -118,32 +125,55 @@ You could either have one set of tokens for each computer you use, or just have 
 
 ### Self-Hosted and Multiple Accounts
 
-Both GitHub and GitLab support more than one `providers` entry, so you can keep a public account and one or more self-hosted (GitHub Enterprise, or a self-hosted GitLab) accounts side by side -- `code-request` picks whichever one matches the current repo's remote:
+Both GitHub and GitLab support more than one `providers` entry, so you can keep several accounts side by side -- a public account, a GitHub Enterprise or self-hosted GitLab account, even two accounts that are both just the public URL (e.g. a personal account and a work account). `code-request` works out which account to use from the current repo's remote, asking you to pick when more than one could apply.
+
+Each account entry has two independent, optional settings, and it's important not to confuse them:
+
+- **`remote_hosts`** -- the host(s) `code-request` should recognize in a git remote (`git@HOST:owner/repo.git` or `https://HOST/owner/repo.git`) as belonging to *this* account. Leave it out entirely if this account is simply the provider's public URL. This can be a real second domain (e.g. GitHub Enterprise or self-hosted GitLab), **or** it can be nothing more than a name you invented in your own `~/.ssh/config` to tell two accounts on the *same* real host apart (see below). Either way, `remote_hosts` by itself changes nothing about where API calls go.
+- **`api_host`** -- the *real server* this account's API calls (creating a pull/merge request) should be sent to. Leave it out unless this account's provider is genuinely a different server than the public one. An account with no `api_host` always talks to the real public API, even if `remote_hosts` lists something that looks like a different domain.
+
+**Example 1: a genuinely different server (e.g. GitHub Enterprise or self-hosted GitLab).** Here `remote_hosts` and `api_host` name the same real domain, because remotes for this account really do point at a different server, and API calls for it really do need to go there too:
+
+```yaml
+providers:
+  - name: gitlab
+    username: WORK-USERNAME
+    token: WORK-TOKEN
+    remote_hosts:
+      - gitlab.example.com
+      - git.internal.example.com # An alternate hostname for the same self-hosted instance
+    api_host: gitlab.example.com
+```
+
+**Example 2: two accounts on the same real host (e.g. personal + work, both on github.com).** A plain git remote (`git@github.com:...`) carries no account identity, so there's nothing in it to tell two such accounts apart automatically. The standard git-native fix is an SSH config alias -- in `~/.ssh/config`:
+
+```
+Host github.com-work
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_work
+```
+
+... then clone/configure that remote as `git@github.com-work:org/repo.git`. `github.com-work` is a name that exists only on your machine; GitHub itself has never heard of it. List it as a `remote_hosts` entry so `code-request` recognizes it, but do **not** set `api_host` -- there is no "github.com-work" server to call, so leaving `api_host` out keeps this account talking to the real `api.github.com`:
 
 ```yaml
 providers:
   - name: github
-    username: GITHUB-USERNAME
-    token: GITHUB-TOKEN
-    # no hosts -> the public github.com
+    username: PERSONAL-USERNAME
+    token: PERSONAL-TOKEN
+    # no remote_hosts -> this is simply the public github.com
   - name: github
     username: WORK-USERNAME
     token: WORK-TOKEN
-    hosts:
-      - github.example.com
-  - name: gitlab
-    username: GITLAB-USERNAME
-    token: GITLAB-TOKEN
-    # no hosts -> the public gitlab.com
-  - name: gitlab
-    username: WORK-USERNAME
-    token: WORK-TOKEN
-    hosts:
-      - gitlab.example.com
-      - git.internal.example.com # an alternate hostname for the same self-hosted instance
+    remote_hosts:
+      - github.com-work # an SSH alias -- not a real GitHub server, so no api_host
 ```
 
-An entry with no `hosts` is treated as that provider's public account. `git-helper setup` will ask if you want to set up another GitHub or GitLab account after the first, and accepts a comma-separated list for `hosts` when an instance is reachable under more than one hostname.
+If you don't bother with an SSH alias and just configure two accounts with no `remote_hosts` at all, `code-request` can't tell them apart from the remote alone -- in `--interactive` mode (the default) it'll ask which account to use; with `--interactive=false` it defaults to the first one configured.
+
+`code-request`'s "which account?" prompt tells accounts apart by `username`, so `git-helper setup` requires every account's username to be unique within its provider -- it'll reject a username already used by another GitHub (or GitLab) account and ask again.
+
+`git-helper setup` walks through all of this interactively: it asks for each account's `remote_hosts` (comma-separated if the instance has more than one hostname), and only asks for `api_host` after you confirm that host is a real, different server rather than just a local alias.
 
 ## General Usage
 

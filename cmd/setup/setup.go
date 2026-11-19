@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
@@ -60,17 +61,106 @@ func (s *Setup) execute() {
 }
 
 func (s *Setup) setupConfig() {
-	var create bool
-
-	if s.Config.ConfigFileExists() {
-		create = commandline.AskYesNoQuestion("The " + s.Config.ConfigFile() + " file already exists. Do you wish to replace it?")
-	} else {
-		create = true
+	if !s.Config.ConfigFileExists() {
+		s.createOrUpdateConfig()
+		return
 	}
 
-	if create {
+	switch commandline.AskMultipleChoice(
+		"The "+s.Config.ConfigFile()+" file already exists. What do you want to do?",
+		[]string{"Add a new account", "Edit or remove an account", "Replace everything", "Leave it as is"},
+	) {
+	case "Add a new account":
+		s.addAccount()
+	case "Edit or remove an account":
+		s.editAccount()
+	case "Replace everything":
 		s.createOrUpdateConfig()
 	}
+}
+
+// chooseProvider asks the user which supported provider they mean.
+func (s *Setup) chooseProvider(question string) gitProviderCredential {
+	names := make([]string, len(gitProviderCredentials))
+	for i, p := range gitProviderCredentials {
+		names[i] = p.Name
+	}
+
+	chosenName := commandline.AskMultipleChoice(question, names)
+
+	for _, p := range gitProviderCredentials {
+		if p.Name == chosenName {
+			return p
+		}
+	}
+
+	return gitProviderCredential{}
+}
+
+// addAccount appends exactly one new account, for a provider the user
+// chooses, to the existing config file -- without touching any account
+// already there. This is the normal way to add a second account (e.g. a
+// work account alongside a personal one) without retyping everything.
+func (s *Setup) addAccount() {
+	provider := s.chooseProvider("Which provider do you want to add an account for?")
+
+	answers := s.askAccount(provider, s.Config.Usernames(provider.Key))
+
+	if err := s.Config.AddAccount(provider.Key, answers.Username, answers.Token, answers.RemoteHosts, answers.APIHost); err != nil {
+		utils.HandleError(err, s.Debug, nil)
+		return
+	}
+
+	fmt.Printf("\nAdded a new %s account to %s\n\n", provider.Name, s.Config.ConfigFile())
+}
+
+// editAccount lets the user update or remove one existing account, for a
+// provider and username they pick, without touching any other account --
+// the normal way to rotate a token, rename an account, or drop a stale one
+// without retyping everything else.
+func (s *Setup) editAccount() {
+	provider := s.chooseProvider("Which provider's account do you want to edit or remove?")
+
+	usernames := s.Config.Usernames(provider.Key)
+	if len(usernames) == 0 {
+		fmt.Println("--- No " + provider.Name + " accounts are configured yet. ---")
+		return
+	}
+
+	username := commandline.AskMultipleChoice("Which "+provider.Name+" account?", usernames)
+
+	switch commandline.AskMultipleChoice("What do you want to do with the "+provider.Name+" account "+username+"?", []string{"Update it", "Remove it", "Cancel"}) {
+	case "Update it":
+		s.updateAccount(provider, username, usernames)
+	case "Remove it":
+		if err := s.Config.RemoveAccount(provider.Key, username); err != nil {
+			utils.HandleError(err, s.Debug, nil)
+			return
+		}
+		fmt.Printf("\nRemoved the %s account %s from %s\n\n", provider.Name, username, s.Config.ConfigFile())
+	}
+}
+
+// updateAccount re-asks every field for username fresh and overwrites that
+// one account in place. existingUsernames excludes username itself from the
+// collision guard, so keeping the same username isn't treated as a
+// collision with itself.
+func (s *Setup) updateAccount(provider gitProviderCredential, username string, existingUsernames []string) {
+	var taken []string
+	for _, u := range existingUsernames {
+		if u != username {
+			taken = append(taken, u)
+		}
+	}
+
+	answers := s.askAccount(provider, taken)
+
+	if err := s.Config.UpdateAccount(provider.Key, username, answers.Username, answers.Token, answers.RemoteHosts, answers.APIHost); err != nil {
+		utils.HandleError(err, s.Debug, nil)
+		return
+	}
+
+	fmt.Printf("\nUpdated the %s account %s in %s\n\n", provider.Name, username, s.Config.ConfigFile())
 }
 
 func (s *Setup) createOrUpdateConfig() {
@@ -106,31 +196,35 @@ func (s *Setup) createOrUpdateConfig() {
 
 // gitProviderCredential describes one supported git provider's setup
 // prompts. Every provider can have multiple accounts (e.g. a public
-// github.com account alongside a separate Enterprise one) and each account
-// can list multiple self-hosted hostnames.
+// github.com account alongside a separate Enterprise one, or even two
+// accounts that are both just the public URL, told apart only by an SSH
+// remote alias) and each account can list multiple remote_hosts.
 type gitProviderCredential struct {
-	Key         string // matches the "name" written under providers, and read back in configfile.ConfigFile.providersNamed
-	Name        string // display name used in setup prompts
-	TokenPrompt string
-	HostPrompt  string
+	Key               string // matches the "name" written under providers, and read back in configfile.ConfigFile.providersNamed
+	Name              string // display name used in setup prompts
+	PublicHost        string // e.g. "github.com" -- what leaving remote_hosts blank already means, so it must never be entered there
+	TokenPrompt       string
+	RemoteHostsPrompt string
 }
 
 // gitProviderCredentials lists every supported git provider's setup
 // prompts. Adding support for a new provider (e.g. Bitbucket, Forgejo) only
 // requires a new entry here, plus matching read methods on
-// *configfile.ConfigFile (see GitHubCredentials/GitLabCredentials).
+// *configfile.ConfigFile (see GitHubAccounts/GitLabAccounts).
 var gitProviderCredentials = []gitProviderCredential{
 	{
-		Key:         "github",
-		Name:        "GitHub",
-		TokenPrompt: "GitHub personal access token - navigate to https://github.com/settings/tokens to create a new personal access token",
-		HostPrompt:  "GitHub host(s), if self-hosted/Enterprise (comma-separated if the instance has more than one hostname, leave blank to use the public github.com)",
+		Key:               "github",
+		Name:              "GitHub",
+		PublicHost:        "github.com",
+		TokenPrompt:       "GitHub personal access token",
+		RemoteHostsPrompt: "Remote host(s) -- comma-separated if more than one. Leave blank if this is simply the public github.com",
 	},
 	{
-		Key:         "gitlab",
-		Name:        "GitLab",
-		TokenPrompt: "GitLab personal access token - navigate to https://gitlab.com/-/profile/personal_access_tokens to create a new personal access token",
-		HostPrompt:  "GitLab host(s), if self-hosted (comma-separated if the instance has more than one hostname, leave blank to use the public gitlab.com)",
+		Key:               "gitlab",
+		Name:              "GitLab",
+		PublicHost:        "gitlab.com",
+		TokenPrompt:       "GitLab personal access token",
+		RemoteHostsPrompt: "Remote host(s) -- comma-separated if more than one. Leave blank if this is simply the public gitlab.com",
 	},
 }
 
@@ -141,19 +235,30 @@ var gitProviderCredentials = []gitProviderCredential{
 //	  - name: github
 //	    username: YOUR-USERNAME
 //	    token: YOUR-TOKEN
+//	  - name: github
+//	    username: YOUR-WORK-USERNAME
+//	    token: YOUR-WORK-TOKEN
+//	    remote_hosts:
+//	      - github.com-work # an SSH config alias, not a real GitHub server -- no api_host below, so this still calls the real github.com API
 //	  - name: gitlab
 //	    username: YOUR-USERNAME
 //	    token: YOUR-TOKEN
 //	  - name: gitlab
-//	    username: YOUR-WORK-USERNAME
-//	    token: YOUR-WORK-TOKEN
-//	    hosts:
+//	    username: YOUR-SELF-HOSTED-USERNAME
+//	    token: YOUR-SELF-HOSTED-TOKEN
+//	    remote_hosts:
 //	      - gitlab.example.com
-//	      - git.internal.example.com
+//	      - git.internal.example.com # an alternate hostname for the same self-hosted instance
+//	    api_host: gitlab.example.com # a genuinely different server, so API calls go here too
+//
+// remote_hosts controls which git remotes recognize this account; api_host
+// (only present for a genuinely different server) controls where its API
+// calls go. They answer different questions and are never inferred from
+// each other -- see askAccount.
 func (s *Setup) generateConfigFileContents() string {
 	var providerBlocks []string
 
-	for _, provider := range gitProviderCredentials {
+	for _, provider := range s.chooseProviders() {
 		providerBlocks = append(providerBlocks, s.providerAccountBlocks(provider)...)
 	}
 
@@ -164,34 +269,178 @@ func (s *Setup) generateConfigFileContents() string {
 	return "providers:\n" + strings.Join(providerBlocks, "")
 }
 
-// providerAccountBlocks asks for one or more accounts for provider -- e.g. a
-// public github.com account alongside a separate Enterprise one -- looping
-// until the user is done adding accounts. Each account's host prompt accepts
-// a comma-separated list, since a single self-hosted instance may be
-// reachable under more than one hostname (an internal DNS alias alongside a
-// public one, say).
-func (s *Setup) providerAccountBlocks(provider gitProviderCredential) []string {
-	var blocks []string
-
-	question := "Do you wish to set up " + provider.Name + " credentials?"
-	for commandline.AskYesNoQuestion(question) {
-		block := "  - name: " + provider.Key + "\n" +
-			"    username: " + commandline.AskOpenEndedQuestion(provider.Name+" username", "", false) + "\n" +
-			"    token: " + commandline.AskOpenEndedQuestion(provider.TokenPrompt, "", true) + "\n"
-
-		if hosts := commandline.AskOpenEndedQuestion(provider.HostPrompt, "", false); hosts != "" {
-			block += "    hosts:\n"
-			for _, host := range strings.Split(hosts, ",") {
-				block += "      - " + strings.TrimSpace(host) + "\n"
-			}
-		}
-
-		blocks = append(blocks, block)
-
-		question = "Do you wish to set up another " + provider.Name + " account (e.g. a different self-hosted instance)?"
+// chooseProviders lets the user check off, in one multi-select, every
+// provider they want to set up credentials for -- rather than asking a
+// separate yes/no question per provider. Adding a new provider to
+// gitProviderCredentials automatically appears here; nothing else needs to
+// change.
+func (s *Setup) chooseProviders() []gitProviderCredential {
+	names := make([]string, len(gitProviderCredentials))
+	for i, p := range gitProviderCredentials {
+		names[i] = p.Name
 	}
 
-	return blocks
+	selected := commandline.AskMultiSelect("Which providers do you want to set up credentials for?", names)
+
+	var chosen []gitProviderCredential
+	for _, p := range gitProviderCredentials {
+		if slices.Contains(selected, p.Name) {
+			chosen = append(chosen, p)
+		}
+	}
+
+	return chosen
+}
+
+// providerAccountBlocks asks for one or more accounts for provider (already
+// chosen via chooseProviders) -- e.g. a public github.com account alongside
+// a separate Enterprise one, or two accounts both on the public URL but
+// told apart by an SSH remote alias -- looping until the user is done
+// adding accounts. taken starts out empty and accumulates each account's
+// username as it's added, so two accounts asked about in the same loop
+// can't collide with each other any more than they could with an
+// already-existing account (see askAccount).
+func (s *Setup) providerAccountBlocks(provider gitProviderCredential) []string {
+	var blocks []string
+	var taken []string
+
+	for {
+		answers := s.askAccount(provider, taken)
+		taken = append(taken, answers.Username)
+		blocks = append(blocks, answers.block(provider.Key))
+
+		another := commandline.AskYesNoQuestion("Do you wish to set up another " + provider.Name + " account (e.g. a different self-hosted instance, or another account on the same host)?")
+		if !another {
+			return blocks
+		}
+	}
+}
+
+// accountAnswers holds one account's user-entered fields, before they're
+// serialized either as a block of config.yml text (the bulk initial setup
+// flow, via block) or appended structurally to an existing file (addAccount,
+// via configfile.ConfigFile.AddAccount).
+type accountAnswers struct {
+	Username    string
+	Token       string
+	RemoteHosts []string
+	APIHost     string
+}
+
+// askAccount asks for one account's username, token, remote_hosts, and --
+// only if remote_hosts names a genuinely different server -- api_host.
+// taken is every username already configured for this provider; the
+// username prompt re-asks on a collision, since code-request's "which
+// account?" prompt tells tied accounts apart by username, and two
+// identically-labeled accounts can't be told apart there.
+//
+// Two separate questions ask about remote_hosts and api_host, deliberately
+// not inferred from each other:
+//  1. remote_hosts: what should git-helper look for in a git remote to
+//     recognize this account? Accepts a comma-separated list, since a
+//     single instance may be reachable under more than one hostname. This
+//     alone never changes where API calls go -- an SSH alias here has no
+//     meaning to any API.
+//  2. Only if (1) was answered: is that actually a different real server
+//     (Enterprise/self-hosted), as opposed to just a locally-made-up alias?
+//     Only "yes" here writes api_host, which is what redirects this
+//     account's API calls away from the public API.
+func (s *Setup) askAccount(provider gitProviderCredential, taken []string) accountAnswers {
+	answers := accountAnswers{
+		Username:    s.askUsername(provider, taken),
+		Token:       commandline.AskOpenEndedQuestion(provider.TokenPrompt, "", true, true),
+		RemoteHosts: s.askRemoteHosts(provider),
+	}
+
+	if len(answers.RemoteHosts) == 0 {
+		return answers
+	}
+
+	isDifferentServer := commandline.AskYesNoQuestion(
+		"Is " + answers.RemoteHosts[0] + " a REAL, different " + provider.Name + " server (e.g. " + provider.Name + " Enterprise or a self-hosted instance), " +
+			"as opposed to an SSH config alias to tell accounts apart on the public " + provider.Name + "?",
+	)
+	if !isDifferentServer {
+		return answers
+	}
+
+	answers.APIHost = answers.RemoteHosts[0]
+	if len(answers.RemoteHosts) > 1 {
+		answers.APIHost = commandline.AskOpenEndedQuestion(provider.Name+" API host for this instance (the real server address, not an alias)", answers.RemoteHosts[0], false, true)
+	}
+
+	return answers
+}
+
+// askRemoteHosts asks for remote_hosts, re-asking if the answer includes
+// provider's own public domain -- that's not a real self-hosted/alias host,
+// and entering it would silently shadow whichever other account relies on
+// an absent remote_hosts meaning "the public account" (leaving it blank is
+// the correct way to mean that).
+//
+// Not required: leaving this blank is how an account stays on the
+// provider's public URL, so Enter must be accepted immediately.
+func (s *Setup) askRemoteHosts(provider gitProviderCredential) []string {
+	for {
+		hosts := s.splitHosts(commandline.AskOpenEndedQuestion(provider.RemoteHostsPrompt, "", false, false))
+
+		if !slices.Contains(hosts, provider.PublicHost) {
+			return hosts
+		}
+
+		fmt.Println("--- " + provider.PublicHost + " is " + provider.Name + "'s own public host. Leave remote_hosts blank instead of listing it, or this may have unintended side effects. ---")
+	}
+}
+
+// askUsername prompts for provider's account username, re-asking if it
+// collides with one already taken by another account for the same
+// provider.
+func (s *Setup) askUsername(provider gitProviderCredential, taken []string) string {
+	for {
+		username := commandline.AskOpenEndedQuestion(provider.Name+" username", "", false, true)
+
+		if !slices.Contains(taken, username) {
+			return username
+		}
+
+		fmt.Println("--- " + username + " is already used by another " + provider.Name + " account. Choose a different username so code-request can tell them apart. ---")
+	}
+}
+
+// block renders a as a config.yml providers list entry for the given
+// provider key (e.g. "github", "gitlab").
+func (a accountAnswers) block(key string) string {
+	block := "  - name: " + key + "\n" +
+		"    username: " + a.Username + "\n" +
+		"    token: " + a.Token + "\n"
+
+	if len(a.RemoteHosts) > 0 {
+		block += "    remote_hosts:\n"
+		for _, host := range a.RemoteHosts {
+			block += "      - " + host + "\n"
+		}
+	}
+
+	if a.APIHost != "" {
+		block += "    api_host: " + a.APIHost + "\n"
+	}
+
+	return block
+}
+
+func (s *Setup) splitHosts(input string) []string {
+	if input == "" {
+		return nil
+	}
+
+	var hosts []string
+	for _, host := range strings.Split(input, ",") {
+		if host = strings.TrimSpace(host); host != "" {
+			hosts = append(hosts, host)
+		}
+	}
+
+	return hosts
 }
 
 func (s *Setup) setupPlugins() {

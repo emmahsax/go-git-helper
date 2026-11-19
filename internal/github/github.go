@@ -20,14 +20,15 @@ type GitHub struct {
 }
 
 // NewGitHub builds a client for the GitHub account configured for host (e.g.
-// PublicHost, or a self-hosted/Enterprise "github.example.com"), picking
-// whichever of the config file's (possibly several) "github" provider
-// entries matches.
-func NewGitHub(host string, debugB bool) *GitHub {
+// PublicHost, or a self-hosted/Enterprise "github.example.com") and
+// username. When more than one account matches host, username picks which
+// one (see configfile.ResolveAccount); callers that already know there's no
+// ambiguity can pass "".
+func NewGitHub(host, username string, debugB bool) *GitHub {
 	cf := configfile.NewConfigFile(debugB)
-	_, token := cf.GitHubCredentials(host)
+	account := configfile.ResolveAccount(cf.GitHubAccounts(host), username)
 
-	c := newGitHubClient(token, host, debugB)
+	c := newGitHubClient(account.Token, account.APIHost, debugB)
 
 	return &GitHub{
 		Debug:  debugB,
@@ -57,14 +58,16 @@ func (c *GitHub) CreatePullRequest(owner, repo string, options *github.CreatePul
 	return pr, nil
 }
 
-// newGitHubClient talks to a self-hosted GitHub Enterprise at host (e.g.
+// newGitHubClient talks to a self-hosted GitHub Enterprise at apiHost (e.g.
 // "github.example.com") when one is given, falling back to the SDK's
-// default (the public github.com) for "" or PublicHost.
-func newGitHubClient(token, host string, debugB bool) *github.Client {
+// default (the public github.com) for "". apiHost is the account's real API
+// server (configfile.Account.APIHost) -- not whatever host matched the git
+// remote, which may just be a local SSH alias with no meaning to any API.
+func newGitHubClient(token, apiHost string, debugB bool) *github.Client {
 	opts := []github.ClientOptionsFunc{github.WithAuthToken(token)}
 
-	if host != "" && host != PublicHost {
-		baseURL := "https://" + host + "/"
+	if apiHost != "" {
+		baseURL := "https://" + apiHost + "/"
 		opts = append(opts, github.WithEnterpriseURLs(baseURL, baseURL))
 	}
 

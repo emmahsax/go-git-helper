@@ -23,6 +23,7 @@ type GitLabMergeRequest struct {
 	InteractiveMode bool
 	LocalProject    string
 	NewMrTitle      string
+	Username        string
 }
 
 func NewGitLabMergeRequest(options map[string]string, debug, interactiveMode bool) *GitLabMergeRequest {
@@ -36,6 +37,7 @@ func NewGitLabMergeRequest(options map[string]string, debug, interactiveMode boo
 		InteractiveMode: interactiveMode,
 		LocalProject:    options["localProject"],
 		NewMrTitle:      options["newMrTitle"],
+		Username:        options["username"],
 	}
 }
 
@@ -52,7 +54,7 @@ func (mr *GitLabMergeRequest) Create() {
 	}
 
 	fmt.Println("Creating merge request:", t)
-	resp, err := NewGitLab(mr.Host, mr.Debug).CreateMergeRequest(mr.LocalProject, &options)
+	resp, err := NewGitLab(mr.Host, mr.Username, mr.Debug).CreateMergeRequest(mr.LocalProject, &options)
 	if err != nil {
 		customErr := errors.New("could not create merge request: " + err.Error())
 		utils.HandleError(customErr, mr.Debug, nil)
