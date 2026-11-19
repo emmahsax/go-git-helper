@@ -27,7 +27,7 @@ type Forgejo struct {
 // can pass "".
 func NewForgejo(host, username string, debugB bool) *Forgejo {
 	cf := configfile.NewConfigFile(debugB)
-	account := configfile.ResolveAccount(cf.ForgejoAccounts(host), username)
+	account := configfile.ResolveAccount(cf.Accounts("forgejo", host), username)
 
 	c, err := newForgejoClient(account.Token, account.APIHost, debugB)
 	if err != nil {

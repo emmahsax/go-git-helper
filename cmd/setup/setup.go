@@ -208,9 +208,9 @@ type gitProviderCredential struct {
 }
 
 // gitProviderCredentials lists every supported git provider's setup
-// prompts. Adding support for a new provider (e.g. Bitbucket) only requires a
-// new entry here, plus matching read methods on *configfile.ConfigFile (see
-// GitHubAccounts/GitLabAccounts/ForgejoAccounts).
+// prompts. Adding support for a new provider (e.g. Bitbucket) only requires
+// a new entry here -- *configfile.ConfigFile's Accounts/Hosts already read
+// any provider name generically.
 var gitProviderCredentials = []gitProviderCredential{
 	{
 		Key:               "github",

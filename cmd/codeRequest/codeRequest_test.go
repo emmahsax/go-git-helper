@@ -380,7 +380,7 @@ upstream  git@github.com:upstream-org/go-git-helper.git (push)`)}
 }
 
 // Regression: host matching must be case-insensitive. matchedGitHubHost
-// returns one of gitHubHosts()'s own (canonically-cased) entries on a
+// returns one of its own candidate hosts' (canonically-cased) entries on a
 // match, not the remote's literal casing -- so the meaningful assertion is
 // that a mixed-case remote still matches at all.
 func Test_matchedGitHubHost_CaseInsensitive(t *testing.T) {
@@ -526,6 +526,62 @@ origin  git@Codeberg.Org:emmahsax/go-git-helper.git (push)`)}
 	}
 	if !cr.isForgejo() {
 		t.Error("expected isForgejo() to be true for a mixed-case Forgejo remote")
+	}
+}
+
+// matchedHost is the shared helper behind matchedGitHubHost/
+// matchedGitLabHost/matchedForgejoHost; these test it directly rather than
+// through one specific provider.
+func Test_matchedHost(t *testing.T) {
+	tests := []struct {
+		name            string
+		remoteHosts     []string
+		publicHost      string
+		configuredHosts []string
+		expected        string
+	}{
+		{
+			name:        "matches the public host",
+			remoteHosts: []string{"github.com"},
+			publicHost:  "github.com",
+			expected:    "github.com",
+		},
+		{
+			name:            "matches a configured self-hosted host",
+			remoteHosts:     []string{"github.example.com"},
+			publicHost:      "github.com",
+			configuredHosts: []string{"github.example.com"},
+			expected:        "github.example.com",
+		},
+		{
+			name:            "no match",
+			remoteHosts:     []string{"gitlab.com"},
+			publicHost:      "github.com",
+			configuredHosts: []string{"github.example.com"},
+			expected:        "",
+		},
+		{
+			name:        "case-insensitive match",
+			remoteHosts: []string{"GitHub.Com"},
+			publicHost:  "github.com",
+			expected:    "github.com",
+		},
+		{
+			// Regression: a naive substring check would treat this as a
+			// match for the public host.
+			name:        "self-hosted domain that contains the public domain as a substring",
+			remoteHosts: []string{"github.company.com"},
+			publicHost:  "github.com",
+			expected:    "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := matchedHost(test.remoteHosts, test.publicHost, test.configuredHosts); got != test.expected {
+				t.Errorf("expected %q, got %q", test.expected, got)
+			}
+		})
 	}
 }
 

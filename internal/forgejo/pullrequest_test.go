@@ -1,12 +1,43 @@
 package forgejo
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 )
+
+// captureStdout redirects os.Stdout for the duration of fn and returns
+// whatever it wrote, restoring the original afterward.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	original := os.Stdout
+	os.Stdout = w
+	t.Cleanup(func() { os.Stdout = original })
+
+	fn()
+
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatal(err)
+	}
+
+	return buf.String()
+}
 
 func Test_determineTitle_Draft(t *testing.T) {
 	pr := &ForgejoPullRequest{
@@ -206,5 +237,69 @@ func Test_prTemplateOptions_None(t *testing.T) {
 
 	if len(actual) != 0 {
 		t.Errorf("expected no templates, got %v", actual)
+	}
+}
+
+func Test_relativeToGitRoot(t *testing.T) {
+	pr := &ForgejoPullRequest{GitRootDir: filepath.Join("repo", "root")}
+
+	path := filepath.Join(pr.GitRootDir, ".forgejo", "pull_request_template.md")
+	expected := filepath.Join(".forgejo", "pull_request_template.md")
+	actual := pr.relativeToGitRoot(path)
+
+	if expected != actual {
+		t.Errorf("expected '%s', got '%s'", expected, actual)
+	}
+}
+
+// Regression: a path that isn't actually under GitRootDir must fall back to
+// itself rather than produce a nonsensical "../" relative path.
+func Test_relativeToGitRoot_NotUnderGitRoot(t *testing.T) {
+	pr := &ForgejoPullRequest{GitRootDir: filepath.Join("repo", "root")}
+
+	path := filepath.Join("somewhere", "else", "pull_request_template.md")
+	actual := pr.relativeToGitRoot(path)
+
+	if actual != path {
+		t.Errorf("expected the path unchanged as a fallback, got '%s'", actual)
+	}
+}
+
+// Regression: when the server doesn't honor the "WIP:" convention (e.g. a
+// self-hosted instance reconfigured WORK_IN_PROGRESS_PREFIXES), the user
+// must be warned that a requested draft wasn't actually created as one.
+func Test_warnIfDraftMismatched_WarnsWhenServerIgnoredDraftRequest(t *testing.T) {
+	pr := &ForgejoPullRequest{Draft: "true"}
+
+	output := captureStdout(t, func() {
+		pr.warnIfDraftMismatched(false)
+	})
+
+	if !strings.Contains(output, "Warning") {
+		t.Errorf("expected a warning to be printed, got %q", output)
+	}
+}
+
+func Test_warnIfDraftMismatched_NoWarningWhenMatched(t *testing.T) {
+	pr := &ForgejoPullRequest{Draft: "true"}
+
+	output := captureStdout(t, func() {
+		pr.warnIfDraftMismatched(true)
+	})
+
+	if output != "" {
+		t.Errorf("expected no warning, got %q", output)
+	}
+}
+
+func Test_warnIfDraftMismatched_NoWarningWhenDraftNotRequested(t *testing.T) {
+	pr := &ForgejoPullRequest{Draft: "false"}
+
+	output := captureStdout(t, func() {
+		pr.warnIfDraftMismatched(false)
+	})
+
+	if output != "" {
+		t.Errorf("expected no warning, got %q", output)
 	}
 }

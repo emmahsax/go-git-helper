@@ -11,9 +11,9 @@ import (
 )
 
 // ConfigFileInterface covers the config-file-management methods that
-// `setup` needs to inject a mock for. Provider credential lookups
-// (GitHubAccounts, GitLabAccounts, etc.) are read straight off the concrete
-// *ConfigFile elsewhere, so they're intentionally not part of this interface.
+// `setup` needs to inject a mock for. Provider credential lookups (Accounts,
+// Hosts) are read straight off the concrete *ConfigFile elsewhere, so
+// they're intentionally not part of this interface.
 type ConfigFileInterface interface {
 	ConfigDir() string
 	ConfigDirExists() bool
@@ -74,8 +74,8 @@ type Account struct {
 	APIHost  string
 }
 
-// ResolveAccount picks which of candidates (as returned by
-// GitHubAccounts/GitLabAccounts) to use: the one whose Username matches
+// ResolveAccount picks which of candidates (as returned by Accounts) to
+// use: the one whose Username matches
 // username, or -- when username is "" or matches none of them -- the first
 // candidate. Callers disambiguate ties (len(candidates) > 1) themselves,
 // e.g. by asking the user which account they meant; ResolveAccount's job is
@@ -129,51 +129,10 @@ func (cf *ConfigFile) ConfigFileExists() bool {
 	return err == nil
 }
 
-// GitHubHosts returns every self-hosted/alias remote host configured across
-// all "github" provider entries (not the implicit public github.com).
-func (cf *ConfigFile) GitHubHosts() []string {
-	return cf.remoteHostsFor("github")
-}
-
-// GitHubAccounts returns every "github" account matching host. See
-// GitLabAccounts for the exact matching rules, which are identical.
-func (cf *ConfigFile) GitHubAccounts(host string) []Account {
-	return cf.accountsFor("github", host)
-}
-
-// GitLabHosts returns every self-hosted/alias remote host configured across
-// all "gitlab" provider entries (not the implicit public gitlab.com).
-func (cf *ConfigFile) GitLabHosts() []string {
-	return cf.remoteHostsFor("gitlab")
-}
-
-// GitLabAccounts returns every "gitlab" account matching host: entries
-// whose RemoteHosts contains host, or -- when host matches no entry's
-// RemoteHosts -- every entry with no RemoteHosts at all (each a separate
-// account on the public gitlab.com). Zero results means nothing is
-// configured for host; more than one means the caller must disambiguate
-// (e.g. by asking which account), since config.yml allows more than one
-// account per host (a personal and a work account, say).
-func (cf *ConfigFile) GitLabAccounts(host string) []Account {
-	return cf.accountsFor("gitlab", host)
-}
-
-// ForgejoHosts returns every self-hosted/alias remote host configured across
-// all "forgejo" provider entries (not the implicit public codeberg.org).
-func (cf *ConfigFile) ForgejoHosts() []string {
-	return cf.remoteHostsFor("forgejo")
-}
-
-// ForgejoAccounts returns every "forgejo" account matching host. See
-// GitLabAccounts for the exact matching rules, which are identical.
-func (cf *ConfigFile) ForgejoAccounts(host string) []Account {
-	return cf.accountsFor("forgejo", host)
-}
-
-// remoteHostsFor returns every self-hosted/alias remote host configured
-// across all of name's provider entries (not whichever public URL an entry
-// with no RemoteHosts implies).
-func (cf *ConfigFile) remoteHostsFor(name string) []string {
+// Hosts returns every self-hosted/alias remote host configured across all
+// of name's (e.g. "github", "gitlab", "forgejo") provider entries (not the
+// implicit public host an entry with no RemoteHosts means).
+func (cf *ConfigFile) Hosts(name string) []string {
 	var hosts []string
 
 	for _, p := range cf.providersNamed(name) {
@@ -183,11 +142,15 @@ func (cf *ConfigFile) remoteHostsFor(name string) []string {
 	return hosts
 }
 
-// accountsFor returns every name-named account matching host: entries whose
-// RemoteHosts contains host, or -- when host matches no entry's RemoteHosts
-// -- every entry with no RemoteHosts at all (each a separate account on
-// that provider's public URL).
-func (cf *ConfigFile) accountsFor(name, host string) []Account {
+// Accounts returns every name-named (e.g. "github", "gitlab", "forgejo")
+// account matching host: entries whose RemoteHosts contains host, or --
+// when host matches no entry's RemoteHosts -- every entry with no
+// RemoteHosts at all (each a separate account on that provider's public
+// URL). Zero results means nothing is configured for host; more than one
+// means the caller must disambiguate (e.g. by asking which account), since
+// config.yml allows more than one account per host (a personal and a work
+// account, say).
+func (cf *ConfigFile) Accounts(name, host string) []Account {
 	providers := cf.providersNamed(name)
 
 	var matched []Account

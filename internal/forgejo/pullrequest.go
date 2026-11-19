@@ -59,7 +59,23 @@ func (pr *ForgejoPullRequest) Create() {
 		return
 	}
 
+	pr.warnIfDraftMismatched(resp.Draft)
+
 	fmt.Println("Pull request successfully created:", resp.HTMLURL)
+}
+
+// warnIfDraftMismatched tells the user when the server didn't treat the
+// pull request as a draft despite one being requested. The "WIP:" prefix
+// determineTitle relies on is just the default -- a self-hosted instance's
+// admin can reconfigure (or disable) WORK_IN_PROGRESS_PREFIXES in app.ini,
+// which would otherwise silently create a non-draft PR with "WIP:" stuck in
+// its title and no indication anything went wrong.
+func (pr *ForgejoPullRequest) warnIfDraftMismatched(actualDraft bool) {
+	wantedDraft, _ := strconv.ParseBool(pr.Draft)
+
+	if wantedDraft && !actualDraft {
+		fmt.Println("Warning: a draft pull request was requested, but this Forgejo instance didn't mark it as a draft -- it may not recognize the \"WIP:\" prefix (WORK_IN_PROGRESS_PREFIXES may be reconfigured server-side). The pull request was still created, just not as a draft.")
+	}
 }
 
 // determineTitle prefixes the title with "WIP:" for a draft pull request.
@@ -106,7 +122,7 @@ func (pr *ForgejoPullRequest) templateNameToApply() string {
 	var applyTemplate bool
 	if pr.InteractiveMode {
 		applyTemplate = commandline.AskYesNoQuestion(
-			fmt.Sprintf("Apply the pull request template from %s?", strings.TrimPrefix(template, pr.GitRootDir+"/")),
+			fmt.Sprintf("Apply the pull request template from %s?", pr.relativeToGitRoot(template)),
 		)
 	} else {
 		applyTemplate = true
@@ -117,6 +133,20 @@ func (pr *ForgejoPullRequest) templateNameToApply() string {
 	}
 
 	return ""
+}
+
+// relativeToGitRoot displays path relative to pr.GitRootDir for the
+// confirmation prompt, since path is built with filepath.Join (so it uses
+// "\" on Windows) -- a hardcoded "/" prefix strip would silently fail there
+// and print the full absolute path instead. Falls back to path itself if it
+// isn't actually under GitRootDir.
+func (pr *ForgejoPullRequest) relativeToGitRoot(path string) string {
+	rel, err := filepath.Rel(pr.GitRootDir, path)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return path
+	}
+
+	return rel
 }
 
 // prTemplateOptions returns every pull request template Forgejo itself would

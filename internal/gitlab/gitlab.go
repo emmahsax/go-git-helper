@@ -24,7 +24,7 @@ type GitLab struct {
 // ambiguity can pass "".
 func NewGitLab(host, username string, debugB bool) *GitLab {
 	cf := configfile.NewConfigFile(debugB)
-	account := configfile.ResolveAccount(cf.GitLabAccounts(host), username)
+	account := configfile.ResolveAccount(cf.Accounts("gitlab", host), username)
 
 	c, err := newGitLabClient(account.Token, account.APIHost, debugB)
 	if err != nil {
