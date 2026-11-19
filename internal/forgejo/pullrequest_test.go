@@ -160,9 +160,9 @@ func Test_newPrBody_NoTemplate(t *testing.T) {
 func Test_newPrBody_NoTemplate_WithTicketReference(t *testing.T) {
 	pr := NewForgejoPullRequest(
 		map[string]string{
-			"gitRootDir":    t.TempDir(),
-			"newPrTitle":    "proj-123 something",
-			"ticketBaseURL": "https://example.com/browse",
+			"gitRootDir":              t.TempDir(),
+			"newPrTitle":              "proj-123 something",
+			"ticketBaseURLCandidates": "https://example.com/browse",
 		},
 		false,
 		false,
@@ -176,7 +176,7 @@ func Test_newPrBody_NoTemplate_WithTicketReference(t *testing.T) {
 	}
 }
 
-// Regression: with no ticketBaseURL configured, the prompt still appears
+// Regression: with no ticketBaseURLCandidates configured, the prompt still appears
 // and the bare reference still gets inserted -- a base URL only upgrades
 // it into a real link, it never gates whether the reference appears at all
 // (so platforms with their own autolinking, e.g. GitHub, still get it).
@@ -203,7 +203,7 @@ func Test_newPrBody_NoTemplate_NoBaseURL_InsertsBareReference(t *testing.T) {
 	actual := pr.newPrBody()
 
 	if !asked {
-		t.Error("expected the prompt even with no ticketBaseURL configured")
+		t.Error("expected the prompt even with no ticketBaseURLCandidates configured")
 	}
 	if expected != actual {
 		t.Errorf("expected %q, got %q", expected, actual)
@@ -225,9 +225,9 @@ func Test_newPrBody_NoTemplate_InteractivelyAsksAboutTicketReference(t *testing.
 
 	pr := NewForgejoPullRequest(
 		map[string]string{
-			"gitRootDir":    t.TempDir(),
-			"newPrTitle":    "proj-123 something",
-			"ticketBaseURL": "https://example.com/browse",
+			"gitRootDir":              t.TempDir(),
+			"newPrTitle":              "proj-123 something",
+			"ticketBaseURLCandidates": "https://example.com/browse",
 		},
 		false,
 		true,

@@ -76,9 +76,9 @@ func Test_newPrBody(t *testing.T) {
 func Test_newPrBody_NoTemplate_WithTicketReference(t *testing.T) {
 	pr := NewGitHubPullRequest(
 		map[string]string{
-			"gitRootDir":    t.TempDir(),
-			"newPrTitle":    "proj-123 something",
-			"ticketBaseURL": "https://example.com/browse",
+			"gitRootDir":              t.TempDir(),
+			"newPrTitle":              "proj-123 something",
+			"ticketBaseURLCandidates": "https://example.com/browse",
 		},
 		false,
 		false,
@@ -92,9 +92,9 @@ func Test_newPrBody_NoTemplate_WithTicketReference(t *testing.T) {
 	}
 }
 
-// Regression: with no ticketBaseURL configured, the feature does nothing
+// Regression: with no ticketBaseURLCandidates configured, the feature does nothing
 // at all, even though the title has a ticket reference.
-// Regression: with no ticketBaseURL configured, the bare reference is
+// Regression: with no ticketBaseURLCandidates configured, the bare reference is
 // still inserted -- a base URL only upgrades it into a real link, it
 // never gates whether the reference appears at all (so platforms with
 // their own autolinking, e.g. GitHub, still get it).

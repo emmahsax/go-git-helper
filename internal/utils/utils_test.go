@@ -102,17 +102,13 @@ func Test_TicketPrefix(t *testing.T) {
 }
 
 func Test_PrependTicketLink_NoMatch(t *testing.T) {
-	got := PrependTicketLink("existing body", "no ticket reference here", "pull request", "https://example.com/browse", true)
+	got := PrependTicketLink("existing body", "no ticket reference here", "pull request", []string{"https://example.com/browse"}, true)
 
 	if got != "existing body" {
 		t.Errorf("expected body unchanged, got %q", got)
 	}
 }
 
-// Regression: without a configured base URL, the feature must do nothing
-// at all -- no prompt, no bare-bracket fallback -- regardless of whether
-// the title has a ticket reference. The destination platform/project is
-// trusted to do its own linkification (e.g. GitHub autolink references).
 // Regression: with no base URL configured, the feature still asks and
 // still inserts the bare reference -- a base URL only upgrades that bare
 // reference into a real link, it never gates whether the reference (or the
@@ -130,7 +126,7 @@ func Test_PrependTicketLink_NoBaseURL_FallsBackToBareReference(t *testing.T) {
 		return true
 	}
 
-	got := PrependTicketLink("existing body", "proj-123 something", "pull request", "", true)
+	got := PrependTicketLink("existing body", "proj-123 something", "pull request", nil, true)
 
 	expected := "### [proj-123]\n\nexisting body"
 	if got != expected {
@@ -142,7 +138,7 @@ func Test_PrependTicketLink_NoBaseURL_FallsBackToBareReference(t *testing.T) {
 }
 
 func Test_PrependTicketLink_NonInteractiveAlwaysIncludes(t *testing.T) {
-	got := PrependTicketLink("existing body", "proj-123 something", "pull request", "https://example.com/browse", false)
+	got := PrependTicketLink("existing body", "proj-123 something", "pull request", []string{"https://example.com/browse"}, false)
 
 	expected := "### [proj-123](https://example.com/browse/proj-123)\n\nexisting body"
 	if got != expected {
@@ -151,7 +147,7 @@ func Test_PrependTicketLink_NonInteractiveAlwaysIncludes(t *testing.T) {
 }
 
 func Test_PrependTicketLink_TrimsTrailingSlashFromBaseURL(t *testing.T) {
-	got := PrependTicketLink("", "proj-123 something", "pull request", "https://example.com/browse/", false)
+	got := PrependTicketLink("", "proj-123 something", "pull request", []string{"https://example.com/browse/"}, false)
 
 	expected := "### [proj-123](https://example.com/browse/proj-123)\n\n"
 	if got != expected {
@@ -169,7 +165,7 @@ func Test_PrependTicketLink_InteractiveAccepts(t *testing.T) {
 		return true
 	}
 
-	got := PrependTicketLink("existing body", "proj-123 something", "merge request", "https://example.com/browse", true)
+	got := PrependTicketLink("existing body", "proj-123 something", "merge request", []string{"https://example.com/browse"}, true)
 
 	expected := "### [proj-123](https://example.com/browse/proj-123)\n\nexisting body"
 	if got != expected {
@@ -186,7 +182,7 @@ func Test_PrependTicketLink_InteractiveDeclines(t *testing.T) {
 
 	commandline.AskYesNoQuestion = func(question string) bool { return false }
 
-	got := PrependTicketLink("existing body", "proj-123 something", "pull request", "https://example.com/browse", true)
+	got := PrependTicketLink("existing body", "proj-123 something", "pull request", []string{"https://example.com/browse"}, true)
 
 	if got != "existing body" {
 		t.Errorf("expected body unchanged when declined, got %q", got)
@@ -196,11 +192,99 @@ func Test_PrependTicketLink_InteractiveDeclines(t *testing.T) {
 // Regression: the ticket link must be addable even with no template-derived
 // body at all (an empty string), not just appended to existing content.
 func Test_PrependTicketLink_WorksWithEmptyBody(t *testing.T) {
-	got := PrependTicketLink("", "proj-123 something", "pull request", "https://example.com/browse", false)
+	got := PrependTicketLink("", "proj-123 something", "pull request", []string{"https://example.com/browse"}, false)
 
 	expected := "### [proj-123](https://example.com/browse/proj-123)\n\n"
 	if got != expected {
 		t.Errorf("expected %q, got %q", expected, got)
+	}
+}
+
+// Regression: when more than one base URL is configured for the same
+// reference, "which URL?" must not be asked if the user declines the link
+// entirely -- that would waste a choice they never needed to make.
+func Test_PrependTicketLink_AmbiguousCandidates_NotAskedIfDeclined(t *testing.T) {
+	original := commandline.AskYesNoQuestion
+	t.Cleanup(func() { commandline.AskYesNoQuestion = original })
+	commandline.AskYesNoQuestion = func(question string) bool { return false }
+
+	originalMultipleChoice := commandline.AskMultipleChoice
+	t.Cleanup(func() { commandline.AskMultipleChoice = originalMultipleChoice })
+	askedWhichURL := false
+	commandline.AskMultipleChoice = func(question string, choices []string) string {
+		askedWhichURL = true
+		return choices[0]
+	}
+
+	candidates := []string{"https://company.atlassian.net/browse", "https://linear.app/company/issue"}
+	got := PrependTicketLink("existing body", "ops-123 something", "pull request", candidates, true)
+
+	if askedWhichURL {
+		t.Error("expected no 'which URL' prompt when the link itself was declined")
+	}
+	if got != "existing body" {
+		t.Errorf("expected body unchanged when declined, got %q", got)
+	}
+}
+
+// Regression: when more than one base URL is configured and the user
+// confirms they want the link, "which URL?" must be asked (only) then.
+func Test_PrependTicketLink_AmbiguousCandidates_AskedAfterAccepted(t *testing.T) {
+	original := commandline.AskYesNoQuestion
+	t.Cleanup(func() { commandline.AskYesNoQuestion = original })
+	commandline.AskYesNoQuestion = func(question string) bool { return true }
+
+	originalMultipleChoice := commandline.AskMultipleChoice
+	t.Cleanup(func() { commandline.AskMultipleChoice = originalMultipleChoice })
+	var offeredChoices []string
+	commandline.AskMultipleChoice = func(question string, choices []string) string {
+		offeredChoices = choices
+		return choices[1]
+	}
+
+	candidates := []string{"https://company.atlassian.net/browse", "https://linear.app/company/issue"}
+	got := PrependTicketLink("", "ops-123 something", "pull request", candidates, true)
+
+	if len(offeredChoices) != 2 {
+		t.Fatalf("expected to be asked which of 2 candidates, got %v", offeredChoices)
+	}
+	expected := "### [ops-123](https://linear.app/company/issue/ops-123)\n\n"
+	if got != expected {
+		t.Errorf("expected %q, got %q", expected, got)
+	}
+}
+
+// Regression: non-interactively, nothing can answer a prompt, so the first
+// configured candidate must be used instead of asking.
+func Test_PrependTicketLink_AmbiguousCandidates_NonInteractiveUsesFirst(t *testing.T) {
+	candidates := []string{"https://company.atlassian.net/browse", "https://linear.app/company/issue"}
+	got := PrependTicketLink("", "ops-123 something", "pull request", candidates, false)
+
+	expected := "### [ops-123](https://company.atlassian.net/browse/ops-123)\n\n"
+	if got != expected {
+		t.Errorf("expected %q, got %q", expected, got)
+	}
+}
+
+func Test_EncodeDecodeTicketBaseURLCandidates(t *testing.T) {
+	tests := [][]string{
+		nil,
+		{"https://example.com/browse"},
+		{"https://example.com/browse", "https://linear.app/company/issue"},
+	}
+
+	for _, candidates := range tests {
+		encoded := EncodeTicketBaseURLCandidates(candidates)
+		decoded := DecodeTicketBaseURLCandidates(encoded)
+
+		if len(decoded) != len(candidates) {
+			t.Fatalf("expected %v, got %v", candidates, decoded)
+		}
+		for i := range candidates {
+			if decoded[i] != candidates[i] {
+				t.Errorf("expected %v, got %v", candidates, decoded)
+			}
+		}
 	}
 }
 

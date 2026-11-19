@@ -14,32 +14,32 @@ import (
 )
 
 type GitLabMergeRequest struct {
-	BaseBranch      string
-	Debug           bool
-	Draft           string
-	GitRootDir      string
-	Host            string
-	LocalBranch     string
-	InteractiveMode bool
-	LocalProject    string
-	NewMrTitle      string
-	TicketBaseURL   string
-	Username        string
+	BaseBranch              string
+	Debug                   bool
+	Draft                   string
+	GitRootDir              string
+	Host                    string
+	LocalBranch             string
+	InteractiveMode         bool
+	LocalProject            string
+	NewMrTitle              string
+	TicketBaseURLCandidates []string
+	Username                string
 }
 
 func NewGitLabMergeRequest(options map[string]string, debug, interactiveMode bool) *GitLabMergeRequest {
 	return &GitLabMergeRequest{
-		BaseBranch:      options["baseBranch"],
-		Debug:           debug,
-		Draft:           options["draft"],
-		GitRootDir:      options["gitRootDir"],
-		Host:            options["host"],
-		LocalBranch:     options["localBranch"],
-		InteractiveMode: interactiveMode,
-		LocalProject:    options["localProject"],
-		NewMrTitle:      options["newMrTitle"],
-		TicketBaseURL:   options["ticketBaseURL"],
-		Username:        options["username"],
+		BaseBranch:              options["baseBranch"],
+		Debug:                   debug,
+		Draft:                   options["draft"],
+		GitRootDir:              options["gitRootDir"],
+		Host:                    options["host"],
+		LocalBranch:             options["localBranch"],
+		InteractiveMode:         interactiveMode,
+		LocalProject:            options["localProject"],
+		NewMrTitle:              options["newMrTitle"],
+		TicketBaseURLCandidates: utils.DecodeTicketBaseURLCandidates(options["ticketBaseURLCandidates"]),
+		Username:                options["username"],
 	}
 }
 
@@ -90,7 +90,7 @@ func (mr *GitLabMergeRequest) newMrBody() string {
 		content = string(raw)
 	}
 
-	return utils.PrependTicketLink(content, mr.NewMrTitle, "merge request", mr.TicketBaseURL, mr.InteractiveMode)
+	return utils.PrependTicketLink(content, mr.NewMrTitle, "merge request", mr.TicketBaseURLCandidates, mr.InteractiveMode)
 }
 
 func (mr *GitLabMergeRequest) templateNameToApply() string {

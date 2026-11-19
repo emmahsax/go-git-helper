@@ -14,32 +14,32 @@ import (
 )
 
 type GitHubPullRequest struct {
-	BaseBranch      string
-	Debug           bool
-	Draft           string
-	GitRootDir      string
-	Host            string
-	InteractiveMode bool
-	LocalBranch     string
-	LocalRepo       string
-	NewPrTitle      string
-	TicketBaseURL   string
-	Username        string
+	BaseBranch              string
+	Debug                   bool
+	Draft                   string
+	GitRootDir              string
+	Host                    string
+	InteractiveMode         bool
+	LocalBranch             string
+	LocalRepo               string
+	NewPrTitle              string
+	TicketBaseURLCandidates []string
+	Username                string
 }
 
 func NewGitHubPullRequest(options map[string]string, debug, interactiveMode bool) *GitHubPullRequest {
 	return &GitHubPullRequest{
-		BaseBranch:      options["baseBranch"],
-		Debug:           debug,
-		Draft:           options["draft"],
-		GitRootDir:      options["gitRootDir"],
-		Host:            options["host"],
-		InteractiveMode: interactiveMode,
-		LocalBranch:     options["localBranch"],
-		LocalRepo:       options["localRepo"],
-		NewPrTitle:      options["newPrTitle"],
-		TicketBaseURL:   options["ticketBaseURL"],
-		Username:        options["username"],
+		BaseBranch:              options["baseBranch"],
+		Debug:                   debug,
+		Draft:                   options["draft"],
+		GitRootDir:              options["gitRootDir"],
+		Host:                    options["host"],
+		InteractiveMode:         interactiveMode,
+		LocalBranch:             options["localBranch"],
+		LocalRepo:               options["localRepo"],
+		NewPrTitle:              options["newPrTitle"],
+		TicketBaseURLCandidates: utils.DecodeTicketBaseURLCandidates(options["ticketBaseURLCandidates"]),
+		Username:                options["username"],
 	}
 }
 
@@ -80,7 +80,7 @@ func (pr *GitHubPullRequest) newPrBody() string {
 		content = string(raw)
 	}
 
-	return utils.PrependTicketLink(content, pr.NewPrTitle, "pull request", pr.TicketBaseURL, pr.InteractiveMode)
+	return utils.PrependTicketLink(content, pr.NewPrTitle, "pull request", pr.TicketBaseURLCandidates, pr.InteractiveMode)
 }
 
 func (pr *GitHubPullRequest) templateNameToApply() string {

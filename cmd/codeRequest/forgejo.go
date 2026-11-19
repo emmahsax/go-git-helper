@@ -1,6 +1,9 @@
 package codeRequest
 
-import "github.com/emmahsax/go-git-helper/internal/forgejo"
+import (
+	"github.com/emmahsax/go-git-helper/internal/forgejo"
+	"github.com/emmahsax/go-git-helper/internal/utils"
+)
 
 func (cr *CodeRequest) createForgejo() {
 	host := cr.matchedForgejoHost()
@@ -15,7 +18,7 @@ func (cr *CodeRequest) createForgejo() {
 	options["gitRootDir"] = g.GetGitRootDir()
 	options["localBranch"] = g.CurrentBranch()
 	options["localRepo"] = g.RepoName()
-	options["ticketBaseURL"] = cr.ticketBaseURL(options["newPrTitle"], options["localRepo"])
+	options["ticketBaseURLCandidates"] = utils.EncodeTicketBaseURLCandidates(cr.ticketBaseURLCandidates(options["newPrTitle"], options["localRepo"]))
 	forgejo.NewForgejoPullRequest(options, cr.Debug, cr.InteractiveMode).Create()
 }
 

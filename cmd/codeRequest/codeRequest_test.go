@@ -241,7 +241,7 @@ func Test_matchesFullProjectTicketPattern(t *testing.T) {
 	}
 }
 
-func Test_ticketBaseURL(t *testing.T) {
+func Test_ticketBaseURLCandidates(t *testing.T) {
 	homeDir := testutil.IsolateHome(t)
 	testutil.WriteConfig(t, homeDir, `ticket_urls:
   default: https://company.atlassian.net/browse
@@ -253,21 +253,26 @@ func Test_ticketBaseURL(t *testing.T) {
 	executor := &MockExecutor{Debug: true}
 	cr := newCodeRequest(true, true, executor)
 
-	if got := cr.ticketBaseURL("proj-123 something", "owner/repo"); got != "https://company.atlassian.net/browse" {
-		t.Errorf("expected the default URL, got %q", got)
+	assertSingleCandidate := func(t *testing.T, got []string, expected string) {
+		t.Helper()
+		if len(got) != 1 || got[0] != expected {
+			t.Errorf("expected a single candidate %q, got %v", expected, got)
+		}
 	}
-	if got := cr.ticketBaseURL("eng-123 something", "owner/repo"); got != "https://linear.app/company/issue" {
-		t.Errorf("expected the prefix override, got %q", got)
-	}
-	if got := cr.ticketBaseURL("no ticket reference here", "owner/repo"); got != "" {
-		t.Errorf("expected no URL with no ticket reference in the title, got %q", got)
+
+	assertSingleCandidate(t, cr.ticketBaseURLCandidates("proj-123 something", "owner/repo"), "https://company.atlassian.net/browse")
+	assertSingleCandidate(t, cr.ticketBaseURLCandidates("eng-123 something", "owner/repo"), "https://linear.app/company/issue")
+	if got := cr.ticketBaseURLCandidates("no ticket reference here", "owner/repo"); len(got) != 0 {
+		t.Errorf("expected no candidates with no ticket reference in the title, got %v", got)
 	}
 }
 
 // Regression: when the same prefix genuinely maps to more than one tracker
-// (e.g. "OPS" meaning both Jira and Linear), interactive mode must ask
-// which URL to use rather than silently picking one.
-func Test_ticketBaseURL_AmbiguousPrefix_InteractiveAsks(t *testing.T) {
+// (e.g. "OPS" meaning both Jira and Linear), ticketBaseURLCandidates must
+// return every candidate without asking which one to use -- that's
+// deferred to utils.PrependTicketLink, after the user has confirmed a link
+// should be included at all.
+func Test_ticketBaseURLCandidates_AmbiguousPrefix_DoesNotAsk(t *testing.T) {
 	homeDir := testutil.IsolateHome(t)
 	testutil.WriteConfig(t, homeDir, `ticket_urls:
   overrides:
@@ -279,51 +284,28 @@ func Test_ticketBaseURL_AmbiguousPrefix_InteractiveAsks(t *testing.T) {
 
 	originalAskMultipleChoice := commandline.AskMultipleChoice
 	t.Cleanup(func() { commandline.AskMultipleChoice = originalAskMultipleChoice })
-
-	var offeredChoices []string
+	asked := false
 	commandline.AskMultipleChoice = func(question string, choices []string) string {
-		offeredChoices = choices
-		return choices[1]
+		asked = true
+		return choices[0]
 	}
 
 	executor := &MockExecutor{Debug: true}
 	cr := newCodeRequest(true, true, executor)
 
-	got := cr.ticketBaseURL("ops-123 something", "owner/repo")
+	got := cr.ticketBaseURLCandidates("ops-123 something", "owner/repo")
 
-	expectedChoices := []string{"https://company.atlassian.net/browse", "https://linear.app/company/issue"}
-	if len(offeredChoices) != len(expectedChoices) {
-		t.Fatalf("expected choices %v, got %v", expectedChoices, offeredChoices)
+	if asked {
+		t.Error("expected no prompt -- disambiguation is deferred to PrependTicketLink")
 	}
-	for i := range expectedChoices {
-		if offeredChoices[i] != expectedChoices[i] {
-			t.Errorf("expected choices %v, got %v", expectedChoices, offeredChoices)
+	expected := []string{"https://company.atlassian.net/browse", "https://linear.app/company/issue"}
+	if len(got) != len(expected) {
+		t.Fatalf("expected %v, got %v", expected, got)
+	}
+	for i := range expected {
+		if got[i] != expected[i] {
+			t.Errorf("expected %v, got %v", expected, got)
 		}
-	}
-	if got != "https://linear.app/company/issue" {
-		t.Errorf("expected the chosen URL, got %q", got)
-	}
-}
-
-// Regression: non-interactively, nothing can answer a prompt, so the first
-// configured candidate must be used instead of asking.
-func Test_ticketBaseURL_AmbiguousPrefix_NonInteractiveUsesFirst(t *testing.T) {
-	homeDir := testutil.IsolateHome(t)
-	testutil.WriteConfig(t, homeDir, `ticket_urls:
-  overrides:
-    prefixes:
-      OPS:
-        - https://company.atlassian.net/browse
-        - https://linear.app/company/issue
-`)
-
-	executor := &MockExecutor{Debug: true}
-	cr := newCodeRequest(true, false, executor)
-
-	got := cr.ticketBaseURL("ops-123 something", "owner/repo")
-
-	if got != "https://company.atlassian.net/browse" {
-		t.Errorf("expected the first configured candidate, got %q", got)
 	}
 }
 
