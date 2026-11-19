@@ -392,6 +392,20 @@ origin  https://github.com/emmahsax/go-git-helper (push)`,
 origin  https://github.com/emmahsax/go-git-helper.git (push)`,
 			repoName: "emmahsax/go-git-helper",
 		},
+		{
+			name:         "self-hosted SSH remote on a non-.com domain",
+			expectedArgs: []string{"remote", "-v"},
+			expectedOutput: `origin  git@gitlab.example.ai:emmahsax/go-git-helper.git (fetch)
+origin  git@gitlab.example.ai:emmahsax/go-git-helper.git (push)`,
+			repoName: "emmahsax/go-git-helper",
+		},
+		{
+			name:         "ssh:// remote with a custom port",
+			expectedArgs: []string{"remote", "-v"},
+			expectedOutput: `origin  ssh://git@gitlab.example.com:2222/emmahsax/go-git-helper.git (fetch)
+origin  ssh://git@gitlab.example.com:2222/emmahsax/go-git-helper.git (push)`,
+			repoName: "emmahsax/go-git-helper",
+		},
 	}
 
 	for _, test := range tests {
@@ -473,6 +487,53 @@ origin  git@github.com:emmahsax/go-git-helper.git (push)`,
 				t.Errorf("unexpected args received: expected %v, but got %v", test.remotes, r)
 			}
 		}
+	}
+}
+
+func Test_RemoteHosts(t *testing.T) {
+	tests := []struct {
+		name           string
+		expectedOutput string
+		hosts          []string
+	}{
+		{
+			name: "single SSH remote",
+			expectedOutput: `origin  git@github.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.com:emmahsax/go-git-helper.git (push)`,
+			hosts: []string{"github.com"},
+		},
+		{
+			name: "deduplicates fetch and push",
+			expectedOutput: `origin  https://gitlab.com/emmahsax/go-git-helper.git (fetch)
+origin  https://gitlab.com/emmahsax/go-git-helper.git (push)`,
+			hosts: []string{"gitlab.com"},
+		},
+		{
+			// The whole point of RemoteHosts: a naive substring check would
+			// treat this as a match for "gitlab.com".
+			name: "self-hosted domain that contains the public domain as a substring",
+			expectedOutput: `origin  git@gitlab.company.com:emmahsax/go-git-helper.git (fetch)
+origin  git@gitlab.company.com:emmahsax/go-git-helper.git (push)`,
+			hosts: []string{"gitlab.company.com"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			executor := &MockExecutor{Debug: true, Output: []byte(test.expectedOutput)}
+			g := NewGit(true, executor)
+			hosts := g.RemoteHosts()
+
+			if len(hosts) != len(test.hosts) {
+				t.Fatalf("expected hosts %v, got %v", test.hosts, hosts)
+			}
+
+			for i := range test.hosts {
+				if hosts[i] != test.hosts[i] {
+					t.Errorf("expected hosts %v, got %v", test.hosts, hosts)
+				}
+			}
+		})
 	}
 }
 

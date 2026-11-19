@@ -3,7 +3,9 @@ package git
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/executor"
@@ -144,23 +146,21 @@ func (g *Git) PushBranch(branch string) {
 	}
 }
 
+// RepoName is the owner/repo path (e.g. "emmahsax/go-git-helper") of the
+// origin remote's push URL, with any ".git" suffix stripped.
 func (g *Git) RepoName() string {
-	output, err := g.Executor.Exec("actionAndOutput", "git", "remote", "-v")
-	if err != nil {
-		utils.HandleError(err, g.Debug, nil)
-		return ""
+	for _, line := range g.Remotes() {
+		if !strings.HasSuffix(strings.TrimSpace(line), "(push)") {
+			continue
+		}
+
+		if remote, ok := parseRemoteURL(remoteURLFromLine(line)); ok {
+			return remote.Path
+		}
 	}
 
-	remoteURL := string(output)
-	re := regexp.MustCompile(`\S\s*\S+\.com\S{1}(\S*) \(push\)`)
-	match := re.FindStringSubmatch(remoteURL)
-	if len(match) >= 2 {
-		return strings.Split(match[1], ".git")[0]
-	} else {
-		err = errors.New("no match found")
-		utils.HandleError(err, g.Debug, nil)
-	}
-
+	err := errors.New("no match found")
+	utils.HandleError(err, g.Debug, nil)
 	return ""
 }
 
@@ -172,6 +172,74 @@ func (g *Git) Remotes() []string {
 	}
 
 	return utils.SplitLines(string(output))
+}
+
+// RemoteHosts returns the distinct, exact hosts (e.g. "github.com",
+// "gitlab.example.com") parsed from the repo's git remotes. Callers matching
+// against these should compare hosts exactly, not with substring
+// containment: a naive substring check would treat "gitlab.company.com" as
+// a match for "gitlab.com", or "git.example.com" as a match for
+// "sub.git.example.com".
+func (g *Git) RemoteHosts() []string {
+	var hosts []string
+
+	for _, line := range g.Remotes() {
+		remote, ok := parseRemoteURL(remoteURLFromLine(line))
+		if !ok || slices.Contains(hosts, remote.Host) {
+			continue
+		}
+
+		hosts = append(hosts, remote.Host)
+	}
+
+	return hosts
+}
+
+// remoteURLFromLine extracts the URL field from a `git remote -v` line, e.g.
+// "origin  git@github.com:owner/repo.git (push)" -> "git@github.com:owner/repo.git".
+func remoteURLFromLine(line string) string {
+	fields := strings.Fields(line)
+	if len(fields) < 2 {
+		return ""
+	}
+
+	return fields[1]
+}
+
+// parsedRemoteURL holds the pieces of a git remote URL relevant to Git
+// Helper: the exact host, and the repo path with any ".git" suffix removed.
+type parsedRemoteURL struct {
+	Host string
+	Path string
+}
+
+// scpLikeRemoteURL matches the SCP-like shorthand git uses for SSH remotes,
+// e.g. "git@github.com:owner/repo.git" -- as opposed to a standard URL like
+// "ssh://git@github.com/owner/repo.git", which net/url already understands.
+var scpLikeRemoteURL = regexp.MustCompile(`^(?:[^@\s]+@)?([^:/\s]+):(.+)$`)
+
+// parseRemoteURL extracts the host and path from a git remote URL, in either
+// the SCP-like shorthand (git@host:owner/repo.git) or a standard URL
+// (https://host/owner/repo.git, ssh://git@host/owner/repo.git, etc.). ok is
+// false if rawURL doesn't look like either.
+func parseRemoteURL(rawURL string) (parsedRemoteURL, bool) {
+	rawURL = strings.TrimSpace(rawURL)
+
+	if !strings.Contains(rawURL, "://") {
+		if m := scpLikeRemoteURL.FindStringSubmatch(rawURL); m != nil {
+			return parsedRemoteURL{Host: m[1], Path: strings.TrimSuffix(m[2], ".git")}, true
+		}
+
+		return parsedRemoteURL{}, false
+	}
+
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Hostname() == "" {
+		return parsedRemoteURL{}, false
+	}
+
+	path := strings.TrimSuffix(strings.TrimPrefix(u.Path, "/"), ".git")
+	return parsedRemoteURL{Host: u.Hostname(), Path: path}, true
 }
 
 func (g *Git) Reset() {

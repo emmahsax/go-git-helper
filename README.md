@@ -99,14 +99,42 @@ This will give you the option to set up credentials at GitHub and/or GitLab, as 
 
 The final result will be a `~/.git-helper/config.yml` file (in your home directory on every OS, e.g. `C:\Users\you\.git-helper\config.yml` on Windows) that only your user can read, with the contents in this form:
 
-```
-github_user:  GITHUB-USERNAME
-github_token: GITHUB-TOKEN
-gitlab_user:  GITLAB-USERNAME
-gitlab_token: GITLAB-TOKEN
+```yaml
+providers:
+  - name: github
+    username: GITHUB-USERNAME
+    token: GITHUB-TOKEN
+  - name: gitlab
+    username: GITLAB-USERNAME
+    token: GITLAB-TOKEN
 ```
 
-To create or see what personal access tokens (PATs) you have, look [here for GitHub PATs](https://github.com/settings/tokens) and [here for GitLab PATs](https://gitlab.com/-/profile/personal_access_tokens). You could either have one set of tokens for each computer you use, or just have one set of tokens for all computers that you rotate periodically.
+To create or see what personal access tokens (PATs) you have, look here:
+
+- GitHub (`github.com`): https://github.com/settings/tokens
+- GitLab (`gitlab.com`): https://gitlab.com/-/profile/personal_access_tokens
+
+You could either have one set of tokens for each computer you use, or just have one set of tokens for all computers that you rotate periodically.
+
+### Self-Hosted and Multiple Accounts
+
+GitLab supports more than one `providers` entry, so you can keep a public `gitlab.com` account and one or more self-hosted accounts side by side -- `code-request` picks whichever one matches the current repo's remote:
+
+```yaml
+providers:
+  - name: gitlab
+    username: GITLAB-USERNAME
+    token: GITLAB-TOKEN
+    # no hosts -> the public gitlab.com
+  - name: gitlab
+    username: WORK-USERNAME
+    token: WORK-TOKEN
+    hosts:
+      - gitlab.example.com
+      - git.internal.example.com # an alternate hostname for the same self-hosted instance
+```
+
+An entry with no `hosts` is treated as the public `gitlab.com` account. `git-helper setup` will ask if you want to set up another GitLab account after the first, and accepts a comma-separated list for `hosts` when an instance is reachable under more than one hostname.
 
 ## General Usage
 

@@ -3,6 +3,7 @@ package codeRequest
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
@@ -138,6 +139,7 @@ func (cr *CodeRequest) createGitLab() {
 	options := make(map[string]string)
 	options["baseBranch"] = cr.baseBranch()
 	options["draft"] = cr.draft()
+	options["host"] = cr.matchedGitLabHost()
 	options["newMrTitle"] = cr.newMrTitle()
 	g := git.NewGit(cr.Debug, cr.Executor)
 	options["gitRootDir"] = g.GetGitRootDir()
@@ -278,19 +280,34 @@ func (cr *CodeRequest) applySpecialCapitalization(title string) string {
 }
 
 func (cr *CodeRequest) isGitHub() bool {
-	return cr.containsSubstring(git.NewGit(cr.Debug, cr.Executor).Remotes(), "github.com")
+	return slices.Contains(git.NewGit(cr.Debug, cr.Executor).RemoteHosts(), "github.com")
 }
 
 func (cr *CodeRequest) isGitLab() bool {
-	return cr.containsSubstring(git.NewGit(cr.Debug, cr.Executor).Remotes(), "gitlab.com")
+	return cr.matchedGitLabHost() != ""
 }
 
-func (cr *CodeRequest) containsSubstring(strs []string, substring string) bool {
-	for _, str := range strs {
-		if strings.Contains(str, substring) {
-			return true
+// gitLabHosts is every host that counts as GitLab: the public gitlab.com,
+// plus any self-hosted hosts from the "gitlab" entries in config.yml (there
+// can be more than one, e.g. a public account alongside a separate
+// self-hosted one).
+func (cr *CodeRequest) gitLabHosts() []string {
+	return append([]string{gitlab.PublicHost}, configfile.NewConfigFile(cr.Debug).GitLabHosts()...)
+}
+
+// matchedGitLabHost returns whichever of gitLabHosts() exactly matches one of
+// the repo's git remote hosts, or "" if none do. The result identifies which
+// configured GitLab account to use, since more than one may be configured.
+// Matching is exact, not substring-based: "gitlab.company.com" must not match
+// "gitlab.com", nor "git.example.com" match "sub.git.example.com".
+func (cr *CodeRequest) matchedGitLabHost() string {
+	remoteHosts := git.NewGit(cr.Debug, cr.Executor).RemoteHosts()
+
+	for _, host := range cr.gitLabHosts() {
+		if slices.Contains(remoteHosts, host) {
+			return host
 		}
 	}
 
-	return false
+	return ""
 }

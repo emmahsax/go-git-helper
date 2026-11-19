@@ -11,7 +11,7 @@ import (
 )
 
 func Test_NewGitHub(t *testing.T) {
-	testutil.WriteConfig(t, testutil.IsolateHome(t), "github_token: test_token\n")
+	testutil.WriteConfig(t, testutil.IsolateHome(t), "providers:\n  - name: github\n    token: test_token\n")
 
 	// This test requires a valid config file with GitHub token
 	// We'll test that the struct is created properly
@@ -31,7 +31,7 @@ func Test_NewGitHub(t *testing.T) {
 }
 
 func Test_NewGitHub_WithDebug(t *testing.T) {
-	testutil.WriteConfig(t, testutil.IsolateHome(t), "github_token: test_token\n")
+	testutil.WriteConfig(t, testutil.IsolateHome(t), "providers:\n  - name: github\n    token: test_token\n")
 
 	gh := NewGitHub(true)
 

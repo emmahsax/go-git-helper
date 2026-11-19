@@ -98,7 +98,7 @@ func Test_ConfigFileExists(t *testing.T) {
 		t.Errorf("Expected ConfigFileExists to return false before the file is created")
 	}
 
-	testutil.WriteConfig(t, home, "github_username: testuser\n")
+	testutil.WriteConfig(t, home, "providers:\n  - name: github\n    username: testuser\n")
 
 	if !cf.ConfigFileExists() {
 		t.Errorf("Expected ConfigFileExists to return true, got false")
@@ -141,8 +141,8 @@ func createTestConfigFile(t *testing.T, content string) string {
 	return tempDir
 }
 
-func Test_GitHubUsername_NewFormat(t *testing.T) {
-	createTestConfigFile(t, "github_username: testuser\n")
+func Test_GitHubUsername(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: github\n    username: testuser\n")
 
 	cf := NewConfigFile(false)
 	username := cf.GitHubUsername()
@@ -151,18 +151,8 @@ func Test_GitHubUsername_NewFormat(t *testing.T) {
 	}
 }
 
-func Test_GitLabUsername_NewFormat(t *testing.T) {
-	createTestConfigFile(t, "gitlab_username: gitlabuser\n")
-
-	cf := NewConfigFile(false)
-	username := cf.GitLabUsername()
-	if username != "gitlabuser" {
-		t.Errorf("Expected username 'gitlabuser', got '%s'", username)
-	}
-}
-
-func Test_GitHubToken_NewFormat(t *testing.T) {
-	createTestConfigFile(t, "github_token: ghp_token123\n")
+func Test_GitHubToken(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: github\n    token: ghp_token123\n")
 
 	cf := NewConfigFile(false)
 	token := cf.GitHubToken()
@@ -170,13 +160,125 @@ func Test_GitHubToken_NewFormat(t *testing.T) {
 		t.Errorf("Expected token 'ghp_token123', got '%s'", token)
 	}
 }
-func Test_GitLabToken_NewFormat(t *testing.T) {
-	createTestConfigFile(t, "gitlab_token: glpat-token123\n")
+
+func Test_GitHubAndGitLab_BothConfigured(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: githubuser
+    token: ghp_token123
+  - name: gitlab
+    username: gitlabuser
+    token: glpat-token123
+    hosts:
+      - gitlab.example.com
+`)
 
 	cf := NewConfigFile(false)
-	token := cf.GitLabToken()
+
+	if cf.GitHubUsername() != "githubuser" {
+		t.Errorf("Expected GitHub username 'githubuser', got '%s'", cf.GitHubUsername())
+	}
+	if cf.GitHubToken() != "ghp_token123" {
+		t.Errorf("Expected GitHub token 'ghp_token123', got '%s'", cf.GitHubToken())
+	}
+
+	username, token := cf.GitLabCredentials("gitlab.example.com")
+	if username != "gitlabuser" {
+		t.Errorf("Expected GitLab username 'gitlabuser', got '%s'", username)
+	}
 	if token != "glpat-token123" {
-		t.Errorf("Expected token 'glpat-token123', got '%s'", token)
+		t.Errorf("Expected GitLab token 'glpat-token123', got '%s'", token)
+	}
+}
+
+func Test_GitLabHosts(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: gitlab
+    token: public_token
+  - name: gitlab
+    token: self_hosted_token
+    hosts:
+      - gitlab.example.com
+      - git.internal.example.com
+`)
+
+	cf := NewConfigFile(false)
+	hosts := cf.GitLabHosts()
+
+	expected := []string{"gitlab.example.com", "git.internal.example.com"}
+	if len(hosts) != len(expected) {
+		t.Fatalf("Expected hosts %v, got %v", expected, hosts)
+	}
+	for i := range expected {
+		if hosts[i] != expected[i] {
+			t.Errorf("Expected hosts %v, got %v", expected, hosts)
+		}
+	}
+}
+
+func Test_GitLabHosts_NoneConfigured(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: gitlab\n    token: glpat-token123\n")
+
+	cf := NewConfigFile(false)
+	if hosts := cf.GitLabHosts(); len(hosts) != 0 {
+		t.Errorf("Expected no hosts, got %v", hosts)
+	}
+}
+
+func Test_GitLabCredentials_PublicAccount(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: gitlab\n    username: public_user\n    token: public_token\n")
+
+	cf := NewConfigFile(false)
+	username, token := cf.GitLabCredentials("gitlab.com")
+	if username != "public_user" || token != "public_token" {
+		t.Errorf("Expected ('public_user', 'public_token'), got ('%s', '%s')", username, token)
+	}
+}
+
+func Test_GitLabCredentials_PublicAndSelfHosted(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: gitlab
+    username: public_user
+    token: public_token
+  - name: gitlab
+    username: work_user
+    token: work_token
+    hosts:
+      - gitlab.example.com
+      - git.internal.example.com
+`)
+
+	cf := NewConfigFile(false)
+
+	if username, token := cf.GitLabCredentials("gitlab.com"); username != "public_user" || token != "public_token" {
+		t.Errorf("Expected the public account for gitlab.com, got ('%s', '%s')", username, token)
+	}
+
+	if username, token := cf.GitLabCredentials("gitlab.example.com"); username != "work_user" || token != "work_token" {
+		t.Errorf("Expected the work account for gitlab.example.com, got ('%s', '%s')", username, token)
+	}
+
+	if username, token := cf.GitLabCredentials("git.internal.example.com"); username != "work_user" || token != "work_token" {
+		t.Errorf("Expected the work account for its second alias host, got ('%s', '%s')", username, token)
+	}
+}
+
+func Test_GitLabCredentials_NoneConfigured(t *testing.T) {
+	testutil.IsolateHome(t)
+
+	cf := NewConfigFile(false)
+	username, token := cf.GitLabCredentials("gitlab.com")
+	if username != "" || token != "" {
+		t.Errorf("Expected ('', ''), got ('%s', '%s')", username, token)
+	}
+}
+
+func Test_GitLabHosts_ProviderNotConfigured(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: github\n    token: ghp_token123\n")
+
+	cf := NewConfigFile(false)
+	if hosts := cf.GitLabHosts(); len(hosts) != 0 {
+		t.Errorf("Expected no hosts, got %v", hosts)
 	}
 }
 
@@ -209,7 +311,7 @@ func Test_SpecialCapitalization(t *testing.T) {
 }
 
 func Test_SpecialCapitalization_Empty(t *testing.T) {
-	createTestConfigFile(t, "github_username: testuser\n")
+	createTestConfigFile(t, "providers:\n  - name: github\n    username: testuser\n")
 
 	cf := NewConfigFile(false)
 	caps := cf.SpecialCapitalization()
@@ -231,22 +333,22 @@ func Test_SpecialCapitalization_FileNotFound(t *testing.T) {
 	}
 }
 
-func Test_configFileContents_InvalidYAML(t *testing.T) {
-	// Skip this test as configFileContents calls HandleError which exits
-	t.Skip("Skipping test that would call os.Exit through HandleError")
-}
-
-func Test_configFileContents_ValidYAML(t *testing.T) {
-	createTestConfigFile(t, "github_username: testuser\ngithub_token: token123\n")
+func Test_GitHubToken_InvalidYAML(t *testing.T) {
+	createTestConfigFile(t, "providers: [this is not: valid: yaml\n")
 
 	cf := NewConfigFile(false)
-	contents := cf.configFileContents()
-
-	if contents["github_username"] != "testuser" {
-		t.Errorf("Expected 'testuser', got '%s'", contents["github_username"])
+	token := cf.GitHubToken()
+	if token != "" {
+		t.Errorf("Expected an empty token for invalid YAML, got '%s'", token)
 	}
+}
 
-	if contents["github_token"] != "token123" {
-		t.Errorf("Expected 'token123', got '%s'", contents["github_token"])
+func Test_GitHubToken_FileNotFound(t *testing.T) {
+	testutil.IsolateHome(t)
+
+	cf := NewConfigFile(false)
+	token := cf.GitHubToken()
+	if token != "" {
+		t.Errorf("Expected an empty token when the config file doesn't exist, got '%s'", token)
 	}
 }

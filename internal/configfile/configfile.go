@@ -1,24 +1,23 @@
 package configfile
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/emmahsax/go-git-helper/internal/utils"
 	yaml "gopkg.in/yaml.v3"
 )
 
+// ConfigFileInterface covers only the config-file-management methods that
+// `setup` actually needs to inject a mock for. Provider credential lookups
+// (GitHubToken, GitLabCredentials, etc.) are read straight off the concrete
+// *ConfigFile elsewhere, so they're intentionally not part of this interface.
 type ConfigFileInterface interface {
 	ConfigDir() string
 	ConfigDirExists() bool
 	ConfigFile() string
 	ConfigFileExists() bool
-	GitHubUsername() string
-	GitLabUsername() string
-	GitHubToken() string
-	GitLabToken() string
-	SpecialCapitalization() map[string]string
 }
 
 type ConfigFile struct {
@@ -29,6 +28,28 @@ func NewConfigFile(debug bool) *ConfigFile {
 	return &ConfigFile{
 		Debug: debug,
 	}
+}
+
+// provider is one entry in the config file's "providers" list: a git host's
+// credentials, plus Hosts for a self-hosted instance (e.g. a self-hosted
+// GitLab, or a future Forgejo/Gitea provider). An entry with no Hosts means
+// the provider's public URL (e.g. gitlab.com). Hosts can have more than one
+// entry when the same instance is reachable under more than one hostname
+// (e.g. an internal DNS alias alongside a public one). A provider name (e.g.
+// "gitlab") can also appear more than once in the providers list, to
+// configure multiple accounts -- a public gitlab.com account alongside a
+// separate self-hosted one, say.
+type provider struct {
+	Name     string   `yaml:"name"`
+	Username string   `yaml:"username"`
+	Token    string   `yaml:"token"`
+	Hosts    []string `yaml:"hosts"`
+}
+
+// fileContents mirrors the on-disk shape of config.yml.
+type fileContents struct {
+	Providers             []provider        `yaml:"providers"`
+	SpecialCapitalization map[string]string `yaml:"special_capitalization"`
 }
 
 func (cf *ConfigFile) ConfigDir() string {
@@ -60,80 +81,96 @@ func (cf *ConfigFile) ConfigFileExists() bool {
 }
 
 func (cf *ConfigFile) GitHubUsername() string {
-	return cf.providerUsername("github")
-}
-
-func (cf *ConfigFile) GitLabUsername() string {
-	return cf.providerUsername("gitlab")
+	return cf.firstProvider("github").Username
 }
 
 func (cf *ConfigFile) GitHubToken() string {
-	return cf.providerToken("github")
+	return cf.firstProvider("github").Token
 }
 
-func (cf *ConfigFile) GitLabToken() string {
-	return cf.providerToken("gitlab")
+// GitLabHosts returns every self-hosted host configured across all "gitlab"
+// provider entries (not the implicit public gitlab.com).
+func (cf *ConfigFile) GitLabHosts() []string {
+	var hosts []string
+
+	for _, p := range cf.providersNamed("gitlab") {
+		hosts = append(hosts, p.Hosts...)
+	}
+
+	return hosts
 }
 
-// providerUsername and providerToken read a git provider's credentials out of
-// the config file. Keys follow the "<provider>_username"/"<provider>_token"
-// convention (e.g. "github_username", "gitlab_token"), so supporting a new
-// provider is a one-line wrapper method rather than a new lookup.
-func (cf *ConfigFile) providerUsername(provider string) string {
-	return cf.configFileContents()[provider+"_username"]
+// GitLabCredentials returns the username and token for the "gitlab" provider
+// entry whose Hosts contains host. An empty host, or one that doesn't match
+// any entry's Hosts, resolves to the entry with no Hosts configured (the
+// public gitlab.com account). Returns "", "" if nothing matches.
+func (cf *ConfigFile) GitLabCredentials(host string) (username, token string) {
+	providers := cf.providersNamed("gitlab")
+
+	for _, p := range providers {
+		if slices.Contains(p.Hosts, host) {
+			return p.Username, p.Token
+		}
+	}
+
+	for _, p := range providers {
+		if len(p.Hosts) == 0 {
+			return p.Username, p.Token
+		}
+	}
+
+	return "", ""
 }
 
-func (cf *ConfigFile) providerToken(provider string) string {
-	return cf.configFileContents()[provider+"_token"]
+// firstProvider returns the first entry in the config file's providers list
+// matching name, or a zero-value provider if none is configured. Used for
+// providers that only ever have a single account (e.g. GitHub); GitLab uses
+// providersNamed directly since it supports more than one.
+func (cf *ConfigFile) firstProvider(name string) provider {
+	for _, p := range cf.providersNamed(name) {
+		return p
+	}
+
+	return provider{}
+}
+
+// providersNamed returns every entry in the config file's providers list
+// matching name (e.g. "github", "gitlab"), in file order. A missing config
+// file, or no entries matching name, both return nil: detection and lookups
+// run before anything knows whether the user has ever run `git-helper
+// setup`, so neither case can be a fatal error here.
+func (cf *ConfigFile) providersNamed(name string) []provider {
+	var result []provider
+
+	for _, p := range cf.contents().Providers {
+		if p.Name == name {
+			result = append(result, p)
+		}
+	}
+
+	return result
 }
 
 func (cf *ConfigFile) SpecialCapitalization() map[string]string {
-	var result map[string]interface{}
-	data, err := os.ReadFile(cf.ConfigFile())
-	if err != nil {
-		return map[string]string{}
-	}
-
-	err = yaml.Unmarshal(data, &result)
-	if err != nil {
-		return map[string]string{}
-	}
-
-	if specialCap, ok := result["special_capitalization"].(map[string]interface{}); ok {
-		capitalizations := make(map[string]string)
-		for key, value := range specialCap {
-			if strValue, ok := value.(string); ok {
-				capitalizations[key] = strValue
-			}
-		}
-		return capitalizations
+	if m := cf.contents().SpecialCapitalization; m != nil {
+		return m
 	}
 
 	return map[string]string{}
 }
 
-func (cf *ConfigFile) configFileContents() map[string]string {
-	var rawResult map[string]interface{}
+// contents reads and parses the config file, treating a missing file or
+// invalid YAML as "nothing configured" rather than a fatal error.
+func (cf *ConfigFile) contents() fileContents {
+	var result fileContents
+
 	data, err := os.ReadFile(cf.ConfigFile())
 	if err != nil {
-		customErr := errors.New("error reading file: " + err.Error())
-		utils.HandleError(customErr, cf.Debug, nil)
-		return map[string]string{}
+		return result
 	}
 
-	err = yaml.Unmarshal(data, &rawResult)
-	if err != nil {
-		customErr := errors.New("error unmarshaling YAML: " + err.Error())
-		utils.HandleError(customErr, cf.Debug, nil)
-		return map[string]string{}
-	}
-
-	// Convert to map[string]string, skipping non-string values
-	result := make(map[string]string)
-	for key, value := range rawResult {
-		if strValue, ok := value.(string); ok {
-			result[key] = strValue
-		}
+	if err := yaml.Unmarshal(data, &result); err != nil {
+		return result
 	}
 
 	return result

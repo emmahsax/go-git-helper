@@ -47,26 +47,6 @@ func (mc *MockConfig) ConfigFileExists() bool {
 	return true
 }
 
-func (mc *MockConfig) GitHubUsername() string {
-	return "test-user-github"
-}
-
-func (mc *MockConfig) GitLabUsername() string {
-	return "test-user-gitlab"
-}
-
-func (mc *MockConfig) GitHubToken() string {
-	return "random-github-token"
-}
-
-func (mc *MockConfig) GitLabToken() string {
-	return "random-gitlab-token"
-}
-
-func (mc *MockConfig) SpecialCapitalization() map[string]string {
-	return map[string]string{}
-}
-
 func Test_createOrUpdateConfig(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -76,10 +56,15 @@ func Test_createOrUpdateConfig(t *testing.T) {
 		{
 			name:    "file exists, replacing",
 			replace: true,
-			expected: `github_username: hello_world
-github_token: hello_world
-gitlab_username: hello_world
-gitlab_token: hello_world
+			expected: `providers:
+  - name: github
+    username: hello_world
+    token: hello_world
+  - name: gitlab
+    username: hello_world
+    token: hello_world
+    hosts:
+      - hello_world
 `,
 		},
 		{
@@ -95,6 +80,9 @@ gitlab_token: hello_world
 			commandline.AskYesNoQuestion = originalAskYesNoQuestion
 		})
 		commandline.AskYesNoQuestion = func(question string) bool {
+			if strings.Contains(question, "another") {
+				return false
+			}
 			return test.replace
 		}
 
@@ -137,7 +125,7 @@ func Test_generateConfigFileContents(t *testing.T) {
 		commandline.AskYesNoQuestion = originalAskYesNoQuestion
 	})
 	commandline.AskYesNoQuestion = func(question string) bool {
-		return true
+		return !strings.Contains(question, "another")
 	}
 
 	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
@@ -160,9 +148,111 @@ func Test_generateConfigFileContents(t *testing.T) {
 	s := newSetup(true, executor, configFile)
 	contents := s.generateConfigFileContents()
 
-	expectedContents := "github_username: hello_world\ngithub_token: hello_world\ngitlab_username: hello_world\ngitlab_token: hello_world\n"
+	expectedContents := `providers:
+  - name: github
+    username: hello_world
+    token: hello_world
+  - name: gitlab
+    username: hello_world
+    token: hello_world
+    hosts:
+      - hello_world
+`
 	if contents != expectedContents {
 		t.Errorf("Expected '%s', got '%s'", expectedContents, contents)
+	}
+}
+
+func Test_generateConfigFileContents_BlankHostOmitted(t *testing.T) {
+	originalAskYesNoQuestion := commandline.AskYesNoQuestion
+	t.Cleanup(func() {
+		commandline.AskYesNoQuestion = originalAskYesNoQuestion
+	})
+	commandline.AskYesNoQuestion = func(question string) bool {
+		return !strings.Contains(question, "another")
+	}
+
+	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
+	t.Cleanup(func() {
+		commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion
+	})
+	commandline.AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string {
+		if strings.Contains(question, "host") {
+			return ""
+		}
+		return "hello_world"
+	}
+
+	executor := &MockExecutor{Debug: true}
+	configFile := &MockConfig{Dir: t.TempDir(), Debug: true}
+	s := newSetup(true, executor, configFile)
+	contents := s.generateConfigFileContents()
+
+	expectedContents := `providers:
+  - name: github
+    username: hello_world
+    token: hello_world
+  - name: gitlab
+    username: hello_world
+    token: hello_world
+`
+	if contents != expectedContents {
+		t.Errorf("Expected '%s', got '%s'", expectedContents, contents)
+	}
+}
+
+func Test_generateConfigFileContents_MultipleGitLabAccounts(t *testing.T) {
+	originalAskYesNoQuestion := commandline.AskYesNoQuestion
+	t.Cleanup(func() {
+		commandline.AskYesNoQuestion = originalAskYesNoQuestion
+	})
+	yesNoCall := 0
+	commandline.AskYesNoQuestion = func(question string) bool {
+		yesNoCall++
+		switch yesNoCall {
+		case 1: // Set up GitHub credentials?
+			return false
+		case 2: // Set up GitLab credentials?
+			return true
+		case 3: // Set up another GitLab account?
+			return true
+		default: // Set up another GitLab account? (asked again, stop here)
+			return false
+		}
+	}
+
+	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
+	t.Cleanup(func() {
+		commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion
+	})
+	openEndedCall := 0
+	responses := []string{
+		"public-user", "public-token", "", // first (public) account
+		"work-user", "work-token", "gitlab.example.com, git.internal.example.com", // second (self-hosted) account
+	}
+	commandline.AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string {
+		defer func() { openEndedCall++ }()
+		return responses[openEndedCall]
+	}
+
+	executor := &MockExecutor{Debug: true}
+	configFile := &MockConfig{Dir: t.TempDir(), Debug: true}
+	s := newSetup(true, executor, configFile)
+	contents := s.generateConfigFileContents()
+
+	expectedContents := `providers:
+  - name: gitlab
+    username: public-user
+    token: public-token
+  - name: gitlab
+    username: work-user
+    token: work-token
+    hosts:
+      - gitlab.example.com
+      - git.internal.example.com
+`
+	if contents != expectedContents {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expectedContents, contents)
 	}
 }
 
@@ -250,7 +340,7 @@ func Test_createOrUpdateConfig_permissions(t *testing.T) {
 		commandline.AskYesNoQuestion = originalAskYesNoQuestion
 		commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion
 	})
-	commandline.AskYesNoQuestion = func(question string) bool { return true }
+	commandline.AskYesNoQuestion = func(question string) bool { return !strings.Contains(question, "another") }
 	commandline.AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string { return "x" }
 
 	configFile := &MockConfig{Dir: filepath.Join(t.TempDir(), "new-dir"), Debug: true}
@@ -343,7 +433,7 @@ func Test_createOrUpdateConfig_tightensExistingDirectory(t *testing.T) {
 		commandline.AskYesNoQuestion = originalAskYesNoQuestion
 		commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion
 	})
-	commandline.AskYesNoQuestion = func(question string) bool { return true }
+	commandline.AskYesNoQuestion = func(question string) bool { return !strings.Contains(question, "another") }
 	commandline.AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string { return "x" }
 
 	configFile := &MockConfig{Dir: t.TempDir(), Debug: true}
