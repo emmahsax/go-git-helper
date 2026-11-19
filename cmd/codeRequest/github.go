@@ -15,6 +15,7 @@ func (cr *CodeRequest) createGitHub() {
 	options["gitRootDir"] = g.GetGitRootDir()
 	options["localBranch"] = g.CurrentBranch()
 	options["localRepo"] = g.RepoName()
+	options["ticketBaseURL"] = cr.ticketBaseURL(options["newPrTitle"], options["localRepo"])
 	github.NewGitHubPullRequest(options, cr.Debug, cr.InteractiveMode).Create()
 }
 

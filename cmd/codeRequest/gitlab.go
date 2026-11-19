@@ -15,6 +15,7 @@ func (cr *CodeRequest) createGitLab() {
 	options["gitRootDir"] = g.GetGitRootDir()
 	options["localBranch"] = g.CurrentBranch()
 	options["localProject"] = g.RepoName()
+	options["ticketBaseURL"] = cr.ticketBaseURL(options["newMrTitle"], options["localProject"])
 	gitlab.NewGitLabMergeRequest(options, cr.Debug, cr.InteractiveMode).Create()
 }
 

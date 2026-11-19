@@ -168,6 +168,37 @@ func (cr *CodeRequest) chosenUsername(providerName string, candidates []configfi
 	return commandline.AskMultipleChoice("Found multiple "+providerName+" accounts for this remote. Choose one to use:", usernames)
 }
 
+// ticketBaseURL returns the base URL configured (see
+// configfile.ConfigFile.TicketBaseURL) for title's ticket reference within
+// repo (the full "owner/repo"), or "" if title has no reference or none is
+// configured for it.
+// ticketBaseURL returns the base URL to use for title's ticket reference
+// within repo (the full "owner/repo"), or "" if title has no reference or
+// none is configured for it. When more than one candidate is configured
+// for the same reference (the same repo or prefix genuinely mapped to more
+// than one tracker, e.g. "OPS" meaning both Jira and Linear), asks which
+// one to use interactively; non-interactively, uses whichever is listed
+// first.
+func (cr *CodeRequest) ticketBaseURL(title, repo string) string {
+	match := utils.FindTicketMatch(title)
+	if match == "" {
+		return ""
+	}
+
+	candidates := cr.config().TicketBaseURLCandidates(repo, utils.TicketPrefix(match))
+	if len(candidates) < 2 || !cr.InteractiveMode {
+		if len(candidates) == 0 {
+			return ""
+		}
+		return candidates[0]
+	}
+
+	return commandline.AskMultipleChoice(
+		fmt.Sprintf("Found multiple ticket URLs configured for %s. Choose one to use:", match),
+		candidates,
+	)
+}
+
 func (cr *CodeRequest) baseBranch() string {
 	defaultBranch := cr.git().DefaultBranch()
 

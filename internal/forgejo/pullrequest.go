@@ -23,6 +23,7 @@ type ForgejoPullRequest struct {
 	LocalBranch     string
 	LocalRepo       string
 	NewPrTitle      string
+	TicketBaseURL   string
 	Username        string
 }
 
@@ -37,6 +38,7 @@ func NewForgejoPullRequest(options map[string]string, debug, interactiveMode boo
 		LocalBranch:     options["localBranch"],
 		LocalRepo:       options["localRepo"],
 		NewPrTitle:      options["newPrTitle"],
+		TicketBaseURL:   options["ticketBaseURL"],
 		Username:        options["username"],
 	}
 }
@@ -113,18 +115,19 @@ func (pr *ForgejoPullRequest) determineTitle() string {
 }
 
 func (pr *ForgejoPullRequest) newPrBody() string {
-	templateName := pr.templateNameToApply()
-	if templateName != "" {
-		content, err := os.ReadFile(templateName)
+	var content string
+
+	if templateName := pr.templateNameToApply(); templateName != "" {
+		raw, err := os.ReadFile(templateName)
 		if err != nil {
 			utils.HandleError(err, pr.Debug, nil)
 			return ""
 		}
 
-		return string(content)
+		content = string(raw)
 	}
 
-	return ""
+	return utils.PrependTicketLink(content, pr.NewPrTitle, "pull request", pr.TicketBaseURL, pr.InteractiveMode)
 }
 
 // templateNameToApply returns the repo's pull request template, after

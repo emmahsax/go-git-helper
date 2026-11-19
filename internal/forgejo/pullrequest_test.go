@@ -155,6 +155,95 @@ func Test_newPrBody_NoTemplate(t *testing.T) {
 	}
 }
 
+// Regression: a ticket reference in the title must be linked even with no
+// template at all -- the feature doesn't require a template to exist.
+func Test_newPrBody_NoTemplate_WithTicketReference(t *testing.T) {
+	pr := NewForgejoPullRequest(
+		map[string]string{
+			"gitRootDir":    t.TempDir(),
+			"newPrTitle":    "proj-123 something",
+			"ticketBaseURL": "https://example.com/browse",
+		},
+		false,
+		false,
+	)
+
+	expected := "### [proj-123](https://example.com/browse/proj-123)\n\n"
+	actual := pr.newPrBody()
+
+	if expected != actual {
+		t.Errorf("expected %q, got %q", expected, actual)
+	}
+}
+
+// Regression: with no ticketBaseURL configured, the prompt still appears
+// and the bare reference still gets inserted -- a base URL only upgrades
+// it into a real link, it never gates whether the reference appears at all
+// (so platforms with their own autolinking, e.g. GitHub, still get it).
+func Test_newPrBody_NoTemplate_NoBaseURL_InsertsBareReference(t *testing.T) {
+	originalAskYesNoQuestion := commandline.AskYesNoQuestion
+	t.Cleanup(func() { commandline.AskYesNoQuestion = originalAskYesNoQuestion })
+
+	asked := false
+	commandline.AskYesNoQuestion = func(question string) bool {
+		asked = true
+		return true
+	}
+
+	pr := NewForgejoPullRequest(
+		map[string]string{
+			"gitRootDir": t.TempDir(),
+			"newPrTitle": "proj-123 something",
+		},
+		false,
+		true,
+	)
+
+	expected := "### [proj-123]\n\n"
+	actual := pr.newPrBody()
+
+	if !asked {
+		t.Error("expected the prompt even with no ticketBaseURL configured")
+	}
+	if expected != actual {
+		t.Errorf("expected %q, got %q", expected, actual)
+	}
+}
+
+// Regression: interactively, the ticket-link prompt must still appear with
+// no template configured -- it's not gated on a template existing, only on
+// a base URL being configured.
+func Test_newPrBody_NoTemplate_InteractivelyAsksAboutTicketReference(t *testing.T) {
+	originalAskYesNoQuestion := commandline.AskYesNoQuestion
+	t.Cleanup(func() { commandline.AskYesNoQuestion = originalAskYesNoQuestion })
+
+	var asked bool
+	commandline.AskYesNoQuestion = func(question string) bool {
+		asked = true
+		return true
+	}
+
+	pr := NewForgejoPullRequest(
+		map[string]string{
+			"gitRootDir":    t.TempDir(),
+			"newPrTitle":    "proj-123 something",
+			"ticketBaseURL": "https://example.com/browse",
+		},
+		false,
+		true,
+	)
+
+	expected := "### [proj-123](https://example.com/browse/proj-123)\n\n"
+	actual := pr.newPrBody()
+
+	if !asked {
+		t.Error("expected the ticket-link prompt to be asked even with no template")
+	}
+	if expected != actual {
+		t.Errorf("expected %q, got %q", expected, actual)
+	}
+}
+
 func Test_templateNameToApply_Declines(t *testing.T) {
 	tempDir := t.TempDir()
 

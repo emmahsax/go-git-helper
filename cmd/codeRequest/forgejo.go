@@ -15,6 +15,7 @@ func (cr *CodeRequest) createForgejo() {
 	options["gitRootDir"] = g.GetGitRootDir()
 	options["localBranch"] = g.CurrentBranch()
 	options["localRepo"] = g.RepoName()
+	options["ticketBaseURL"] = cr.ticketBaseURL(options["newPrTitle"], options["localRepo"])
 	forgejo.NewForgejoPullRequest(options, cr.Debug, cr.InteractiveMode).Create()
 }
 

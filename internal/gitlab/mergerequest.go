@@ -23,6 +23,7 @@ type GitLabMergeRequest struct {
 	InteractiveMode bool
 	LocalProject    string
 	NewMrTitle      string
+	TicketBaseURL   string
 	Username        string
 }
 
@@ -37,6 +38,7 @@ func NewGitLabMergeRequest(options map[string]string, debug, interactiveMode boo
 		InteractiveMode: interactiveMode,
 		LocalProject:    options["localProject"],
 		NewMrTitle:      options["newMrTitle"],
+		TicketBaseURL:   options["ticketBaseURL"],
 		Username:        options["username"],
 	}
 }
@@ -76,17 +78,19 @@ func (mr *GitLabMergeRequest) determineTitle() string {
 }
 
 func (mr *GitLabMergeRequest) newMrBody() string {
-	templateName := mr.templateNameToApply()
-	if templateName != "" {
-		content, err := os.ReadFile(templateName)
+	var content string
+
+	if templateName := mr.templateNameToApply(); templateName != "" {
+		raw, err := os.ReadFile(templateName)
 		if err != nil {
 			utils.HandleError(err, mr.Debug, nil)
 			return ""
 		}
 
-		return string(content)
+		content = string(raw)
 	}
-	return ""
+
+	return utils.PrependTicketLink(content, mr.NewMrTitle, "merge request", mr.TicketBaseURL, mr.InteractiveMode)
 }
 
 func (mr *GitLabMergeRequest) templateNameToApply() string {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/utils"
 	yaml "gopkg.in/yaml.v3"
@@ -99,6 +100,79 @@ func ResolveAccount(candidates []Account, username string) Account {
 type fileContents struct {
 	Providers             []provider        `yaml:"providers,omitempty"`
 	SpecialCapitalization map[string]string `yaml:"special_capitalization,omitempty"`
+	TicketURLs            ticketURLsConfig  `yaml:"ticket_urls,omitempty"`
+}
+
+// stringOrSlice unmarshals a YAML value that's either a single scalar or a
+// list of scalars into a []string. This lets a ticket_urls override
+// (prefixes or repositories) express the common case -- one tracker, one
+// URL -- as a plain string, while a genuinely ambiguous one (the same
+// prefix or repo used by more than one tracker, e.g. "OPS" meaning both
+// Jira and Linear) can list every candidate URL to choose from instead.
+type stringOrSlice []string
+
+func (s *stringOrSlice) UnmarshalYAML(value *yaml.Node) error {
+	var single string
+	if err := value.Decode(&single); err == nil {
+		*s = stringOrSlice{single}
+		return nil
+	}
+
+	var multiple []string
+	if err := value.Decode(&multiple); err != nil {
+		return err
+	}
+
+	*s = stringOrSlice(multiple)
+	return nil
+}
+
+// ticketURLsConfig mirrors the on-disk shape of ticket_urls: the base URL
+// used to build a clickable link for a ticket reference found in a PR/MR
+// title (e.g. "https://company.atlassian.net/browse" + "/" + "PROJ-123"),
+// plus optional overrides keyed by the full "owner/repo" or by the ticket's
+// own prefix (e.g. "PROJ" from "PROJ-123") for people using more than one
+// tracker. With no ticket_urls configured at all (or no override/default
+// matching a given reference), code-request doesn't guess a URL -- it
+// falls back to inserting the bare reference, trusting whatever the
+// destination platform already does with it (e.g. GitHub's own autolink
+// references, or a GitLab/Jira integration).
+type ticketURLsConfig struct {
+	Default   string `yaml:"default"`
+	Overrides struct {
+		Repositories map[string]stringOrSlice `yaml:"repositories"`
+		Prefixes     map[string]stringOrSlice `yaml:"prefixes"`
+	} `yaml:"overrides"`
+}
+
+// TicketBaseURLCandidates returns every base URL candidate configured for
+// a ticket reference found while creating a PR/MR for repo (the full
+// "owner/repo"), with the given prefix (e.g. "PROJ" from "PROJ-123").
+// Usually at most one: a repositories override takes priority over a
+// prefixes override (matched case-insensitively, since ticket prefixes are
+// conventionally uppercase but branch names are often lowercase), which
+// takes priority over the default. More than one means the same repo or
+// prefix genuinely maps to more than one tracker (e.g. "OPS" meaning both
+// Jira and Linear) -- callers should ask the user which one to use. Returns
+// nil if nothing is configured.
+func (cf *ConfigFile) TicketBaseURLCandidates(repo, prefix string) []string {
+	tu := cf.contents().TicketURLs
+
+	if urls, ok := tu.Overrides.Repositories[repo]; ok && len(urls) > 0 {
+		return urls
+	}
+
+	for p, urls := range tu.Overrides.Prefixes {
+		if strings.EqualFold(p, prefix) && len(urls) > 0 {
+			return urls
+		}
+	}
+
+	if tu.Default != "" {
+		return []string{tu.Default}
+	}
+
+	return nil
 }
 
 func (cf *ConfigFile) ConfigDir() string {
@@ -382,8 +456,16 @@ func (cf *ConfigFile) parseContents() fileContents {
 		specialCap.SpecialCapitalization = nil
 	}
 
+	var ticketURLs struct {
+		TicketURLs ticketURLsConfig `yaml:"ticket_urls"`
+	}
+	if err := yaml.Unmarshal(data, &ticketURLs); err != nil {
+		ticketURLs.TicketURLs = ticketURLsConfig{}
+	}
+
 	return fileContents{
 		Providers:             providers.Providers,
 		SpecialCapitalization: specialCap.SpecialCapitalization,
+		TicketURLs:            ticketURLs.TicketURLs,
 	}
 }

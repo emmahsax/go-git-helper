@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -24,6 +23,7 @@ type GitHubPullRequest struct {
 	LocalBranch     string
 	LocalRepo       string
 	NewPrTitle      string
+	TicketBaseURL   string
 	Username        string
 }
 
@@ -38,6 +38,7 @@ func NewGitHubPullRequest(options map[string]string, debug, interactiveMode bool
 		LocalBranch:     options["localBranch"],
 		LocalRepo:       options["localRepo"],
 		NewPrTitle:      options["newPrTitle"],
+		TicketBaseURL:   options["ticketBaseURL"],
 		Username:        options["username"],
 	}
 }
@@ -67,37 +68,19 @@ func (pr *GitHubPullRequest) Create() {
 }
 
 func (pr *GitHubPullRequest) newPrBody() string {
-	templateName := pr.templateNameToApply()
-	if templateName != "" {
-		content, err := os.ReadFile(templateName)
+	var content string
+
+	if templateName := pr.templateNameToApply(); templateName != "" {
+		raw, err := os.ReadFile(templateName)
 		if err != nil {
 			utils.HandleError(err, pr.Debug, nil)
 			return ""
 		}
 
-		re := regexp.MustCompile(`[A-Za-z]+-\d+`)
-		match := re.FindString(pr.NewPrTitle)
-
-		if match != "" {
-			var includeProjectTicketLink bool
-
-			if pr.InteractiveMode {
-				includeProjectTicketLink = commandline.AskYesNoQuestion(
-					fmt.Sprintf("Include a link to the project ticket (%s) in the beginning of the pull request body?", match),
-				)
-			} else {
-				includeProjectTicketLink = true
-			}
-
-			if includeProjectTicketLink {
-				return "### [" + match + "]\n\n" + string(content)
-			}
-		}
-
-		return string(content)
+		content = string(raw)
 	}
 
-	return ""
+	return utils.PrependTicketLink(content, pr.NewPrTitle, "pull request", pr.TicketBaseURL, pr.InteractiveMode)
 }
 
 func (pr *GitHubPullRequest) templateNameToApply() string {
