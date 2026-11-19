@@ -89,13 +89,13 @@ The update downloads the asset matching your OS and architecture from the latest
 
 ## Config Setup
 
-Some of the commands can be used without any additional configuration. However, others utilize special GitHub or GitLab configuration. To set up access with GitHub/GitLab, run:
+Some of the commands can be used without any additional configuration. However, others utilize special GitHub, GitLab, or Forgejo configuration. To set up access, run:
 
 ```bash
 git-helper setup
 ```
 
-This will show a checklist of every supported provider (GitHub, GitLab) so you can pick any number of them to set up credentials for in one go, as well as give you the choice to set up Git Helper as a plugin or not (see below).
+This will show a checklist of every supported provider (GitHub, GitLab, Forgejo) so you can pick any number of them to set up credentials for in one go, as well as give you the choice to set up Git Helper as a plugin or not (see below).
 
 If `~/.git-helper/config.yml` already exists, `git-helper setup` asks what you want to do:
 
@@ -114,18 +114,24 @@ providers:
   - name: gitlab
     username: GITLAB-USERNAME
     token: GITLAB-TOKEN
+  - name: forgejo
+    username: FORGEJO-USERNAME
+    token: FORGEJO-TOKEN
 ```
 
 To create or see what personal access tokens (PATs) you have, look here:
 
 - GitHub (`github.com`): https://github.com/settings/tokens
 - GitLab (`gitlab.com`): https://gitlab.com/-/profile/personal_access_tokens
+- Forgejo (`codeberg.org`, or your own self-hosted instance): Settings -> Applications -> Generate New Token
 
 You could either have one set of tokens for each computer you use, or just have one set of tokens for all computers that you rotate periodically.
 
+> Unlike GitHub and GitLab, Forgejo has no single centralized public service -- it's almost always self-hosted (e.g. your employer's own instance). Codeberg.org is just the most prominent *public* Forgejo instance, and is only what an entry with no `remote_hosts`/`api_host` means by default. A self-hosted Forgejo account should set both, exactly like the GitHub Enterprise/self-hosted GitLab example below.
+
 ### Self-Hosted and Multiple Accounts
 
-Both GitHub and GitLab support more than one `providers` entry, so you can keep several accounts side by side -- a public account, a GitHub Enterprise or self-hosted GitLab account, even two accounts that are both just the public URL (e.g. a personal account and a work account). `code-request` works out which account to use from the current repo's remote, asking you to pick when more than one could apply.
+GitHub, GitLab, and Forgejo all support more than one `providers` entry, so you can keep several accounts side by side -- a public account, a GitHub Enterprise or self-hosted GitLab/Forgejo account, even two accounts that are both just the public URL (e.g. a personal account and a work account). `code-request` works out which account to use from the current repo's remote, asking you to pick when more than one could apply.
 
 Each account entry has two independent, optional settings, and it's important not to confuse them:
 
@@ -171,7 +177,7 @@ providers:
 
 If you don't bother with an SSH alias and just configure two accounts with no `remote_hosts` at all, `code-request` can't tell them apart from the remote alone -- in `--interactive` mode (the default) it'll ask which account to use; with `--interactive=false` it defaults to the first one configured.
 
-`code-request`'s "which account?" prompt tells accounts apart by `username`, so `git-helper setup` requires every account's username to be unique within its provider -- it'll reject a username already used by another GitHub (or GitLab) account and ask again.
+`code-request`'s "which account?" prompt tells accounts apart by `username`, so `git-helper setup` requires every account's username to be unique within its provider -- it'll reject a username already used by another account for the same provider and ask again.
 
 `git-helper setup` walks through all of this interactively: it asks for each account's `remote_hosts` (comma-separated if the instance has more than one hostname), and only asks for `api_host` after you confirm that host is a real, different server rather than just a local alias.
 
@@ -281,7 +287,7 @@ git-helper clean-branches
 
 ### `code-request`
 
-This command can be used to handily make new GitHub/GitLab pull/merge requests from the command-line. The command uses either the [GitHub REST API](https://docs.github.com/en/rest) or [GitLab API](https://docs.gitlab.com/ee/api/) to do this, so make sure you have a `~/.git-helper/config.yml` file set up in the home directory of your computer (instructions are higher in this `README`).
+This command can be used to handily make new GitHub/GitLab/Forgejo pull/merge requests from the command-line. The command uses the [GitHub REST API](https://docs.github.com/en/rest), [GitLab API](https://docs.gitlab.com/ee/api/), or [Forgejo API](https://forgejo.org/docs/latest/user/api-usage/) to do this, so make sure you have a `~/.git-helper/config.yml` file set up in the home directory of your computer (instructions are higher in this `README`).
 
 After setup is complete, you can call the command like this:
 
@@ -323,7 +329,9 @@ The command will also ask you whether you'd like to mark the new code request as
 
 If your project uses GitLab, the command will automatically set the merge request to delete the source branch upon merge. The value can later be changed for a specific MR either over the API or in the browser. The command also automatically sets the merge request to squash, and this will be the setting on the MR if the project allows, encourages, or requires squashing. If the project doesn't allow squashing at all, then that option will be voided, and the MR will not be squashed. Depending on the project's settings, the value can later be changed for a specific MR over the API or in the browser.
 
-Then, it'll ask about code request templates. For GitHub, it'll ask the user to apply any pull request templates found at `.github/pull_request_template.md`, `./pull_request_template.md`, or `.github/PULL_REQUEST_TEMPLATE/*.md`. Applying any template is optional, and a user can make an empty pull request if they desire. For GitLab, it'll ask the user to apply any merge request templates found at any `.gitlab/merge_request_template.md`, `./merge_request_template.md`, or `.gitlab/merge_request_templates/*.md`. Applying any template is optional, and from the command's standpoint, a user can make an empty merge request if they desire (although GitLab may still add a merge request template if the project itself requires one). When searching for templates, the code ignores cases, so the file could be named with all capital letters or all lowercase letters.
+Then, it'll ask about code request templates. For GitHub, it'll ask the user to apply any pull request templates found at `.github/pull_request_template.md`, `./pull_request_template.md`, or `.github/PULL_REQUEST_TEMPLATE/*.md`. Applying any template is optional, and a user can make an empty pull request if they desire. For GitLab, it'll ask the user to apply any merge request templates found at any `.gitlab/merge_request_template.md`, `./merge_request_template.md`, or `.gitlab/merge_request_templates/*.md`. Applying any template is optional, and from the command's standpoint, a user can make an empty merge request if they desire (although GitLab may still add a merge request template if the project itself requires one). For Forgejo, it'll ask the user to apply the single pull request template Forgejo itself recognizes, if one exists, at `.forgejo/pull_request_template.md`, `.gitea/pull_request_template.md`, `.github/pull_request_template.md`, or `docs/pull_request_template.md` (`.md`, `.yaml`, and `.yml` are all recognized; unlike GitHub, Forgejo supports at most one template per repo, and does not look in the repo root). When searching for templates, the code ignores cases, so the file could be named with all capital letters or all lowercase letters.
+
+Forgejo has no dedicated "draft" field on its pull request API -- a pull request is only treated as a draft when its title starts with `WIP:`, so that's what the command prefixes the title with when you ask for a draft.
 
 ### `empty-commit`
 

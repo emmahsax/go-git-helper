@@ -157,7 +157,7 @@ func Test_GitHubAndGitLab_BothConfigured(t *testing.T) {
 
 	cf := NewConfigFile(false)
 
-	github := ResolveAccount(cf.GitHubAccounts("github.com"), "")
+	github := ResolveAccount(cf.Accounts("github", "github.com"), "")
 	if github.Username != "githubuser" {
 		t.Errorf("Expected GitHub username 'githubuser', got '%s'", github.Username)
 	}
@@ -165,7 +165,7 @@ func Test_GitHubAndGitLab_BothConfigured(t *testing.T) {
 		t.Errorf("Expected GitHub token 'ghp_token123', got '%s'", github.Token)
 	}
 
-	gitlab := ResolveAccount(cf.GitLabAccounts("gitlab.example.com"), "")
+	gitlab := ResolveAccount(cf.Accounts("gitlab", "gitlab.example.com"), "")
 	if gitlab.Username != "gitlabuser" {
 		t.Errorf("Expected GitLab username 'gitlabuser', got '%s'", gitlab.Username)
 	}
@@ -186,7 +186,7 @@ func Test_GitHubHosts(t *testing.T) {
 `)
 
 	cf := NewConfigFile(false)
-	hosts := cf.GitHubHosts()
+	hosts := cf.Hosts("github")
 
 	expected := []string{"github.example.com", "git.internal.example.com"}
 	if len(hosts) != len(expected) {
@@ -214,7 +214,7 @@ func Test_GitHubAccounts_PublicAndEnterprise(t *testing.T) {
 
 	cf := NewConfigFile(false)
 
-	public := ResolveAccount(cf.GitHubAccounts("github.com"), "")
+	public := ResolveAccount(cf.Accounts("github", "github.com"), "")
 	if public.Username != "public_user" || public.Token != "public_token" {
 		t.Errorf("Expected the public account for github.com, got (%q, %q)", public.Username, public.Token)
 	}
@@ -222,7 +222,7 @@ func Test_GitHubAccounts_PublicAndEnterprise(t *testing.T) {
 		t.Errorf("Expected an empty APIHost for the public account, got %q", public.APIHost)
 	}
 
-	enterprise := ResolveAccount(cf.GitHubAccounts("github.example.com"), "")
+	enterprise := ResolveAccount(cf.Accounts("github", "github.example.com"), "")
 	if enterprise.Username != "work_user" || enterprise.Token != "work_token" {
 		t.Errorf("Expected the Enterprise account for github.example.com, got (%q, %q)", enterprise.Username, enterprise.Token)
 	}
@@ -248,7 +248,7 @@ func Test_GitHubAccounts_SSHAliasKeepsPublicAPIHost(t *testing.T) {
 
 	cf := NewConfigFile(false)
 
-	aliased := ResolveAccount(cf.GitHubAccounts("github.com-work"), "")
+	aliased := ResolveAccount(cf.Accounts("github", "github.com-work"), "")
 	if aliased.Username != "work_user" {
 		t.Errorf("Expected the work account for the aliased remote, got %q", aliased.Username)
 	}
@@ -268,7 +268,7 @@ func Test_GitHubAccounts_TwoAccountsSameHost(t *testing.T) {
 `)
 
 	cf := NewConfigFile(false)
-	accounts := cf.GitHubAccounts("github.com")
+	accounts := cf.Accounts("github", "github.com")
 
 	if len(accounts) != 2 {
 		t.Fatalf("Expected 2 tied accounts, got %d", len(accounts))
@@ -286,7 +286,7 @@ func Test_GitHubAccounts_NoneConfigured(t *testing.T) {
 	testutil.IsolateHome(t)
 
 	cf := NewConfigFile(false)
-	if accounts := cf.GitHubAccounts("github.com"); len(accounts) != 0 {
+	if accounts := cf.Accounts("github", "github.com"); len(accounts) != 0 {
 		t.Errorf("Expected no accounts, got %v", accounts)
 	}
 }
@@ -309,7 +309,7 @@ func Test_GitLabHosts(t *testing.T) {
 `)
 
 	cf := NewConfigFile(false)
-	hosts := cf.GitLabHosts()
+	hosts := cf.Hosts("gitlab")
 
 	expected := []string{"gitlab.example.com", "git.internal.example.com"}
 	if len(hosts) != len(expected) {
@@ -326,7 +326,7 @@ func Test_GitLabHosts_NoneConfigured(t *testing.T) {
 	createTestConfigFile(t, "providers:\n  - name: gitlab\n    token: glpat-token123\n")
 
 	cf := NewConfigFile(false)
-	if hosts := cf.GitLabHosts(); len(hosts) != 0 {
+	if hosts := cf.Hosts("gitlab"); len(hosts) != 0 {
 		t.Errorf("Expected no hosts, got %v", hosts)
 	}
 }
@@ -335,7 +335,7 @@ func Test_GitLabAccounts_PublicAccount(t *testing.T) {
 	createTestConfigFile(t, "providers:\n  - name: gitlab\n    username: public_user\n    token: public_token\n")
 
 	cf := NewConfigFile(false)
-	account := ResolveAccount(cf.GitLabAccounts("gitlab.com"), "")
+	account := ResolveAccount(cf.Accounts("gitlab", "gitlab.com"), "")
 	if account.Username != "public_user" || account.Token != "public_token" {
 		t.Errorf("Expected ('public_user', 'public_token'), got (%q, %q)", account.Username, account.Token)
 	}
@@ -357,15 +357,15 @@ func Test_GitLabAccounts_PublicAndSelfHosted(t *testing.T) {
 
 	cf := NewConfigFile(false)
 
-	if account := ResolveAccount(cf.GitLabAccounts("gitlab.com"), ""); account.Username != "public_user" || account.Token != "public_token" {
+	if account := ResolveAccount(cf.Accounts("gitlab", "gitlab.com"), ""); account.Username != "public_user" || account.Token != "public_token" {
 		t.Errorf("Expected the public account for gitlab.com, got (%q, %q)", account.Username, account.Token)
 	}
 
-	if account := ResolveAccount(cf.GitLabAccounts("gitlab.example.com"), ""); account.Username != "work_user" || account.APIHost != "gitlab.example.com" {
+	if account := ResolveAccount(cf.Accounts("gitlab", "gitlab.example.com"), ""); account.Username != "work_user" || account.APIHost != "gitlab.example.com" {
 		t.Errorf("Expected the work account with APIHost 'gitlab.example.com', got (%q, %q)", account.Username, account.APIHost)
 	}
 
-	if account := ResolveAccount(cf.GitLabAccounts("git.internal.example.com"), ""); account.Username != "work_user" {
+	if account := ResolveAccount(cf.Accounts("gitlab", "git.internal.example.com"), ""); account.Username != "work_user" {
 		t.Errorf("Expected the work account for its second alias host, got %q", account.Username)
 	}
 }
@@ -374,7 +374,7 @@ func Test_GitLabAccounts_NoneConfigured(t *testing.T) {
 	testutil.IsolateHome(t)
 
 	cf := NewConfigFile(false)
-	if accounts := cf.GitLabAccounts("gitlab.com"); len(accounts) != 0 {
+	if accounts := cf.Accounts("gitlab", "gitlab.com"); len(accounts) != 0 {
 		t.Errorf("Expected no accounts, got %v", accounts)
 	}
 }
@@ -383,7 +383,98 @@ func Test_GitLabHosts_ProviderNotConfigured(t *testing.T) {
 	createTestConfigFile(t, "providers:\n  - name: github\n    token: ghp_token123\n")
 
 	cf := NewConfigFile(false)
-	if hosts := cf.GitLabHosts(); len(hosts) != 0 {
+	if hosts := cf.Hosts("gitlab"); len(hosts) != 0 {
+		t.Errorf("Expected no hosts, got %v", hosts)
+	}
+}
+
+func Test_ForgejoHosts(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: forgejo
+    token: public_token
+  - name: forgejo
+    token: self_hosted_token
+    remote_hosts:
+      - forgejo.example.com
+      - git.internal.example.com
+`)
+
+	cf := NewConfigFile(false)
+	hosts := cf.Hosts("forgejo")
+
+	expected := []string{"forgejo.example.com", "git.internal.example.com"}
+	if len(hosts) != len(expected) {
+		t.Fatalf("Expected hosts %v, got %v", expected, hosts)
+	}
+	for i := range expected {
+		if hosts[i] != expected[i] {
+			t.Errorf("Expected hosts %v, got %v", expected, hosts)
+		}
+	}
+}
+
+func Test_ForgejoHosts_NoneConfigured(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: forgejo\n    token: test_token\n")
+
+	cf := NewConfigFile(false)
+	if hosts := cf.Hosts("forgejo"); len(hosts) != 0 {
+		t.Errorf("Expected no hosts, got %v", hosts)
+	}
+}
+
+func Test_ForgejoAccounts_PublicAccount(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: forgejo\n    username: public_user\n    token: public_token\n")
+
+	cf := NewConfigFile(false)
+	account := ResolveAccount(cf.Accounts("forgejo", "codeberg.org"), "")
+	if account.Username != "public_user" || account.Token != "public_token" {
+		t.Errorf("Expected ('public_user', 'public_token'), got (%q, %q)", account.Username, account.Token)
+	}
+}
+
+func Test_ForgejoAccounts_PublicAndSelfHosted(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: forgejo
+    username: public_user
+    token: public_token
+  - name: forgejo
+    username: work_user
+    token: work_token
+    remote_hosts:
+      - forgejo.example.com
+      - git.internal.example.com
+    api_host: forgejo.example.com
+`)
+
+	cf := NewConfigFile(false)
+
+	if account := ResolveAccount(cf.Accounts("forgejo", "codeberg.org"), ""); account.Username != "public_user" || account.Token != "public_token" {
+		t.Errorf("Expected the public account for codeberg.org, got (%q, %q)", account.Username, account.Token)
+	}
+
+	if account := ResolveAccount(cf.Accounts("forgejo", "forgejo.example.com"), ""); account.Username != "work_user" || account.APIHost != "forgejo.example.com" {
+		t.Errorf("Expected the work account with APIHost 'forgejo.example.com', got (%q, %q)", account.Username, account.APIHost)
+	}
+
+	if account := ResolveAccount(cf.Accounts("forgejo", "git.internal.example.com"), ""); account.Username != "work_user" {
+		t.Errorf("Expected the work account for its second alias host, got %q", account.Username)
+	}
+}
+
+func Test_ForgejoAccounts_NoneConfigured(t *testing.T) {
+	testutil.IsolateHome(t)
+
+	cf := NewConfigFile(false)
+	if accounts := cf.Accounts("forgejo", "codeberg.org"); len(accounts) != 0 {
+		t.Errorf("Expected no accounts, got %v", accounts)
+	}
+}
+
+func Test_ForgejoHosts_ProviderNotConfigured(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: github\n    token: ghp_token123\n")
+
+	cf := NewConfigFile(false)
+	if hosts := cf.Hosts("forgejo"); len(hosts) != 0 {
 		t.Errorf("Expected no hosts, got %v", hosts)
 	}
 }
@@ -443,7 +534,7 @@ func Test_GitHubAccounts_InvalidYAML(t *testing.T) {
 	createTestConfigFile(t, "providers: [this is not: valid: yaml\n")
 
 	cf := NewConfigFile(false)
-	if accounts := cf.GitHubAccounts("github.com"); len(accounts) != 0 {
+	if accounts := cf.Accounts("github", "github.com"); len(accounts) != 0 {
 		t.Errorf("Expected no accounts for invalid YAML, got %v", accounts)
 	}
 }
@@ -452,7 +543,7 @@ func Test_GitHubAccounts_FileNotFound(t *testing.T) {
 	testutil.IsolateHome(t)
 
 	cf := NewConfigFile(false)
-	if accounts := cf.GitHubAccounts("github.com"); len(accounts) != 0 {
+	if accounts := cf.Accounts("github", "github.com"); len(accounts) != 0 {
 		t.Errorf("Expected no accounts when the config file doesn't exist, got %v", accounts)
 	}
 }
@@ -504,13 +595,13 @@ special_capitalization:
 	}
 
 	// The pre-existing account must survive untouched.
-	existing := ResolveAccount(cf.GitHubAccounts("github.com"), "")
+	existing := ResolveAccount(cf.Accounts("github", "github.com"), "")
 	if existing.Username != "existing_user" || existing.Token != "existing_token" {
 		t.Errorf("expected the existing account to be preserved, got %+v", existing)
 	}
 
 	// The new account must be reachable by its remote_hosts entry.
-	added := ResolveAccount(cf.GitHubAccounts("github.com-work"), "")
+	added := ResolveAccount(cf.Accounts("github", "github.com-work"), "")
 	if added.Username != "new_user" || added.Token != "new_token" {
 		t.Errorf("expected the new account to be added, got %+v", added)
 	}
@@ -542,7 +633,7 @@ func Test_AddAccount_CreatesFileWhenMissing(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	account := ResolveAccount(cf.GitLabAccounts("gitlab.com"), "")
+	account := ResolveAccount(cf.Accounts("gitlab", "gitlab.com"), "")
 	if account.Username != "first_user" || account.Token != "first_token" {
 		t.Errorf("expected the new account to be added, got %+v", account)
 	}
@@ -565,19 +656,19 @@ special_capitalization:
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	updated := ResolveAccount(cf.GitHubAccounts("github.com-alice2"), "")
+	updated := ResolveAccount(cf.Accounts("github", "github.com-alice2"), "")
 	if updated.Username != "alice2" || updated.Token != "new_token" {
 		t.Errorf("expected the updated account, got %+v", updated)
 	}
 
 	// The old username must no longer resolve anything of its own --
 	// alice's entry was replaced, not duplicated alongside a new one.
-	if accounts := cf.GitHubAccounts("github.com"); len(accounts) != 1 || accounts[0].Username != "bob" {
+	if accounts := cf.Accounts("github", "github.com"); len(accounts) != 1 || accounts[0].Username != "bob" {
 		t.Errorf("expected only bob left on the public host, got %+v", accounts)
 	}
 
 	// bob, an unrelated account, must survive untouched.
-	bob := ResolveAccount(cf.GitHubAccounts("github.com"), "bob")
+	bob := ResolveAccount(cf.Accounts("github", "github.com"), "bob")
 	if bob.Username != "bob" || bob.Token != "bob_token" {
 		t.Errorf("expected bob preserved, got %+v", bob)
 	}
@@ -729,7 +820,7 @@ special_capitalization:
 `)
 
 	cf := NewConfigFile(false)
-	account := ResolveAccount(cf.GitHubAccounts("github.com"), "")
+	account := ResolveAccount(cf.Accounts("github", "github.com"), "")
 	if account.Username != "alice" || account.Token != "tok" {
 		t.Errorf("expected providers to survive a malformed special_capitalization value, got %+v", account)
 	}
@@ -763,7 +854,7 @@ func Test_GitHubAccounts_CaseInsensitiveHostMatch(t *testing.T) {
 `)
 
 	cf := NewConfigFile(false)
-	account := ResolveAccount(cf.GitHubAccounts("github.example.com"), "")
+	account := ResolveAccount(cf.Accounts("github", "github.example.com"), "")
 	if account.Username != "work" {
 		t.Errorf("expected a case-insensitive match on remote_hosts, got %+v", account)
 	}
@@ -777,7 +868,7 @@ func Test_contents_CachesAndRefreshesOnWrite(t *testing.T) {
 	cf := NewConfigFile(false)
 
 	// Prime the cache.
-	if got := ResolveAccount(cf.GitHubAccounts("github.com"), "").Username; got != "alice" {
+	if got := ResolveAccount(cf.Accounts("github", "github.com"), "").Username; got != "alice" {
 		t.Fatalf("expected alice before any write, got %q", got)
 	}
 
@@ -787,7 +878,7 @@ func Test_contents_CachesAndRefreshesOnWrite(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if got := ResolveAccount(cf.GitHubAccounts("github.com"), "bob").Username; got != "bob" {
+	if got := ResolveAccount(cf.Accounts("github", "github.com"), "bob").Username; got != "bob" {
 		t.Errorf("expected bob to be visible immediately after AddAccount on the same instance, got %q", got)
 	}
 

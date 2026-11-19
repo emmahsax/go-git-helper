@@ -208,23 +208,30 @@ type gitProviderCredential struct {
 }
 
 // gitProviderCredentials lists every supported git provider's setup
-// prompts. Adding support for a new provider (e.g. Bitbucket, Forgejo) only
-// requires a new entry here, plus matching read methods on
-// *configfile.ConfigFile (see GitHubAccounts/GitLabAccounts).
+// prompts. Adding support for a new provider (e.g. Bitbucket) only requires
+// a new entry here -- *configfile.ConfigFile's Accounts/Hosts already read
+// any provider name generically.
 var gitProviderCredentials = []gitProviderCredential{
 	{
 		Key:               "github",
 		Name:              "GitHub",
 		PublicHost:        "github.com",
 		TokenPrompt:       "GitHub personal access token",
-		RemoteHostsPrompt: "Remote host(s) -- comma-separated if more than one. Leave blank if this is simply the public github.com",
+		RemoteHostsPrompt: "Remote host(s) (comma-separated if more than one) -- leave blank if this is the public github.com",
 	},
 	{
 		Key:               "gitlab",
 		Name:              "GitLab",
 		PublicHost:        "gitlab.com",
 		TokenPrompt:       "GitLab personal access token",
-		RemoteHostsPrompt: "Remote host(s) -- comma-separated if more than one. Leave blank if this is simply the public gitlab.com",
+		RemoteHostsPrompt: "Remote host(s) (comma-separated if more than one) -- leave blank if this is the public gitlab.com",
+	},
+	{
+		Key:               "forgejo",
+		Name:              "Forgejo",
+		PublicHost:        "codeberg.org",
+		TokenPrompt:       "Forgejo access token",
+		RemoteHostsPrompt: "Remote host(s) (comma-separated if more than one) -- leave blank if this is the public codeberg.org",
 	},
 }
 

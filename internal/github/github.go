@@ -26,7 +26,7 @@ type GitHub struct {
 // ambiguity can pass "".
 func NewGitHub(host, username string, debugB bool) *GitHub {
 	cf := configfile.NewConfigFile(debugB)
-	account := configfile.ResolveAccount(cf.GitHubAccounts(host), username)
+	account := configfile.ResolveAccount(cf.Accounts("github", host), username)
 
 	c := newGitHubClient(account.Token, account.APIHost, debugB)
 
