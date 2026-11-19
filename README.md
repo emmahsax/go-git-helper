@@ -350,7 +350,7 @@ ticket_urls:
 ```
 
 * `default` -- the base URL used for any ticket reference that doesn't match an override. A match's ticket ID (e.g. `PROJ-123`) is appended directly to it (trailing `/` optional), so `https://company.atlassian.net/browse` + `PROJ-123` becomes `https://company.atlassian.net/browse/PROJ-123`.
-* `overrides.repositories` -- maps a specific `owner/repo` to a different base URL than `default`, for a repo that always links to a different tracker. Checked first.
+* `overrides.repositories` -- maps a specific `owner/repo` (matched case-insensitively) to a different base URL than `default`, for a repo that always links to a different tracker. Checked first.
 * `overrides.prefixes` -- maps a specific ticket prefix (e.g. `ENG` from `ENG-456`, matched case-insensitively) to a different base URL, for projects/teams using more than one tracker. Checked after `overrides.repositories`, before falling back to `default`.
 
 `default` on its own is enough if you only use one tracker; the `overrides` are only needed if different repos or ticket prefixes point at different trackers. With no `ticket_urls` configured at all, the bare-reference behavior above is unaffected -- `ticket_urls` only upgrades the reference into an explicit link, it never changes whether the reference itself gets offered.
