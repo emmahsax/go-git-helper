@@ -388,6 +388,97 @@ func Test_GitLabHosts_ProviderNotConfigured(t *testing.T) {
 	}
 }
 
+func Test_ForgejoHosts(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: forgejo
+    token: public_token
+  - name: forgejo
+    token: self_hosted_token
+    remote_hosts:
+      - forgejo.example.com
+      - git.internal.example.com
+`)
+
+	cf := NewConfigFile(false)
+	hosts := cf.ForgejoHosts()
+
+	expected := []string{"forgejo.example.com", "git.internal.example.com"}
+	if len(hosts) != len(expected) {
+		t.Fatalf("Expected hosts %v, got %v", expected, hosts)
+	}
+	for i := range expected {
+		if hosts[i] != expected[i] {
+			t.Errorf("Expected hosts %v, got %v", expected, hosts)
+		}
+	}
+}
+
+func Test_ForgejoHosts_NoneConfigured(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: forgejo\n    token: test_token\n")
+
+	cf := NewConfigFile(false)
+	if hosts := cf.ForgejoHosts(); len(hosts) != 0 {
+		t.Errorf("Expected no hosts, got %v", hosts)
+	}
+}
+
+func Test_ForgejoAccounts_PublicAccount(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: forgejo\n    username: public_user\n    token: public_token\n")
+
+	cf := NewConfigFile(false)
+	account := ResolveAccount(cf.ForgejoAccounts("codeberg.org"), "")
+	if account.Username != "public_user" || account.Token != "public_token" {
+		t.Errorf("Expected ('public_user', 'public_token'), got (%q, %q)", account.Username, account.Token)
+	}
+}
+
+func Test_ForgejoAccounts_PublicAndSelfHosted(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: forgejo
+    username: public_user
+    token: public_token
+  - name: forgejo
+    username: work_user
+    token: work_token
+    remote_hosts:
+      - forgejo.example.com
+      - git.internal.example.com
+    api_host: forgejo.example.com
+`)
+
+	cf := NewConfigFile(false)
+
+	if account := ResolveAccount(cf.ForgejoAccounts("codeberg.org"), ""); account.Username != "public_user" || account.Token != "public_token" {
+		t.Errorf("Expected the public account for codeberg.org, got (%q, %q)", account.Username, account.Token)
+	}
+
+	if account := ResolveAccount(cf.ForgejoAccounts("forgejo.example.com"), ""); account.Username != "work_user" || account.APIHost != "forgejo.example.com" {
+		t.Errorf("Expected the work account with APIHost 'forgejo.example.com', got (%q, %q)", account.Username, account.APIHost)
+	}
+
+	if account := ResolveAccount(cf.ForgejoAccounts("git.internal.example.com"), ""); account.Username != "work_user" {
+		t.Errorf("Expected the work account for its second alias host, got %q", account.Username)
+	}
+}
+
+func Test_ForgejoAccounts_NoneConfigured(t *testing.T) {
+	testutil.IsolateHome(t)
+
+	cf := NewConfigFile(false)
+	if accounts := cf.ForgejoAccounts("codeberg.org"); len(accounts) != 0 {
+		t.Errorf("Expected no accounts, got %v", accounts)
+	}
+}
+
+func Test_ForgejoHosts_ProviderNotConfigured(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: github\n    token: ghp_token123\n")
+
+	cf := NewConfigFile(false)
+	if hosts := cf.ForgejoHosts(); len(hosts) != 0 {
+		t.Errorf("Expected no hosts, got %v", hosts)
+	}
+}
+
 func Test_SpecialCapitalization(t *testing.T) {
 	content := `special_capitalization:
   api: API

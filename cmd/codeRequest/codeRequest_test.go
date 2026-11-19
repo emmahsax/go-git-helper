@@ -396,6 +396,139 @@ origin  git@GitHub.com:emmahsax/go-git-helper.git (push)`)}
 	}
 }
 
+func Test_isForgejo(t *testing.T) {
+	tests := []struct {
+		remotes  string
+		expected bool
+	}{
+		{
+			remotes: `origin  git@codeberg.org:emmahsax/go-git-helper.git (fetch)
+origin  git@codeberg.org:emmahsax/go-git-helper.git (push)`,
+			expected: true,
+		},
+		{
+			remotes: `origin  git@github.com:emmahsax/forgejo-project.git (fetch)
+origin  git@github.com:emmahsax/forgejo-project.git (push)`,
+			expected: false,
+		},
+	}
+
+	for _, test := range tests {
+		executor := &MockExecutor{
+			Debug:  true,
+			Output: []byte(test.remotes),
+		}
+		cr := newCodeRequest(true, true, executor)
+		resp := cr.isForgejo()
+
+		if resp != test.expected {
+			t.Fatalf(`should have been %v, but was %v`, test.expected, resp)
+		}
+	}
+}
+
+func Test_matchedForgejoHost_PublicAndSelfHostedConfigured(t *testing.T) {
+	homeDir := testutil.IsolateHome(t)
+	testutil.WriteConfig(t, homeDir, `providers:
+  - name: forgejo
+    username: public-user
+    token: public-token
+  - name: forgejo
+    username: work-user
+    token: work-token
+    remote_hosts:
+      - forgejo.example.com
+`)
+
+	tests := []struct {
+		name     string
+		remotes  string
+		expected string
+	}{
+		{
+			name: "public codeberg.org remote",
+			remotes: `origin  git@codeberg.org:emmahsax/go-git-helper.git (fetch)
+origin  git@codeberg.org:emmahsax/go-git-helper.git (push)`,
+			expected: "codeberg.org",
+		},
+		{
+			name: "self-hosted remote",
+			remotes: `origin  git@forgejo.example.com:emmahsax/go-git-helper.git (fetch)
+origin  git@forgejo.example.com:emmahsax/go-git-helper.git (push)`,
+			expected: "forgejo.example.com",
+		},
+		{
+			name: "unrelated remote",
+			remotes: `origin  git@github.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.com:emmahsax/go-git-helper.git (push)`,
+			expected: "",
+		},
+		{
+			// Regression: a naive substring check would treat this as the
+			// public codeberg.org (since "codeberg.org.company.com" contains
+			// "codeberg.org"), and use the wrong account's credentials.
+			name: "self-hosted domain that contains the public domain as a substring",
+			remotes: `origin  git@codeberg.org.company.com:emmahsax/go-git-helper.git (fetch)
+origin  git@codeberg.org.company.com:emmahsax/go-git-helper.git (push)`,
+			expected: "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			executor := &MockExecutor{Debug: true, Output: []byte(test.remotes)}
+			cr := newCodeRequest(true, true, executor)
+
+			if got := cr.matchedForgejoHost(); got != test.expected {
+				t.Errorf("expected host %q, got %q", test.expected, got)
+			}
+
+			if got := cr.isForgejo(); got != (test.expected != "") {
+				t.Errorf("expected isForgejo() %v, got %v", test.expected != "", got)
+			}
+		})
+	}
+}
+
+// Regression: matching must only consider the origin remote.
+func Test_matchedForgejoHost_IgnoresNonOriginRemotes(t *testing.T) {
+	homeDir := testutil.IsolateHome(t)
+	testutil.WriteConfig(t, homeDir, `providers:
+  - name: forgejo
+    username: public-user
+    token: public-token
+  - name: forgejo
+    username: work-user
+    token: work-token
+    remote_hosts:
+      - forgejo.example.com
+`)
+
+	executor := &MockExecutor{Debug: true, Output: []byte(`origin  git@forgejo.example.com:emmahsax/go-git-helper.git (fetch)
+origin  git@forgejo.example.com:emmahsax/go-git-helper.git (push)
+upstream  git@codeberg.org:upstream-org/go-git-helper.git (fetch)
+upstream  git@codeberg.org:upstream-org/go-git-helper.git (push)`)}
+	cr := newCodeRequest(true, true, executor)
+
+	if got := cr.matchedForgejoHost(); got != "forgejo.example.com" {
+		t.Errorf("expected origin's self-hosted host 'forgejo.example.com', got %q", got)
+	}
+}
+
+// Regression: host matching must be case-insensitive.
+func Test_matchedForgejoHost_CaseInsensitive(t *testing.T) {
+	executor := &MockExecutor{Debug: true, Output: []byte(`origin  git@Codeberg.Org:emmahsax/go-git-helper.git (fetch)
+origin  git@Codeberg.Org:emmahsax/go-git-helper.git (push)`)}
+	cr := newCodeRequest(true, true, executor)
+
+	if got := cr.matchedForgejoHost(); got != "codeberg.org" {
+		t.Errorf("expected a case-insensitive match despite the remote's mixed-case host, got %q", got)
+	}
+	if !cr.isForgejo() {
+		t.Error("expected isForgejo() to be true for a mixed-case Forgejo remote")
+	}
+}
+
 // git() and config() must be memoized: repeated calls within one
 // invocation must not re-invoke the git subprocess or re-read config.yml.
 func Test_git_and_config_AreMemoized(t *testing.T) {
@@ -551,13 +684,13 @@ func Test_providers(t *testing.T) {
 	cr := newCodeRequest(true, true, executor)
 	providers := cr.providers()
 
-	if len(providers) != 2 {
-		t.Fatalf("expected 2 registered providers, got %d", len(providers))
+	if len(providers) != 3 {
+		t.Fatalf("expected 3 registered providers, got %d", len(providers))
 	}
 
-	names := []string{providers[0].Name, providers[1].Name}
-	if names[0] != "GitHub" || names[1] != "GitLab" {
-		t.Fatalf("expected [GitHub GitLab], got %v", names)
+	names := []string{providers[0].Name, providers[1].Name, providers[2].Name}
+	if names[0] != "GitHub" || names[1] != "GitLab" || names[2] != "Forgejo" {
+		t.Fatalf("expected [GitHub GitLab Forgejo], got %v", names)
 	}
 }
 
@@ -580,7 +713,13 @@ origin  git@gitlab.com:emmahsax/go-git-helper.git (push)`,
 			expected: []string{"GitLab"},
 		},
 		{
-			name: "neither",
+			name: "Forgejo only",
+			remotes: `origin  git@codeberg.org:emmahsax/go-git-helper.git (fetch)
+origin  git@codeberg.org:emmahsax/go-git-helper.git (push)`,
+			expected: []string{"Forgejo"},
+		},
+		{
+			name: "none",
 			remotes: `origin  git@bitbucket.org:emmahsax/go-git-helper.git (fetch)
 origin  git@bitbucket.org:emmahsax/go-git-helper.git (push)`,
 			expected: nil,

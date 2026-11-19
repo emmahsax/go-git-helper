@@ -154,6 +154,11 @@ func Test_createOrUpdateConfig(t *testing.T) {
     token: hello_world
     remote_hosts:
       - hello_world
+  - name: forgejo
+    username: hello_world
+    token: hello_world
+    remote_hosts:
+      - hello_world
 `,
 		},
 		{
@@ -227,7 +232,9 @@ func Test_chooseProviders(t *testing.T) {
 	}{
 		{name: "only GitHub picked", selected: []string{"GitHub"}, expected: []string{"github"}},
 		{name: "only GitLab picked", selected: []string{"GitLab"}, expected: []string{"gitlab"}},
+		{name: "only Forgejo picked", selected: []string{"Forgejo"}, expected: []string{"forgejo"}},
 		{name: "both picked", selected: []string{"GitHub", "GitLab"}, expected: []string{"github", "gitlab"}},
+		{name: "all three picked", selected: []string{"GitHub", "GitLab", "Forgejo"}, expected: []string{"github", "gitlab", "forgejo"}},
 		{name: "none picked", selected: nil, expected: nil},
 	}
 
@@ -302,6 +309,11 @@ func Test_generateConfigFileContents(t *testing.T) {
     token: hello_world
     remote_hosts:
       - hello_world
+  - name: forgejo
+    username: hello_world
+    token: hello_world
+    remote_hosts:
+      - hello_world
 `
 	if contents != expectedContents {
 		t.Errorf("Expected '%s', got '%s'", expectedContents, contents)
@@ -351,6 +363,12 @@ func Test_generateConfigFileContents_WithDifferentServer(t *testing.T) {
     remote_hosts:
       - hello_world
     api_host: hello_world
+  - name: forgejo
+    username: hello_world
+    token: hello_world
+    remote_hosts:
+      - hello_world
+    api_host: hello_world
 `
 	if contents != expectedContents {
 		t.Errorf("Expected '%s', got '%s'", expectedContents, contents)
@@ -395,6 +413,9 @@ func Test_generateConfigFileContents_BlankHostOmitted(t *testing.T) {
     username: hello_world
     token: hello_world
   - name: gitlab
+    username: hello_world
+    token: hello_world
+  - name: forgejo
     username: hello_world
     token: hello_world
 `

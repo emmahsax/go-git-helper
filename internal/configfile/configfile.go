@@ -158,6 +158,18 @@ func (cf *ConfigFile) GitLabAccounts(host string) []Account {
 	return cf.accountsFor("gitlab", host)
 }
 
+// ForgejoHosts returns every self-hosted/alias remote host configured across
+// all "forgejo" provider entries (not the implicit public codeberg.org).
+func (cf *ConfigFile) ForgejoHosts() []string {
+	return cf.remoteHostsFor("forgejo")
+}
+
+// ForgejoAccounts returns every "forgejo" account matching host. See
+// GitLabAccounts for the exact matching rules, which are identical.
+func (cf *ConfigFile) ForgejoAccounts(host string) []Account {
+	return cf.accountsFor("forgejo", host)
+}
+
 // remoteHostsFor returns every self-hosted/alias remote host configured
 // across all of name's provider entries (not whichever public URL an entry
 // with no RemoteHosts implies).

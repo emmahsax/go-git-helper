@@ -8,6 +8,7 @@ import (
 	"github.com/emmahsax/go-git-helper/internal/commandline"
 	"github.com/emmahsax/go-git-helper/internal/configfile"
 	"github.com/emmahsax/go-git-helper/internal/executor"
+	"github.com/emmahsax/go-git-helper/internal/forgejo"
 	"github.com/emmahsax/go-git-helper/internal/git"
 	"github.com/emmahsax/go-git-helper/internal/github"
 	"github.com/emmahsax/go-git-helper/internal/gitlab"
@@ -55,7 +56,7 @@ func NewCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:                   "code-request",
-		Short:                 "Create either a GitHub pull request or a GitLab merge request",
+		Short:                 "Create a GitHub, GitLab, or Forgejo pull/merge request",
 		Args:                  cobra.ExactArgs(0),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -93,6 +94,7 @@ func (cr *CodeRequest) providers() []codeRequestProvider {
 	return []codeRequestProvider{
 		{Name: "GitHub", Matches: (*CodeRequest).isGitHub, Create: (*CodeRequest).createGitHub},
 		{Name: "GitLab", Matches: (*CodeRequest).isGitLab, Create: (*CodeRequest).createGitLab},
+		{Name: "Forgejo", Matches: (*CodeRequest).isForgejo, Create: (*CodeRequest).createForgejo},
 	}
 }
 
@@ -162,6 +164,22 @@ func (cr *CodeRequest) createGitHub() {
 	options["localBranch"] = g.CurrentBranch()
 	options["localRepo"] = g.RepoName()
 	github.NewGitHubPullRequest(options, cr.Debug, cr.InteractiveMode).Create()
+}
+
+func (cr *CodeRequest) createForgejo() {
+	host := cr.matchedForgejoHost()
+
+	options := make(map[string]string)
+	options["baseBranch"] = cr.baseBranch()
+	options["draft"] = cr.draft()
+	options["host"] = host
+	options["username"] = cr.chosenUsername("Forgejo", cr.config().ForgejoAccounts(host))
+	options["newPrTitle"] = cr.newPrTitle()
+	g := cr.git()
+	options["gitRootDir"] = g.GetGitRootDir()
+	options["localBranch"] = g.CurrentBranch()
+	options["localRepo"] = g.RepoName()
+	forgejo.NewForgejoPullRequest(options, cr.Debug, cr.InteractiveMode).Create()
 }
 
 func (cr *CodeRequest) createGitLab() {
@@ -384,6 +402,36 @@ func (cr *CodeRequest) matchedGitLabHost() string {
 	remoteHosts := cr.git().RemoteHosts()
 
 	for _, host := range cr.gitLabHosts() {
+		if utils.ContainsFold(remoteHosts, host) {
+			return host
+		}
+	}
+
+	return ""
+}
+
+func (cr *CodeRequest) isForgejo() bool {
+	return cr.matchedForgejoHost() != ""
+}
+
+// forgejoHosts is every host that counts as Forgejo: the public codeberg.org,
+// plus any self-hosted hosts from the "forgejo" entries in config.yml (there
+// can be more than one, e.g. a public account alongside a separate
+// self-hosted one).
+func (cr *CodeRequest) forgejoHosts() []string {
+	return append([]string{forgejo.PublicHost}, cr.config().ForgejoHosts()...)
+}
+
+// matchedForgejoHost returns whichever of forgejoHosts() matches one of the
+// repo's git remote hosts, or "" if none do. The result identifies which
+// configured Forgejo account to use, since more than one may be configured.
+// Matching is exact (case-insensitively) and not substring-based:
+// "forgejo.company.com" must not match "forgejo.example.com", nor
+// "git.example.com" match "sub.git.example.com".
+func (cr *CodeRequest) matchedForgejoHost() string {
+	remoteHosts := cr.git().RemoteHosts()
+
+	for _, host := range cr.forgejoHosts() {
 		if utils.ContainsFold(remoteHosts, host) {
 			return host
 		}
