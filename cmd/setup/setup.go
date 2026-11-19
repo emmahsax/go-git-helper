@@ -217,21 +217,21 @@ var gitProviderCredentials = []gitProviderCredential{
 		Name:              "GitHub",
 		PublicHost:        "github.com",
 		TokenPrompt:       "GitHub personal access token",
-		RemoteHostsPrompt: "Remote host(s) -- comma-separated if more than one. Leave blank if this is simply the public github.com",
+		RemoteHostsPrompt: "Remote host(s) -- comma-separated if more than one. Leave blank if this is the public github.com",
 	},
 	{
 		Key:               "gitlab",
 		Name:              "GitLab",
 		PublicHost:        "gitlab.com",
 		TokenPrompt:       "GitLab personal access token",
-		RemoteHostsPrompt: "Remote host(s) -- comma-separated if more than one. Leave blank if this is simply the public gitlab.com",
+		RemoteHostsPrompt: "Remote host(s) -- comma-separated if more than one. Leave blank if this is the public gitlab.com",
 	},
 	{
 		Key:               "forgejo",
 		Name:              "Forgejo",
 		PublicHost:        "codeberg.org",
 		TokenPrompt:       "Forgejo access token",
-		RemoteHostsPrompt: "Remote host(s) -- comma-separated if more than one. Leave blank if this is simply the public codeberg.org. Forgejo is usually self-hosted, so most accounts will set this and answer yes to the next question",
+		RemoteHostsPrompt: "Remote host(s) -- comma-separated if more than one. Leave blank if this is the public codeberg.org. Forgejo is usually self-hosted, so most accounts will set this and answer yes to the next question",
 	},
 }
 
