@@ -633,6 +633,60 @@ func Test_RemoveAccount_NotFound(t *testing.T) {
 	}
 }
 
+// Regression: RemoveAccount must not corrupt cf.cachedContents.Providers
+// when writeContents fails partway through. The removal used to slice and
+// append over updated.Providers in place, which shares its backing array
+// with cf.cachedContents.Providers -- shifting elements there even before
+// the write (and thus the cache swap) completes.
+func Test_RemoveAccount_LeavesCacheIntactOnWriteFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file permissions are not enforced the same way on Windows")
+	}
+
+	// Removing the middle entry of three is what actually exercises the
+	// aliasing: append(s[:idx], s[idx+1:]...) only writes into the shared
+	// backing array when there's a tail to shift, i.e. idx isn't last.
+	tempDir := createTestConfigFile(t, `providers:
+  - name: github
+    username: alice
+    token: alice_token
+  - name: github
+    username: bob
+    token: bob_token
+  - name: github
+    username: carol
+    token: carol_token
+`)
+	configPath := filepath.Join(tempDir, ".git-helper", "config.yml")
+
+	cf := NewConfigFile(false)
+
+	// Prime the cache before the write ever fails.
+	if usernames := cf.Usernames("github"); len(usernames) != 3 {
+		t.Fatalf("expected 3 usernames before removal attempt, got %v", usernames)
+	}
+
+	if err := os.Chmod(configPath, 0400); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(configPath, 0600) })
+
+	if err := cf.RemoveAccount("github", "bob"); err == nil {
+		t.Fatal("expected a write error removing the account from a read-only file")
+	}
+
+	usernames := cf.Usernames("github")
+	want := []string{"alice", "bob", "carol"}
+	if len(usernames) != len(want) {
+		t.Fatalf("expected cache to still report all three accounts after a failed write, got %v", usernames)
+	}
+	for i, u := range want {
+		if usernames[i] != u {
+			t.Errorf("expected cache entry %d to be %q after a failed write, got %q (full: %v)", i, u, usernames[i], usernames)
+		}
+	}
+}
+
 // Regression: AddAccount/UpdateAccount/RemoveAccount must re-tighten an
 // already-existing config directory's permissions, the same as setup.go's
 // createOrUpdateConfig does -- MkdirAll alone is a no-op on an existing

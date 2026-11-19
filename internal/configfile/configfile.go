@@ -264,7 +264,14 @@ func (cf *ConfigFile) RemoveAccount(name, username string) error {
 		return fmt.Errorf("no %s account found with username %q", name, username)
 	}
 
-	updated.Providers = append(updated.Providers[:idx], updated.Providers[idx+1:]...)
+	// Build a fresh slice rather than append(updated.Providers[:idx],
+	// updated.Providers[idx+1:]...): that form writes into the backing
+	// array shared with cf.cachedContents.Providers, corrupting the
+	// cache in place even if writeContents below fails.
+	remaining := make([]provider, 0, len(updated.Providers)-1)
+	remaining = append(remaining, updated.Providers[:idx]...)
+	remaining = append(remaining, updated.Providers[idx+1:]...)
+	updated.Providers = remaining
 
 	return cf.writeContents(updated)
 }
