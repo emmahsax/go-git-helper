@@ -79,17 +79,17 @@ func (pr *GitHubPullRequest) newPrBody() string {
 		match := re.FindString(pr.NewPrTitle)
 
 		if match != "" {
-			var includeJiraLink bool
+			var includeProjectTicketLink bool
 
 			if pr.InteractiveMode {
-				includeJiraLink = commandline.AskYesNoQuestion(
-					fmt.Sprintf("Include a link to the Jira ticket (%s) in the beginning of the pull request body?", match),
+				includeProjectTicketLink = commandline.AskYesNoQuestion(
+					fmt.Sprintf("Include a link to the project ticket (%s) in the beginning of the pull request body?", match),
 				)
 			} else {
-				includeJiraLink = true
+				includeProjectTicketLink = true
 			}
 
-			if includeJiraLink {
+			if includeProjectTicketLink {
 				return "### [" + match + "]\n\n" + string(content)
 			}
 		}
