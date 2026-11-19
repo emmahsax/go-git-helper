@@ -642,6 +642,25 @@ func Test_askRemoteHosts_RejectsPublicDomainAmongMultiple(t *testing.T) {
 	}
 }
 
+// Regression: the public-domain guard must be case-insensitive.
+func Test_askRemoteHosts_RejectsPublicDomainCaseInsensitively(t *testing.T) {
+	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
+	t.Cleanup(func() { commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion })
+	responses := []string{"GitLab.Com", "gitlab.example.com"}
+	call := 0
+	commandline.AskOpenEndedQuestion = func(question, defaultVal string, secret, required bool) string {
+		defer func() { call++ }()
+		return responses[call]
+	}
+
+	s := newSetup(true, &MockExecutor{Debug: true}, &MockConfig{Dir: t.TempDir(), Debug: true})
+	hosts := s.askRemoteHosts(gitlabProviderCredential(t))
+
+	if len(hosts) != 1 || hosts[0] != "gitlab.example.com" {
+		t.Errorf("expected a mixed-case public domain to be rejected and retried, got %v", hosts)
+	}
+}
+
 func Test_providerAccountBlocks_DuplicateUsernameRejected(t *testing.T) {
 	originalAskYesNoQuestion := commandline.AskYesNoQuestion
 	t.Cleanup(func() { commandline.AskYesNoQuestion = originalAskYesNoQuestion })

@@ -49,3 +49,26 @@ func Test_SplitLines(t *testing.T) {
 		})
 	}
 }
+
+func Test_ContainsFold(t *testing.T) {
+	tests := []struct {
+		name     string
+		list     []string
+		s        string
+		expected bool
+	}{
+		{"exact match", []string{"github.com", "gitlab.com"}, "github.com", true},
+		{"case-insensitive match", []string{"GitHub.com"}, "github.com", true},
+		{"case-insensitive match, reversed case", []string{"github.com"}, "GitHub.Com", true},
+		{"no match", []string{"github.com"}, "gitlab.com", false},
+		{"empty list", nil, "github.com", false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := ContainsFold(test.list, test.s); got != test.expected {
+				t.Errorf("expected %v, got %v", test.expected, got)
+			}
+		})
+	}
+}

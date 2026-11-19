@@ -7,15 +7,17 @@ import (
 )
 
 type MockExecutor struct {
-	Args    []string
-	Command string
-	Debug   bool
-	Output  []byte
+	Args      []string
+	Command   string
+	Debug     bool
+	Output    []byte
+	ExecCount int
 }
 
 func (me *MockExecutor) Exec(execType string, command string, args ...string) ([]byte, error) {
 	me.Command = command
 	me.Args = args
+	me.ExecCount++
 	return me.Output, nil
 }
 
@@ -346,6 +348,76 @@ origin  git@github.company.com:emmahsax/go-git-helper.git (push)`,
 				t.Errorf("expected isGitHub() %v, got %v", test.expected != "", got)
 			}
 		})
+	}
+}
+
+// Regression: matching must only consider the origin remote. A repo with
+// origin on a self-hosted/Enterprise host and a different remote (e.g.
+// upstream) on the public host must resolve to origin's account, not
+// whichever remote's host happens to be checked first.
+func Test_matchedGitHubHost_IgnoresNonOriginRemotes(t *testing.T) {
+	homeDir := testutil.IsolateHome(t)
+	testutil.WriteConfig(t, homeDir, `providers:
+  - name: github
+    username: public-user
+    token: public-token
+  - name: github
+    username: work-user
+    token: work-token
+    remote_hosts:
+      - github.example.com
+`)
+
+	executor := &MockExecutor{Debug: true, Output: []byte(`origin  git@github.example.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.example.com:emmahsax/go-git-helper.git (push)
+upstream  git@github.com:upstream-org/go-git-helper.git (fetch)
+upstream  git@github.com:upstream-org/go-git-helper.git (push)`)}
+	cr := newCodeRequest(true, true, executor)
+
+	if got := cr.matchedGitHubHost(); got != "github.example.com" {
+		t.Errorf("expected origin's Enterprise host 'github.example.com', got %q", got)
+	}
+}
+
+// Regression: host matching must be case-insensitive. matchedGitHubHost
+// returns one of gitHubHosts()'s own (canonically-cased) entries on a
+// match, not the remote's literal casing -- so the meaningful assertion is
+// that a mixed-case remote still matches at all.
+func Test_matchedGitHubHost_CaseInsensitive(t *testing.T) {
+	executor := &MockExecutor{Debug: true, Output: []byte(`origin  git@GitHub.com:emmahsax/go-git-helper.git (fetch)
+origin  git@GitHub.com:emmahsax/go-git-helper.git (push)`)}
+	cr := newCodeRequest(true, true, executor)
+
+	if got := cr.matchedGitHubHost(); got != "github.com" {
+		t.Errorf("expected a case-insensitive match despite the remote's mixed-case host, got %q", got)
+	}
+	if !cr.isGitHub() {
+		t.Error("expected isGitHub() to be true for a mixed-case GitHub remote")
+	}
+}
+
+// git() and config() must be memoized: repeated calls within one
+// invocation must not re-invoke the git subprocess or re-read config.yml.
+func Test_git_and_config_AreMemoized(t *testing.T) {
+	setupTestConfig(t)
+
+	executor := &MockExecutor{Debug: true, Output: []byte(`origin  git@github.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.com:emmahsax/go-git-helper.git (push)`)}
+	cr := newCodeRequest(true, true, executor)
+
+	if cr.git() != cr.git() {
+		t.Error("expected git() to return the same *git.Git instance across calls")
+	}
+	if cr.config() != cr.config() {
+		t.Error("expected config() to return the same *configfile.ConfigFile instance across calls")
+	}
+
+	cr.matchedGitHubHost()
+	cr.matchedGitHubHost()
+	cr.isGitHub()
+
+	if executor.ExecCount != 1 {
+		t.Errorf("expected exactly 1 `git remote -v` call across repeated detection calls, got %d", executor.ExecCount)
 	}
 }
 

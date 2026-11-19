@@ -3,6 +3,7 @@ package configfile
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -629,5 +630,115 @@ func Test_RemoveAccount_NotFound(t *testing.T) {
 	err := cf.RemoveAccount("github", "nonexistent")
 	if err == nil {
 		t.Fatal("expected an error removing a nonexistent account")
+	}
+}
+
+// Regression: AddAccount/UpdateAccount/RemoveAccount must re-tighten an
+// already-existing config directory's permissions, the same as setup.go's
+// createOrUpdateConfig does -- MkdirAll alone is a no-op on an existing
+// directory, so it can't fix one left over from an older, looser version.
+func Test_AddAccount_TightensLooseDirectoryPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file modes are not enforced on Windows")
+	}
+
+	home := createTestConfigFile(t, "providers:\n  - name: github\n    username: alice\n    token: tok\n")
+
+	gitHelperDir := filepath.Join(home, ".git-helper")
+	if err := os.Chmod(gitHelperDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	cf := NewConfigFile(false)
+	if err := cf.AddAccount("github", "bob", "bob-token", nil, ""); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	info, err := os.Stat(gitHelperDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0700 {
+		t.Errorf("expected the config directory to be tightened to 0700, got %v", info.Mode().Perm())
+	}
+}
+
+// Regression: a malformed special_capitalization value must not blank the
+// providers list -- the two sections are parsed independently.
+func Test_GitHubAccounts_SurvivesMalformedSpecialCapitalization(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: alice
+    token: tok
+special_capitalization:
+  api: [not, a, string]
+`)
+
+	cf := NewConfigFile(false)
+	account := ResolveAccount(cf.GitHubAccounts("github.com"), "")
+	if account.Username != "alice" || account.Token != "tok" {
+		t.Errorf("expected providers to survive a malformed special_capitalization value, got %+v", account)
+	}
+}
+
+// Regression: a malformed providers entry must not blank
+// special_capitalization -- the two sections are parsed independently.
+func Test_SpecialCapitalization_SurvivesMalformedProviders(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: alice
+    token: [not, a, string]
+special_capitalization:
+  api: API
+`)
+
+	cf := NewConfigFile(false)
+	if caps := cf.SpecialCapitalization(); caps["api"] != "API" {
+		t.Errorf("expected special_capitalization to survive a malformed providers entry, got %v", caps)
+	}
+}
+
+// Regression: host matching must be case-insensitive, since hostnames are.
+func Test_GitHubAccounts_CaseInsensitiveHostMatch(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: work
+    token: work-token
+    remote_hosts:
+      - GitHub.Example.com
+`)
+
+	cf := NewConfigFile(false)
+	account := ResolveAccount(cf.GitHubAccounts("github.example.com"), "")
+	if account.Username != "work" {
+		t.Errorf("expected a case-insensitive match on remote_hosts, got %+v", account)
+	}
+}
+
+// Regression: contents() caches across calls on the same *ConfigFile, and a
+// write must refresh that cache rather than leaving it stale.
+func Test_contents_CachesAndRefreshesOnWrite(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: github\n    username: alice\n    token: tok\n")
+
+	cf := NewConfigFile(false)
+
+	// Prime the cache.
+	if got := ResolveAccount(cf.GitHubAccounts("github.com"), "").Username; got != "alice" {
+		t.Fatalf("expected alice before any write, got %q", got)
+	}
+
+	// A write through the same instance must be visible afterward, not
+	// masked by the primed cache.
+	if err := cf.AddAccount("github", "bob", "bob-token", nil, ""); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if got := ResolveAccount(cf.GitHubAccounts("github.com"), "bob").Username; got != "bob" {
+		t.Errorf("expected bob to be visible immediately after AddAccount on the same instance, got %q", got)
+	}
+
+	usernames := cf.Usernames("github")
+	if len(usernames) != 2 || usernames[0] != "alice" || usernames[1] != "bob" {
+		t.Errorf("expected [alice, bob], got %v", usernames)
 	}
 }

@@ -5,15 +5,17 @@ import (
 )
 
 type MockExecutor struct {
-	Args    []string
-	Command string
-	Debug   bool
-	Output  []byte
+	Args      []string
+	Command   string
+	Debug     bool
+	Output    []byte
+	ExecCount int
 }
 
 func (me *MockExecutor) Exec(execType string, command string, args ...string) ([]byte, error) {
 	me.Command = command
 	me.Args = args
+	me.ExecCount++
 	return me.Output, nil
 }
 
@@ -534,6 +536,51 @@ origin  git@gitlab.company.com:emmahsax/go-git-helper.git (push)`,
 				}
 			}
 		})
+	}
+}
+
+// Regression: RemoteHosts/RepoName must only consider the "origin" remote.
+// A repo with origin on one host and a different remote (e.g. upstream) on
+// another must resolve to origin's host/path, not whichever remote happens
+// to match first.
+func Test_RemoteHosts_IgnoresNonOriginRemotes(t *testing.T) {
+	executor := &MockExecutor{Debug: true, Output: []byte(`origin  git@github.company.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.company.com:emmahsax/go-git-helper.git (push)
+upstream  git@github.com:upstream-org/go-git-helper.git (fetch)
+upstream  git@github.com:upstream-org/go-git-helper.git (push)`)}
+	g := NewGit(true, executor)
+
+	hosts := g.RemoteHosts()
+	if len(hosts) != 1 || hosts[0] != "github.company.com" {
+		t.Errorf("expected only origin's host ['github.company.com'], got %v", hosts)
+	}
+}
+
+func Test_RepoName_IgnoresNonOriginRemotes(t *testing.T) {
+	executor := &MockExecutor{Debug: true, Output: []byte(`origin  git@github.company.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.company.com:emmahsax/go-git-helper.git (push)
+upstream  git@github.com:upstream-org/go-git-helper.git (fetch)
+upstream  git@github.com:upstream-org/go-git-helper.git (push)`)}
+	g := NewGit(true, executor)
+
+	if repo := g.RepoName(); repo != "emmahsax/go-git-helper" {
+		t.Errorf("expected origin's repo path 'emmahsax/go-git-helper', got %q", repo)
+	}
+}
+
+// Remotes() is called internally by both RemoteHosts() and RepoName(); it
+// must only shell out to `git remote -v` once per *Git, not once per call.
+func Test_Remotes_CachesAcrossCalls(t *testing.T) {
+	executor := &MockExecutor{Debug: true, Output: []byte(`origin  git@github.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.com:emmahsax/go-git-helper.git (push)`)}
+	g := NewGit(true, executor)
+
+	g.RemoteHosts()
+	g.RepoName()
+	g.Remotes()
+
+	if executor.ExecCount != 1 {
+		t.Errorf("expected exactly 1 `git remote -v` call across repeated use, got %d", executor.ExecCount)
 	}
 }
 

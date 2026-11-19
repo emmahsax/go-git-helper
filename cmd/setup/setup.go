@@ -384,7 +384,7 @@ func (s *Setup) askRemoteHosts(provider gitProviderCredential) []string {
 	for {
 		hosts := s.splitHosts(commandline.AskOpenEndedQuestion(provider.RemoteHostsPrompt, "", false, false))
 
-		if !slices.Contains(hosts, provider.PublicHost) {
+		if !utils.ContainsFold(hosts, provider.PublicHost) {
 			return hosts
 		}
 

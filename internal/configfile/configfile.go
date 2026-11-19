@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 
 	"github.com/emmahsax/go-git-helper/internal/utils"
 	yaml "gopkg.in/yaml.v3"
@@ -28,6 +27,13 @@ type ConfigFileInterface interface {
 
 type ConfigFile struct {
 	Debug bool
+
+	// cachedContents caches contents()'s result for this *ConfigFile's
+	// lifetime, since the same instance is often asked for it more than
+	// once per invocation (e.g. matching a provider, then resolving which
+	// account). Any write (AddAccount/UpdateAccount/RemoveAccount) refreshes
+	// it to the just-written state rather than leaving it stale.
+	cachedContents *fileContents
 }
 
 func NewConfigFile(debug bool) *ConfigFile {
@@ -174,7 +180,7 @@ func (cf *ConfigFile) accountsFor(name, host string) []Account {
 
 	var matched []Account
 	for _, p := range providers {
-		if slices.Contains(p.RemoteHosts, host) {
+		if utils.ContainsFold(p.RemoteHosts, host) {
 			matched = append(matched, Account{Username: p.Username, Token: p.Token, APIHost: p.APIHost})
 		}
 	}
@@ -286,11 +292,24 @@ func (cf *ConfigFile) writeContents(updated fileContents) error {
 		return err
 	}
 
+	// MkdirAll above is a no-op if the directory already exists, so also
+	// explicitly tighten a directory left over from an older version with
+	// looser permissions (mirrors setup.go's createOrUpdateConfig).
+	if err := os.Chmod(cf.ConfigDir(), 0700); err != nil {
+		return err
+	}
+
 	if err := os.WriteFile(cf.ConfigFile(), data, 0600); err != nil {
 		return err
 	}
 
-	return os.Chmod(cf.ConfigFile(), 0600)
+	if err := os.Chmod(cf.ConfigFile(), 0600); err != nil {
+		return err
+	}
+
+	cf.cachedContents = &updated
+
+	return nil
 }
 
 // marshalYAML renders v with 2-space indentation, matching the rest of
@@ -337,19 +356,52 @@ func (cf *ConfigFile) SpecialCapitalization() map[string]string {
 	return map[string]string{}
 }
 
-// contents reads and parses the config file, treating a missing file or
-// invalid YAML as "nothing configured" rather than a fatal error.
+// contents reads and parses the config file, treating a missing file as
+// "nothing configured" rather than a fatal error. Cached for this
+// *ConfigFile's lifetime (see cachedContents); any write refreshes the
+// cache rather than invalidating it, so a reused instance never re-reads
+// stale data after its own AddAccount/UpdateAccount/RemoveAccount call.
+//
+// providers and special_capitalization are parsed via two independent
+// yaml.Unmarshal calls against the same bytes, each into a struct that only
+// declares the field it cares about. yaml.v3 doesn't validate the type of a
+// key a struct doesn't map, so a malformed value under one top-level key
+// can't blank the other -- only a file-read error or a top-level YAML
+// syntax error (which breaks parsing regardless of destination type)
+// empties both.
 func (cf *ConfigFile) contents() fileContents {
-	var result fileContents
-
-	data, err := os.ReadFile(cf.ConfigFile())
-	if err != nil {
-		return result
+	if cf.cachedContents != nil {
+		return *cf.cachedContents
 	}
 
-	if err := yaml.Unmarshal(data, &result); err != nil {
-		return result
-	}
+	result := cf.parseContents()
+	cf.cachedContents = &result
 
 	return result
+}
+
+func (cf *ConfigFile) parseContents() fileContents {
+	data, err := os.ReadFile(cf.ConfigFile())
+	if err != nil {
+		return fileContents{}
+	}
+
+	var providers struct {
+		Providers []provider `yaml:"providers"`
+	}
+	if err := yaml.Unmarshal(data, &providers); err != nil {
+		providers.Providers = nil
+	}
+
+	var specialCap struct {
+		SpecialCapitalization map[string]string `yaml:"special_capitalization"`
+	}
+	if err := yaml.Unmarshal(data, &specialCap); err != nil {
+		specialCap.SpecialCapitalization = nil
+	}
+
+	return fileContents{
+		Providers:             providers.Providers,
+		SpecialCapitalization: specialCap.SpecialCapitalization,
+	}
 }

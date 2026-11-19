@@ -15,6 +15,12 @@ import (
 type Git struct {
 	Debug    bool
 	Executor executor.ExecutorInterface
+
+	// remotes caches Remotes()'s result for this *Git's lifetime: `git
+	// remote -v` doesn't change within a single invocation, and several
+	// callers (RepoName, RemoteHosts) ask for it more than once.
+	remotes       []string
+	remotesCached bool
 }
 
 func NewGit(debug bool, executor executor.ExecutorInterface) *Git {
@@ -149,7 +155,7 @@ func (g *Git) PushBranch(branch string) {
 // RepoName is the owner/repo path (e.g. "emmahsax/go-git-helper") of the
 // origin remote's push URL, with any ".git" suffix stripped.
 func (g *Git) RepoName() string {
-	for _, line := range g.Remotes() {
+	for _, line := range g.originRemotes() {
 		if !strings.HasSuffix(strings.TrimSpace(line), "(push)") {
 			continue
 		}
@@ -165,25 +171,53 @@ func (g *Git) RepoName() string {
 }
 
 func (g *Git) Remotes() []string {
+	if g.remotesCached {
+		return g.remotes
+	}
+
 	output, err := g.Executor.Exec("actionAndOutput", "git", "remote", "-v")
 	if err != nil {
 		utils.HandleError(err, g.Debug, nil)
 		return []string{}
 	}
 
-	return utils.SplitLines(string(output))
+	g.remotes = utils.SplitLines(string(output))
+	g.remotesCached = true
+
+	return g.remotes
+}
+
+// originRemotes returns Remotes() filtered to the "origin" remote
+// specifically, not any other configured remote (e.g. upstream). A
+// repo-request command always targets origin, so detection, account
+// resolution, and the repo path it uses must all agree on that same
+// remote -- otherwise, e.g., a repo with origin on a self-hosted instance
+// and upstream on the public host could resolve the wrong account for the
+// repo actually being worked on.
+func (g *Git) originRemotes() []string {
+	var lines []string
+
+	for _, line := range g.Remotes() {
+		fields := strings.Fields(line)
+		if len(fields) > 0 && fields[0] == "origin" {
+			lines = append(lines, line)
+		}
+	}
+
+	return lines
 }
 
 // RemoteHosts returns the distinct, exact hosts (e.g. "github.com",
-// "gitlab.example.com") parsed from the repo's git remotes. Callers matching
-// against these should compare hosts exactly, not with substring
-// containment: a naive substring check would treat "gitlab.company.com" as
-// a match for "gitlab.com", or "git.example.com" as a match for
-// "sub.git.example.com".
+// "gitlab.example.com") parsed from the origin remote's URLs (fetch and
+// push, in case they ever differ) -- not any other configured remote.
+// Callers matching against these should compare hosts exactly, not with
+// substring containment: a naive substring check would treat
+// "gitlab.company.com" as a match for "gitlab.com", or "git.example.com" as
+// a match for "sub.git.example.com".
 func (g *Git) RemoteHosts() []string {
 	var hosts []string
 
-	for _, line := range g.Remotes() {
+	for _, line := range g.originRemotes() {
 		remote, ok := parseRemoteURL(remoteURLFromLine(line))
 		if !ok || slices.Contains(hosts, remote.Host) {
 			continue
