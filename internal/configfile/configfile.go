@@ -60,23 +60,31 @@ func (cf *ConfigFile) ConfigFileExists() bool {
 }
 
 func (cf *ConfigFile) GitHubUsername() string {
-	configFile := cf.configFileContents()
-	return configFile["github_username"]
+	return cf.providerUsername("github")
 }
 
 func (cf *ConfigFile) GitLabUsername() string {
-	configFile := cf.configFileContents()
-	return configFile["gitlab_username"]
+	return cf.providerUsername("gitlab")
 }
 
 func (cf *ConfigFile) GitHubToken() string {
-	configFile := cf.configFileContents()
-	return configFile["github_token"]
+	return cf.providerToken("github")
 }
 
 func (cf *ConfigFile) GitLabToken() string {
-	configFile := cf.configFileContents()
-	return configFile["gitlab_token"]
+	return cf.providerToken("gitlab")
+}
+
+// providerUsername and providerToken read a git provider's credentials out of
+// the config file. Keys follow the "<provider>_username"/"<provider>_token"
+// convention (e.g. "github_username", "gitlab_token"), so supporting a new
+// provider is a one-line wrapper method rather than a new lookup.
+func (cf *ConfigFile) providerUsername(provider string) string {
+	return cf.configFileContents()[provider+"_username"]
+}
+
+func (cf *ConfigFile) providerToken(provider string) string {
+	return cf.configFileContents()[provider+"_token"]
 }
 
 func (cf *ConfigFile) SpecialCapitalization() map[string]string {

@@ -1,4 +1,4 @@
-package gitlabMergeRequest
+package gitlab
 
 import (
 	"errors"
@@ -9,9 +9,8 @@ import (
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
-	"github.com/emmahsax/go-git-helper/internal/gitlab"
 	"github.com/emmahsax/go-git-helper/internal/utils"
-	go_gitlab "gitlab.com/gitlab-org/api/client-go/v3"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v3"
 )
 
 type GitLabMergeRequest struct {
@@ -41,7 +40,7 @@ func NewGitLabMergeRequest(options map[string]string, debug, interactiveMode boo
 func (mr *GitLabMergeRequest) Create() {
 	t := mr.determineTitle()
 
-	options := go_gitlab.CreateMergeRequestOptions{
+	options := gitlab.CreateMergeRequestOptions{
 		Description:        new(mr.newMrBody()),
 		RemoveSourceBranch: new(true),
 		SourceBranch:       new(mr.LocalBranch),
@@ -51,7 +50,7 @@ func (mr *GitLabMergeRequest) Create() {
 	}
 
 	fmt.Println("Creating merge request:", t)
-	resp, err := mr.gitlab().CreateMergeRequest(mr.LocalProject, &options)
+	resp, err := NewGitLab(mr.Debug).CreateMergeRequest(mr.LocalProject, &options)
 	if err != nil {
 		customErr := errors.New("could not create merge request: " + err.Error())
 		utils.HandleError(customErr, mr.Debug, nil)
@@ -158,8 +157,4 @@ func (mr *GitLabMergeRequest) mrTemplateOptions() []string {
 	}
 
 	return templateList
-}
-
-func (mr *GitLabMergeRequest) gitlab() *gitlab.GitLab {
-	return gitlab.NewGitLab(mr.Debug)
 }

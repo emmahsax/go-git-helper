@@ -1,4 +1,4 @@
-package gitlabMergeRequest
+package gitlab
 
 import (
 	"os"

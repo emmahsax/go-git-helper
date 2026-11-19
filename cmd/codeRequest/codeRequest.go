@@ -1,7 +1,6 @@
 package codeRequest
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -10,8 +9,8 @@ import (
 	"github.com/emmahsax/go-git-helper/internal/configfile"
 	"github.com/emmahsax/go-git-helper/internal/executor"
 	"github.com/emmahsax/go-git-helper/internal/git"
-	"github.com/emmahsax/go-git-helper/internal/githubPullRequest"
-	"github.com/emmahsax/go-git-helper/internal/gitlabMergeRequest"
+	"github.com/emmahsax/go-git-helper/internal/github"
+	"github.com/emmahsax/go-git-helper/internal/gitlab"
 	"github.com/emmahsax/go-git-helper/internal/utils"
 	"github.com/spf13/cobra"
 )
@@ -53,33 +52,73 @@ func newCodeRequest(debug, interactiveMode bool, executor executor.ExecutorInter
 	}
 }
 
-func (cr *CodeRequest) execute() {
-	if cr.isGitHub() && cr.isGitLab() {
-		cr.askForClarification()
-	} else if cr.isGitHub() {
-		cr.createGitHub()
-	} else if cr.isGitLab() {
-		cr.createGitLab()
-	} else {
-		err := errors.New("could not locate GitHub or GitLab remote URLs")
-		utils.HandleError(err, cr.Debug, nil)
-		return
+// codeRequestProvider pairs a git host provider's remote-detection and
+// request-creation logic. Supporting a new provider (e.g. Bitbucket) only
+// requires a new entry in providers(), plus its own detection method and
+// createX method (mirroring isGitHub/createGitHub) -- execute() and
+// askForClarification() don't need to change.
+type codeRequestProvider struct {
+	Name    string
+	Matches func(cr *CodeRequest) bool
+	Create  func(cr *CodeRequest)
+}
+
+func (cr *CodeRequest) providers() []codeRequestProvider {
+	return []codeRequestProvider{
+		{Name: "GitHub", Matches: (*CodeRequest).isGitHub, Create: (*CodeRequest).createGitHub},
+		{Name: "GitLab", Matches: (*CodeRequest).isGitLab, Create: (*CodeRequest).createGitLab},
 	}
 }
 
-func (cr *CodeRequest) askForClarification() {
+func (cr *CodeRequest) matchingProviders() []codeRequestProvider {
+	var matched []codeRequestProvider
+
+	for _, p := range cr.providers() {
+		if p.Matches(cr) {
+			matched = append(matched, p)
+		}
+	}
+
+	return matched
+}
+
+func (cr *CodeRequest) execute() {
+	matched := cr.matchingProviders()
+
+	switch len(matched) {
+	case 0:
+		names := make([]string, len(cr.providers()))
+		for i, p := range cr.providers() {
+			names[i] = p.Name
+		}
+		err := fmt.Errorf("could not locate a git remote for a supported provider (%s)", strings.Join(names, " or "))
+		utils.HandleError(err, cr.Debug, nil)
+	case 1:
+		matched[0].Create(cr)
+	default:
+		cr.askForClarification(matched)
+	}
+}
+
+func (cr *CodeRequest) askForClarification(matched []codeRequestProvider) {
+	names := make([]string, len(matched))
+	for i, p := range matched {
+		names[i] = p.Name
+	}
+
 	var answer string
 
 	if cr.InteractiveMode {
-		answer = commandline.AskMultipleChoice("Found git remotes for both GitHub and GitLab. Choose one to proceed with:", []string{"GitHub", "GitLab"})
+		answer = commandline.AskMultipleChoice("Found git remotes for multiple supported providers. Choose one to proceed with:", names)
 	} else {
-		answer = "GitHub"
+		answer = names[0]
 	}
 
-	if answer == "GitHub" {
-		cr.createGitHub()
-	} else {
-		cr.createGitLab()
+	for _, p := range matched {
+		if p.Name == answer {
+			p.Create(cr)
+			return
+		}
 	}
 }
 
@@ -92,7 +131,7 @@ func (cr *CodeRequest) createGitHub() {
 	options["gitRootDir"] = g.GetGitRootDir()
 	options["localBranch"] = g.CurrentBranch()
 	options["localRepo"] = g.RepoName()
-	githubPullRequest.NewGitHubPullRequest(options, cr.Debug, cr.InteractiveMode).Create()
+	github.NewGitHubPullRequest(options, cr.Debug, cr.InteractiveMode).Create()
 }
 
 func (cr *CodeRequest) createGitLab() {
@@ -104,7 +143,7 @@ func (cr *CodeRequest) createGitLab() {
 	options["gitRootDir"] = g.GetGitRootDir()
 	options["localBranch"] = g.CurrentBranch()
 	options["localProject"] = g.RepoName()
-	gitlabMergeRequest.NewGitLabMergeRequest(options, cr.Debug, cr.InteractiveMode).Create()
+	gitlab.NewGitLabMergeRequest(options, cr.Debug, cr.InteractiveMode).Create()
 }
 
 func (cr *CodeRequest) baseBranch() string {

@@ -104,21 +104,39 @@ func (s *Setup) createOrUpdateConfig() {
 	fmt.Printf("\nDone setting up %s\n\n", s.Config.ConfigFile())
 }
 
+// gitProviderCredentials lists each supported git provider's config keys and
+// prompts. Adding support for a new provider (e.g. Bitbucket) only requires a
+// new entry here, plus matching read methods on configfile.ConfigFileInterface.
+var gitProviderCredentials = []struct {
+	Name        string
+	UsernameKey string
+	TokenKey    string
+	TokenPrompt string
+}{
+	{
+		Name:        "GitHub",
+		UsernameKey: "github_username",
+		TokenKey:    "github_token",
+		TokenPrompt: "GitHub personal access token - navigate to https://github.com/settings/tokens to create a new personal access token",
+	},
+	{
+		Name:        "GitLab",
+		UsernameKey: "gitlab_username",
+		TokenKey:    "gitlab_token",
+		TokenPrompt: "GitLab personal access token - navigate to https://gitlab.com/-/profile/personal_access_tokens to create a new personal access token",
+	},
+}
+
 func (s *Setup) generateConfigFileContents() string {
 	var contents string
 
-	github := commandline.AskYesNoQuestion("Do you wish to set up GitHub credentials?")
+	for _, provider := range gitProviderCredentials {
+		setUp := commandline.AskYesNoQuestion("Do you wish to set up " + provider.Name + " credentials?")
 
-	if github {
-		contents = contents + "github_username: " + commandline.AskOpenEndedQuestion("GitHub username", "", false) + "\n"
-		contents = contents + "github_token: " + commandline.AskOpenEndedQuestion("GitHub personal access token - navigate to https://github.com/settings/tokens to create a new personal access token", "", true) + "\n"
-	}
-
-	gitlab := commandline.AskYesNoQuestion("Do you wish to set up GitLab credentials?")
-
-	if gitlab {
-		contents = contents + "gitlab_username: " + commandline.AskOpenEndedQuestion("GitLab username", "", false) + "\n"
-		contents = contents + "gitlab_token: " + commandline.AskOpenEndedQuestion("GitLab personal access token - navigate to https://gitlab.com/-/profile/personal_access_tokens to create a new personal access token", "", true) + "\n"
+		if setUp {
+			contents = contents + provider.UsernameKey + ": " + commandline.AskOpenEndedQuestion(provider.Name+" username", "", false) + "\n"
+			contents = contents + provider.TokenKey + ": " + commandline.AskOpenEndedQuestion(provider.TokenPrompt, "", true) + "\n"
+		}
 	}
 
 	contents = strings.TrimSpace(contents) + "\n"

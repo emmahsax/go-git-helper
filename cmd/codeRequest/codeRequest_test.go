@@ -308,6 +308,71 @@ origin  git@github.com:emmahsax/gitlab-project.git (push)`,
 	}
 }
 
+func Test_providers(t *testing.T) {
+	executor := &MockExecutor{Debug: true}
+	cr := newCodeRequest(true, true, executor)
+	providers := cr.providers()
+
+	if len(providers) != 2 {
+		t.Fatalf("expected 2 registered providers, got %d", len(providers))
+	}
+
+	names := []string{providers[0].Name, providers[1].Name}
+	if names[0] != "GitHub" || names[1] != "GitLab" {
+		t.Fatalf("expected [GitHub GitLab], got %v", names)
+	}
+}
+
+func Test_matchingProviders(t *testing.T) {
+	tests := []struct {
+		name     string
+		remotes  string
+		expected []string
+	}{
+		{
+			name: "GitHub only",
+			remotes: `origin  git@github.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.com:emmahsax/go-git-helper.git (push)`,
+			expected: []string{"GitHub"},
+		},
+		{
+			name: "GitLab only",
+			remotes: `origin  git@gitlab.com:emmahsax/go-git-helper.git (fetch)
+origin  git@gitlab.com:emmahsax/go-git-helper.git (push)`,
+			expected: []string{"GitLab"},
+		},
+		{
+			name: "neither",
+			remotes: `origin  git@bitbucket.org:emmahsax/go-git-helper.git (fetch)
+origin  git@bitbucket.org:emmahsax/go-git-helper.git (push)`,
+			expected: nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			executor := &MockExecutor{Debug: true, Output: []byte(test.remotes)}
+			cr := newCodeRequest(true, true, executor)
+			matched := cr.matchingProviders()
+
+			names := make([]string, len(matched))
+			for i, p := range matched {
+				names[i] = p.Name
+			}
+
+			if len(names) != len(test.expected) {
+				t.Fatalf("expected %v, got %v", test.expected, names)
+			}
+
+			for i := range names {
+				if names[i] != test.expected[i] {
+					t.Fatalf("expected %v, got %v", test.expected, names)
+				}
+			}
+		})
+	}
+}
+
 func Test_containsSubstring(t *testing.T) {
 	executor := &MockExecutor{Debug: true}
 	cr := newCodeRequest(true, true, executor)
