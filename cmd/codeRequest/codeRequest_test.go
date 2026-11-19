@@ -405,10 +405,12 @@ func Test_git_and_config_AreMemoized(t *testing.T) {
 origin  git@github.com:emmahsax/go-git-helper.git (push)`)}
 	cr := newCodeRequest(true, true, executor)
 
-	if cr.git() != cr.git() {
+	firstGit, secondGit := cr.git(), cr.git()
+	if firstGit != secondGit {
 		t.Error("expected git() to return the same *git.Git instance across calls")
 	}
-	if cr.config() != cr.config() {
+	firstConfig, secondConfig := cr.config(), cr.config()
+	if firstConfig != secondConfig {
 		t.Error("expected config() to return the same *configfile.ConfigFile instance across calls")
 	}
 
