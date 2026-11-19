@@ -286,6 +286,69 @@ origin  git@github.company.com:emmahsax/go-git-helper.git (push)`,
 	}
 }
 
+func Test_matchedGitHubHost_PublicAndEnterpriseConfigured(t *testing.T) {
+	homeDir := testutil.IsolateHome(t)
+	testutil.WriteConfig(t, homeDir, `providers:
+  - name: github
+    username: public-user
+    token: public-token
+  - name: github
+    username: work-user
+    token: work-token
+    hosts:
+      - github.example.com
+`)
+
+	tests := []struct {
+		name     string
+		remotes  string
+		expected string
+	}{
+		{
+			name: "public github.com remote",
+			remotes: `origin  git@github.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.com:emmahsax/go-git-helper.git (push)`,
+			expected: "github.com",
+		},
+		{
+			name: "Enterprise remote",
+			remotes: `origin  git@github.example.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.example.com:emmahsax/go-git-helper.git (push)`,
+			expected: "github.example.com",
+		},
+		{
+			name: "unrelated remote",
+			remotes: `origin  git@gitlab.com:emmahsax/go-git-helper.git (fetch)
+origin  git@gitlab.com:emmahsax/go-git-helper.git (push)`,
+			expected: "",
+		},
+		{
+			// Regression: a naive substring check would treat this as the
+			// public github.com (since "github.company.com" contains
+			// "github.com"), and use the wrong account's credentials.
+			name: "Enterprise domain that contains the public domain as a substring",
+			remotes: `origin  git@github.company.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.company.com:emmahsax/go-git-helper.git (push)`,
+			expected: "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			executor := &MockExecutor{Debug: true, Output: []byte(test.remotes)}
+			cr := newCodeRequest(true, true, executor)
+
+			if got := cr.matchedGitHubHost(); got != test.expected {
+				t.Errorf("expected host %q, got %q", test.expected, got)
+			}
+
+			if got := cr.isGitHub(); got != (test.expected != "") {
+				t.Errorf("expected isGitHub() %v, got %v", test.expected != "", got)
+			}
+		})
+	}
+}
+
 func Test_isGitLab(t *testing.T) {
 	tests := []struct {
 		remotes  string

@@ -104,20 +104,33 @@ func (s *Setup) createOrUpdateConfig() {
 	fmt.Printf("\nDone setting up %s\n\n", s.Config.ConfigFile())
 }
 
-// gitProviderCredentials lists each single-account git provider's setup
-// prompts (one config.yml entry, no self-hosting). Adding support for a new
-// single-account provider (e.g. Bitbucket) only requires a new entry here,
-// plus matching read methods on *configfile.ConfigFile. GitLab is handled
-// separately below, since it supports multiple accounts and self-hosting.
-var gitProviderCredentials = []struct {
+// gitProviderCredential describes one supported git provider's setup
+// prompts. Every provider can have multiple accounts (e.g. a public
+// github.com account alongside a separate Enterprise one) and each account
+// can list multiple self-hosted hostnames.
+type gitProviderCredential struct {
 	Key         string // matches the "name" written under providers, and read back in configfile.ConfigFile.providersNamed
 	Name        string // display name used in setup prompts
 	TokenPrompt string
-}{
+	HostPrompt  string
+}
+
+// gitProviderCredentials lists every supported git provider's setup
+// prompts. Adding support for a new provider (e.g. Bitbucket, Forgejo) only
+// requires a new entry here, plus matching read methods on
+// *configfile.ConfigFile (see GitHubCredentials/GitLabCredentials).
+var gitProviderCredentials = []gitProviderCredential{
 	{
 		Key:         "github",
 		Name:        "GitHub",
 		TokenPrompt: "GitHub personal access token - navigate to https://github.com/settings/tokens to create a new personal access token",
+		HostPrompt:  "GitHub host(s), if self-hosted/Enterprise (comma-separated if the instance has more than one hostname, leave blank to use the public github.com)",
+	},
+	{
+		Key:         "gitlab",
+		Name:        "GitLab",
+		TokenPrompt: "GitLab personal access token - navigate to https://gitlab.com/-/profile/personal_access_tokens to create a new personal access token",
+		HostPrompt:  "GitLab host(s), if self-hosted (comma-separated if the instance has more than one hostname, leave blank to use the public gitlab.com)",
 	},
 }
 
@@ -141,17 +154,8 @@ func (s *Setup) generateConfigFileContents() string {
 	var providerBlocks []string
 
 	for _, provider := range gitProviderCredentials {
-		setUp := commandline.AskYesNoQuestion("Do you wish to set up " + provider.Name + " credentials?")
-		if !setUp {
-			continue
-		}
-
-		providerBlocks = append(providerBlocks, "  - name: "+provider.Key+"\n"+
-			"    username: "+commandline.AskOpenEndedQuestion(provider.Name+" username", "", false)+"\n"+
-			"    token: "+commandline.AskOpenEndedQuestion(provider.TokenPrompt, "", true)+"\n")
+		providerBlocks = append(providerBlocks, s.providerAccountBlocks(provider)...)
 	}
-
-	providerBlocks = append(providerBlocks, s.gitLabProviderBlocks()...)
 
 	if len(providerBlocks) == 0 {
 		return "\n"
@@ -160,23 +164,22 @@ func (s *Setup) generateConfigFileContents() string {
 	return "providers:\n" + strings.Join(providerBlocks, "")
 }
 
-// gitLabProviderBlocks asks for one or more GitLab accounts -- e.g. a public
-// gitlab.com account alongside a separate self-hosted one -- looping until
-// the user is done adding accounts. Each account's host prompt accepts a
-// comma-separated list, since a single self-hosted instance may be reachable
-// under more than one hostname (an internal DNS alias alongside a public
-// one, say).
-func (s *Setup) gitLabProviderBlocks() []string {
+// providerAccountBlocks asks for one or more accounts for provider -- e.g. a
+// public github.com account alongside a separate Enterprise one -- looping
+// until the user is done adding accounts. Each account's host prompt accepts
+// a comma-separated list, since a single self-hosted instance may be
+// reachable under more than one hostname (an internal DNS alias alongside a
+// public one, say).
+func (s *Setup) providerAccountBlocks(provider gitProviderCredential) []string {
 	var blocks []string
 
-	question := "Do you wish to set up GitLab credentials?"
+	question := "Do you wish to set up " + provider.Name + " credentials?"
 	for commandline.AskYesNoQuestion(question) {
-		block := "  - name: gitlab\n" +
-			"    username: " + commandline.AskOpenEndedQuestion("GitLab username", "", false) + "\n" +
-			"    token: " + commandline.AskOpenEndedQuestion("GitLab personal access token - navigate to https://gitlab.com/-/profile/personal_access_tokens to create a new personal access token", "", true) + "\n"
+		block := "  - name: " + provider.Key + "\n" +
+			"    username: " + commandline.AskOpenEndedQuestion(provider.Name+" username", "", false) + "\n" +
+			"    token: " + commandline.AskOpenEndedQuestion(provider.TokenPrompt, "", true) + "\n"
 
-		hostPrompt := "GitLab host(s), if self-hosted (comma-separated if the instance has more than one hostname, leave blank to use the public gitlab.com)"
-		if hosts := commandline.AskOpenEndedQuestion(hostPrompt, "", false); hosts != "" {
+		if hosts := commandline.AskOpenEndedQuestion(provider.HostPrompt, "", false); hosts != "" {
 			block += "    hosts:\n"
 			for _, host := range strings.Split(hosts, ",") {
 				block += "      - " + strings.TrimSpace(host) + "\n"
@@ -185,7 +188,7 @@ func (s *Setup) gitLabProviderBlocks() []string {
 
 		blocks = append(blocks, block)
 
-		question = "Do you wish to set up another GitLab account (e.g. a different self-hosted instance)?"
+		question = "Do you wish to set up another " + provider.Name + " account (e.g. a different self-hosted instance)?"
 	}
 
 	return blocks

@@ -80,24 +80,23 @@ func (cf *ConfigFile) ConfigFileExists() bool {
 	return err == nil
 }
 
-func (cf *ConfigFile) GitHubUsername() string {
-	return cf.firstProvider("github").Username
+// GitHubHosts returns every self-hosted host configured across all "github"
+// provider entries (not the implicit public github.com).
+func (cf *ConfigFile) GitHubHosts() []string {
+	return cf.hostsFor("github")
 }
 
-func (cf *ConfigFile) GitHubToken() string {
-	return cf.firstProvider("github").Token
+// GitHubCredentials returns the username and token for the "github" provider
+// entry whose Hosts contains host. See GitLabCredentials for the exact
+// matching rules, which are identical.
+func (cf *ConfigFile) GitHubCredentials(host string) (username, token string) {
+	return cf.credentialsFor("github", host)
 }
 
 // GitLabHosts returns every self-hosted host configured across all "gitlab"
 // provider entries (not the implicit public gitlab.com).
 func (cf *ConfigFile) GitLabHosts() []string {
-	var hosts []string
-
-	for _, p := range cf.providersNamed("gitlab") {
-		hosts = append(hosts, p.Hosts...)
-	}
-
-	return hosts
+	return cf.hostsFor("gitlab")
 }
 
 // GitLabCredentials returns the username and token for the "gitlab" provider
@@ -105,7 +104,27 @@ func (cf *ConfigFile) GitLabHosts() []string {
 // any entry's Hosts, resolves to the entry with no Hosts configured (the
 // public gitlab.com account). Returns "", "" if nothing matches.
 func (cf *ConfigFile) GitLabCredentials(host string) (username, token string) {
-	providers := cf.providersNamed("gitlab")
+	return cf.credentialsFor("gitlab", host)
+}
+
+// hostsFor returns every self-hosted host configured across all of name's
+// provider entries (not whichever public URL an entry with no Hosts implies).
+func (cf *ConfigFile) hostsFor(name string) []string {
+	var hosts []string
+
+	for _, p := range cf.providersNamed(name) {
+		hosts = append(hosts, p.Hosts...)
+	}
+
+	return hosts
+}
+
+// credentialsFor returns the username and token for the name-named provider
+// entry whose Hosts contains host. An empty host, or one that doesn't match
+// any entry's Hosts, resolves to the entry with no Hosts configured (that
+// provider's public account). Returns "", "" if nothing matches.
+func (cf *ConfigFile) credentialsFor(name, host string) (username, token string) {
+	providers := cf.providersNamed(name)
 
 	for _, p := range providers {
 		if slices.Contains(p.Hosts, host) {
@@ -120,18 +139,6 @@ func (cf *ConfigFile) GitLabCredentials(host string) (username, token string) {
 	}
 
 	return "", ""
-}
-
-// firstProvider returns the first entry in the config file's providers list
-// matching name, or a zero-value provider if none is configured. Used for
-// providers that only ever have a single account (e.g. GitHub); GitLab uses
-// providersNamed directly since it supports more than one.
-func (cf *ConfigFile) firstProvider(name string) provider {
-	for _, p := range cf.providersNamed(name) {
-		return p
-	}
-
-	return provider{}
 }
 
 // providersNamed returns every entry in the config file's providers list

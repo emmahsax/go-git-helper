@@ -118,10 +118,19 @@ You could either have one set of tokens for each computer you use, or just have 
 
 ### Self-Hosted and Multiple Accounts
 
-GitLab supports more than one `providers` entry, so you can keep a public `gitlab.com` account and one or more self-hosted accounts side by side -- `code-request` picks whichever one matches the current repo's remote:
+Both GitHub and GitLab support more than one `providers` entry, so you can keep a public account and one or more self-hosted (GitHub Enterprise, or a self-hosted GitLab) accounts side by side -- `code-request` picks whichever one matches the current repo's remote:
 
 ```yaml
 providers:
+  - name: github
+    username: GITHUB-USERNAME
+    token: GITHUB-TOKEN
+    # no hosts -> the public github.com
+  - name: github
+    username: WORK-USERNAME
+    token: WORK-TOKEN
+    hosts:
+      - github.example.com
   - name: gitlab
     username: GITLAB-USERNAME
     token: GITLAB-TOKEN
@@ -134,7 +143,7 @@ providers:
       - git.internal.example.com # an alternate hostname for the same self-hosted instance
 ```
 
-An entry with no `hosts` is treated as the public `gitlab.com` account. `git-helper setup` will ask if you want to set up another GitLab account after the first, and accepts a comma-separated list for `hosts` when an instance is reachable under more than one hostname.
+An entry with no `hosts` is treated as that provider's public account. `git-helper setup` will ask if you want to set up another GitHub or GitLab account after the first, and accepts a comma-separated list for `hosts` when an instance is reachable under more than one hostname.
 
 ## General Usage
 

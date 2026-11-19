@@ -127,6 +127,7 @@ func (cr *CodeRequest) createGitHub() {
 	options := make(map[string]string)
 	options["baseBranch"] = cr.baseBranch()
 	options["draft"] = cr.draft()
+	options["host"] = cr.matchedGitHubHost()
 	options["newPrTitle"] = cr.newPrTitle()
 	g := git.NewGit(cr.Debug, cr.Executor)
 	options["gitRootDir"] = g.GetGitRootDir()
@@ -280,7 +281,32 @@ func (cr *CodeRequest) applySpecialCapitalization(title string) string {
 }
 
 func (cr *CodeRequest) isGitHub() bool {
-	return slices.Contains(git.NewGit(cr.Debug, cr.Executor).RemoteHosts(), "github.com")
+	return cr.matchedGitHubHost() != ""
+}
+
+// gitHubHosts is every host that counts as GitHub: the public github.com,
+// plus any self-hosted/Enterprise hosts from the "github" entries in
+// config.yml (there can be more than one, e.g. a public account alongside a
+// separate Enterprise one).
+func (cr *CodeRequest) gitHubHosts() []string {
+	return append([]string{github.PublicHost}, configfile.NewConfigFile(cr.Debug).GitHubHosts()...)
+}
+
+// matchedGitHubHost returns whichever of gitHubHosts() exactly matches one of
+// the repo's git remote hosts, or "" if none do. The result identifies which
+// configured GitHub account to use, since more than one may be configured.
+// Matching is exact, not substring-based: "github.company.com" must not
+// match "github.com", nor "git.example.com" match "sub.git.example.com".
+func (cr *CodeRequest) matchedGitHubHost() string {
+	remoteHosts := git.NewGit(cr.Debug, cr.Executor).RemoteHosts()
+
+	for _, host := range cr.gitHubHosts() {
+		if slices.Contains(remoteHosts, host) {
+			return host
+		}
+	}
+
+	return ""
 }
 
 func (cr *CodeRequest) isGitLab() bool {

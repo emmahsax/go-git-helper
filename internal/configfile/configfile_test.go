@@ -141,26 +141,6 @@ func createTestConfigFile(t *testing.T, content string) string {
 	return tempDir
 }
 
-func Test_GitHubUsername(t *testing.T) {
-	createTestConfigFile(t, "providers:\n  - name: github\n    username: testuser\n")
-
-	cf := NewConfigFile(false)
-	username := cf.GitHubUsername()
-	if username != "testuser" {
-		t.Errorf("Expected username 'testuser', got '%s'", username)
-	}
-}
-
-func Test_GitHubToken(t *testing.T) {
-	createTestConfigFile(t, "providers:\n  - name: github\n    token: ghp_token123\n")
-
-	cf := NewConfigFile(false)
-	token := cf.GitHubToken()
-	if token != "ghp_token123" {
-		t.Errorf("Expected token 'ghp_token123', got '%s'", token)
-	}
-}
-
 func Test_GitHubAndGitLab_BothConfigured(t *testing.T) {
 	createTestConfigFile(t, `providers:
   - name: github
@@ -175,19 +155,78 @@ func Test_GitHubAndGitLab_BothConfigured(t *testing.T) {
 
 	cf := NewConfigFile(false)
 
-	if cf.GitHubUsername() != "githubuser" {
-		t.Errorf("Expected GitHub username 'githubuser', got '%s'", cf.GitHubUsername())
+	githubUsername, githubToken := cf.GitHubCredentials("github.com")
+	if githubUsername != "githubuser" {
+		t.Errorf("Expected GitHub username 'githubuser', got '%s'", githubUsername)
 	}
-	if cf.GitHubToken() != "ghp_token123" {
-		t.Errorf("Expected GitHub token 'ghp_token123', got '%s'", cf.GitHubToken())
+	if githubToken != "ghp_token123" {
+		t.Errorf("Expected GitHub token 'ghp_token123', got '%s'", githubToken)
 	}
 
-	username, token := cf.GitLabCredentials("gitlab.example.com")
-	if username != "gitlabuser" {
-		t.Errorf("Expected GitLab username 'gitlabuser', got '%s'", username)
+	gitlabUsername, gitlabToken := cf.GitLabCredentials("gitlab.example.com")
+	if gitlabUsername != "gitlabuser" {
+		t.Errorf("Expected GitLab username 'gitlabuser', got '%s'", gitlabUsername)
 	}
-	if token != "glpat-token123" {
-		t.Errorf("Expected GitLab token 'glpat-token123', got '%s'", token)
+	if gitlabToken != "glpat-token123" {
+		t.Errorf("Expected GitLab token 'glpat-token123', got '%s'", gitlabToken)
+	}
+}
+
+func Test_GitHubHosts(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    token: public_token
+  - name: github
+    token: enterprise_token
+    hosts:
+      - github.example.com
+      - git.internal.example.com
+`)
+
+	cf := NewConfigFile(false)
+	hosts := cf.GitHubHosts()
+
+	expected := []string{"github.example.com", "git.internal.example.com"}
+	if len(hosts) != len(expected) {
+		t.Fatalf("Expected hosts %v, got %v", expected, hosts)
+	}
+	for i := range expected {
+		if hosts[i] != expected[i] {
+			t.Errorf("Expected hosts %v, got %v", expected, hosts)
+		}
+	}
+}
+
+func Test_GitHubCredentials_PublicAndSelfHosted(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: public_user
+    token: public_token
+  - name: github
+    username: work_user
+    token: work_token
+    hosts:
+      - github.example.com
+`)
+
+	cf := NewConfigFile(false)
+
+	if username, token := cf.GitHubCredentials("github.com"); username != "public_user" || token != "public_token" {
+		t.Errorf("Expected the public account for github.com, got ('%s', '%s')", username, token)
+	}
+
+	if username, token := cf.GitHubCredentials("github.example.com"); username != "work_user" || token != "work_token" {
+		t.Errorf("Expected the Enterprise account for github.example.com, got ('%s', '%s')", username, token)
+	}
+}
+
+func Test_GitHubCredentials_NoneConfigured(t *testing.T) {
+	testutil.IsolateHome(t)
+
+	cf := NewConfigFile(false)
+	username, token := cf.GitHubCredentials("github.com")
+	if username != "" || token != "" {
+		t.Errorf("Expected ('', ''), got ('%s', '%s')", username, token)
 	}
 }
 
@@ -333,21 +372,21 @@ func Test_SpecialCapitalization_FileNotFound(t *testing.T) {
 	}
 }
 
-func Test_GitHubToken_InvalidYAML(t *testing.T) {
+func Test_GitHubCredentials_InvalidYAML(t *testing.T) {
 	createTestConfigFile(t, "providers: [this is not: valid: yaml\n")
 
 	cf := NewConfigFile(false)
-	token := cf.GitHubToken()
+	_, token := cf.GitHubCredentials("github.com")
 	if token != "" {
 		t.Errorf("Expected an empty token for invalid YAML, got '%s'", token)
 	}
 }
 
-func Test_GitHubToken_FileNotFound(t *testing.T) {
+func Test_GitHubCredentials_FileNotFound(t *testing.T) {
 	testutil.IsolateHome(t)
 
 	cf := NewConfigFile(false)
-	token := cf.GitHubToken()
+	_, token := cf.GitHubCredentials("github.com")
 	if token != "" {
 		t.Errorf("Expected an empty token when the config file doesn't exist, got '%s'", token)
 	}

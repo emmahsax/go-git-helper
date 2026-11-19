@@ -60,6 +60,8 @@ func Test_createOrUpdateConfig(t *testing.T) {
   - name: github
     username: hello_world
     token: hello_world
+    hosts:
+      - hello_world
   - name: gitlab
     username: hello_world
     token: hello_world
@@ -152,6 +154,8 @@ func Test_generateConfigFileContents(t *testing.T) {
   - name: github
     username: hello_world
     token: hello_world
+    hosts:
+      - hello_world
   - name: gitlab
     username: hello_world
     token: hello_world
@@ -250,6 +254,60 @@ func Test_generateConfigFileContents_MultipleGitLabAccounts(t *testing.T) {
     hosts:
       - gitlab.example.com
       - git.internal.example.com
+`
+	if contents != expectedContents {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expectedContents, contents)
+	}
+}
+
+func Test_generateConfigFileContents_MultipleGitHubAccounts(t *testing.T) {
+	originalAskYesNoQuestion := commandline.AskYesNoQuestion
+	t.Cleanup(func() {
+		commandline.AskYesNoQuestion = originalAskYesNoQuestion
+	})
+	yesNoCall := 0
+	commandline.AskYesNoQuestion = func(question string) bool {
+		yesNoCall++
+		switch yesNoCall {
+		case 1: // Set up GitHub credentials?
+			return true
+		case 2: // Set up another GitHub account?
+			return true
+		case 3: // Set up another GitHub account? (asked again, stop here)
+			return false
+		default: // Set up GitLab credentials?
+			return false
+		}
+	}
+
+	originalAskOpenEndedQuestion := commandline.AskOpenEndedQuestion
+	t.Cleanup(func() {
+		commandline.AskOpenEndedQuestion = originalAskOpenEndedQuestion
+	})
+	openEndedCall := 0
+	responses := []string{
+		"public-user", "public-token", "", // first (public) account
+		"work-user", "work-token", "github.example.com", // second (Enterprise) account
+	}
+	commandline.AskOpenEndedQuestion = func(question, defaultVal string, secret bool) string {
+		defer func() { openEndedCall++ }()
+		return responses[openEndedCall]
+	}
+
+	executor := &MockExecutor{Debug: true}
+	configFile := &MockConfig{Dir: t.TempDir(), Debug: true}
+	s := newSetup(true, executor, configFile)
+	contents := s.generateConfigFileContents()
+
+	expectedContents := `providers:
+  - name: github
+    username: public-user
+    token: public-token
+  - name: github
+    username: work-user
+    token: work-token
+    hosts:
+      - github.example.com
 `
 	if contents != expectedContents {
 		t.Errorf("Expected:\n%s\nGot:\n%s", expectedContents, contents)

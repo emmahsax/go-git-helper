@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/emmahsax/go-git-helper/internal/testutil"
@@ -15,7 +16,7 @@ func Test_NewGitHub(t *testing.T) {
 
 	// This test requires a valid config file with GitHub token
 	// We'll test that the struct is created properly
-	gh := NewGitHub(false)
+	gh := NewGitHub(PublicHost, false)
 
 	if gh == nil {
 		t.Fatal("Expected NewGitHub to return a non-nil GitHub struct")
@@ -33,7 +34,7 @@ func Test_NewGitHub(t *testing.T) {
 func Test_NewGitHub_WithDebug(t *testing.T) {
 	testutil.WriteConfig(t, testutil.IsolateHome(t), "providers:\n  - name: github\n    token: test_token\n")
 
-	gh := NewGitHub(true)
+	gh := NewGitHub(PublicHost, true)
 
 	if gh == nil {
 		t.Fatal("Expected NewGitHub to return a non-nil GitHub struct")
@@ -41,6 +42,27 @@ func Test_NewGitHub_WithDebug(t *testing.T) {
 
 	if gh.Debug != true {
 		t.Errorf("Expected Debug to be true, got %v", gh.Debug)
+	}
+}
+
+func Test_NewGitHub_EnterpriseAccount(t *testing.T) {
+	testutil.WriteConfig(t, testutil.IsolateHome(t), `providers:
+  - name: github
+    token: public_token
+  - name: github
+    token: enterprise_token
+    hosts:
+      - github.example.com
+`)
+
+	gh := NewGitHub("github.example.com", false)
+
+	if gh == nil {
+		t.Fatal("Expected NewGitHub to return a non-nil GitHub struct")
+	}
+
+	if got := gh.Client.BaseURL(); !strings.Contains(got, "github.example.com") {
+		t.Errorf("Expected BaseURL to contain 'github.example.com', got '%s'", got)
 	}
 }
 
@@ -152,7 +174,7 @@ func Test_CreatePullRequest_Error(t *testing.T) {
 
 func Test_newGitHubClient(t *testing.T) {
 	token := "test-token-123"
-	client := newGitHubClient(token, false)
+	client := newGitHubClient(token, "", false)
 
 	if client == nil {
 		t.Fatal("Expected client to be non-nil")
@@ -170,4 +192,28 @@ func Test_newGitHubClient_EmptyToken(t *testing.T) {
 	// newGitHubClient exits via HandleError (os.Exit) rather than returning
 	// a client. This mirrors Test_CreatePullRequest_Error above.
 	t.Skip("Skipping test that would call os.Exit on an empty token")
+}
+
+func Test_newGitHubClient_PublicHostExplicit(t *testing.T) {
+	client := newGitHubClient("test-token", PublicHost, false)
+
+	if client == nil {
+		t.Fatal("Expected client to be non-nil")
+	}
+
+	if got := client.BaseURL(); strings.Contains(got, "github.example.com") {
+		t.Errorf("Expected the default BaseURL, not a custom one, got '%s'", got)
+	}
+}
+
+func Test_newGitHubClient_EnterpriseHost(t *testing.T) {
+	client := newGitHubClient("test-token", "github.example.com", false)
+
+	if client == nil {
+		t.Fatal("Expected client to be non-nil")
+	}
+
+	if got := client.BaseURL(); !strings.Contains(got, "github.example.com") {
+		t.Errorf("Expected BaseURL to contain 'github.example.com', got '%s'", got)
+	}
 }
