@@ -49,10 +49,15 @@ func (pr *ForgejoPullRequest) Create() {
 		Title: pr.determineTitle(),
 	}
 
-	repo := strings.Split(pr.LocalRepo, "/")
+	owner, repoName, ok := splitOwnerRepo(pr.LocalRepo)
+	if !ok {
+		customErr := fmt.Errorf("could not parse an owner/repo pair from %q", pr.LocalRepo)
+		utils.HandleError(customErr, pr.Debug, nil)
+		return
+	}
 
 	fmt.Println("Creating pull request:", options.Title)
-	resp, err := NewForgejo(pr.Host, pr.Username, pr.Debug).CreatePullRequest(repo[0], repo[1], options)
+	resp, err := NewForgejo(pr.Host, pr.Username, pr.Debug).CreatePullRequest(owner, repoName, options)
 	if err != nil {
 		customErr := errors.New("could not create pull request: " + err.Error())
 		utils.HandleError(customErr, pr.Debug, nil)
@@ -62,6 +67,22 @@ func (pr *ForgejoPullRequest) Create() {
 	pr.warnIfDraftMismatched(resp.Draft)
 
 	fmt.Println("Pull request successfully created:", resp.HTMLURL)
+}
+
+// splitOwnerRepo splits "owner/repo" into its two parts. ok is false for
+// any other shape, which git.RepoName (via parseRemoteURL) can actually
+// return: an scp-like remote with no owner segment in its path (e.g.
+// "git@forgejo.example.com:reponame.git", plausible on a self-hosted
+// instance) parses to a path with no "/" at all. Without this check,
+// Create would index past the end of a 1-element slice and panic instead
+// of reporting a clear error.
+func splitOwnerRepo(localRepo string) (owner, repoName string, ok bool) {
+	parts := strings.Split(localRepo, "/")
+	if len(parts) != 2 {
+		return "", "", false
+	}
+
+	return parts[0], parts[1], true
 }
 
 // warnIfDraftMismatched tells the user when the server didn't treat the
@@ -112,12 +133,10 @@ func (pr *ForgejoPullRequest) newPrBody() string {
 // GitHub/GitLab's templateNameToApply -- there's never a choice to make
 // between several, only whether to use the one that exists.
 func (pr *ForgejoPullRequest) templateNameToApply() string {
-	options := pr.prTemplateOptions()
-	if len(options) == 0 {
+	template := pr.templateName()
+	if template == "" {
 		return ""
 	}
-
-	template := options[0]
 
 	var applyTemplate bool
 	if pr.InteractiveMode {
@@ -149,27 +168,27 @@ func (pr *ForgejoPullRequest) relativeToGitRoot(path string) string {
 	return rel
 }
 
-// prTemplateOptions returns every pull request template Forgejo itself would
-// recognize for this repo. Forgejo allows at most one: it checks each of
-// these directories, in order, for one of a few fixed filenames, and uses the
-// first match -- there's no nested multi-template directory like GitHub's
-// PULL_REQUEST_TEMPLATE/, and no root-level file.
-func (pr *ForgejoPullRequest) prTemplateOptions() []string {
+// templateName returns the single pull request template Forgejo itself
+// would recognize for this repo, or "" if none exists. It checks each of
+// these directories, in order, for one of a few fixed filenames, and stops
+// at the first match -- there's no nested multi-template directory like
+// GitHub's PULL_REQUEST_TEMPLATE/, and no root-level file, so (unlike
+// GitHub/GitLab's equivalent) there's never a reason to collect every match.
+func (pr *ForgejoPullRequest) templateName() string {
 	dirs := []string{".forgejo", ".gitea", ".github", "docs"}
 	names := []string{
 		"PULL_REQUEST_TEMPLATE.md", "PULL_REQUEST_TEMPLATE.yaml", "PULL_REQUEST_TEMPLATE.yml",
 		"pull_request_template.md", "pull_request_template.yaml", "pull_request_template.yml",
 	}
 
-	var found []string
 	for _, dir := range dirs {
 		for _, name := range names {
 			path := filepath.Join(pr.GitRootDir, dir, name)
 			if _, err := os.Stat(path); err == nil {
-				found = append(found, path)
+				return path
 			}
 		}
 	}
 
-	return found
+	return ""
 }

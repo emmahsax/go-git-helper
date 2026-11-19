@@ -47,8 +47,8 @@ func Test_NewForgejo_WithDebug(t *testing.T) {
 // tests -- unlike the equivalent GitHub/GitLab ones -- can only confirm
 // NewForgejo/newForgejoClient build a client without erroring, not which
 // host it actually targets. That host-selection logic is still covered
-// indirectly: it's identical to accountsFor's (see
-// Test_GitHubAccounts_SSHAliasOnlyMatchesConfiguredHost and friends in
+// indirectly: it's identical to Accounts's (see
+// Test_GitHubAccounts_SSHAliasKeepsPublicAPIHost and friends in
 // configfile_test.go), just reading APIHost instead of Token.
 
 func Test_NewForgejo_SelfHostedAccount(t *testing.T) {

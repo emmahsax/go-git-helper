@@ -67,6 +67,13 @@ func (c *Forgejo) CreatePullRequest(owner, repo string, options forgejo.CreatePu
 // self-hosted instance shouldn't fail client construction before the real
 // request (CreatePullRequest) even gets a chance to run and report the
 // actual problem.
+//
+// This sets ignoreVersion client-wide, not just for CreatePullRequest: if a
+// future change to this package adds a call the SDK does version-gate (e.g.
+// milestones/labels), it'll silently skip that check too, trading the SDK's
+// clear "forgejo server is older than X" message for whatever raw error an
+// incompatible old server happens to return instead. Revisit this if that
+// happens.
 func newForgejoClient(token, apiHost string, debugB bool) (*forgejo.Client, error) {
 	host := apiHost
 	if host == "" {

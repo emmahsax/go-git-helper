@@ -67,6 +67,41 @@ func Test_determineTitle_NotDraft(t *testing.T) {
 	}
 }
 
+func Test_splitOwnerRepo(t *testing.T) {
+	tests := []struct {
+		name          string
+		localRepo     string
+		expectedOwner string
+		expectedRepo  string
+		expectedOK    bool
+	}{
+		{"owner/repo", "emmahsax/go-git-helper", "emmahsax", "go-git-helper", true},
+		{
+			// Regression: an scp-like remote with no owner segment in its
+			// path (e.g. "git@forgejo.example.com:reponame.git") parses to
+			// a path with no "/" at all -- this must not panic.
+			name:       "no slash",
+			localRepo:  "reponame",
+			expectedOK: false,
+		},
+		{"too many slashes", "a/b/c", "", "", false},
+		{"empty", "", "", "", false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			owner, repoName, ok := splitOwnerRepo(test.localRepo)
+
+			if ok != test.expectedOK {
+				t.Fatalf("expected ok=%v, got %v", test.expectedOK, ok)
+			}
+			if ok && (owner != test.expectedOwner || repoName != test.expectedRepo) {
+				t.Errorf("expected (%q, %q), got (%q, %q)", test.expectedOwner, test.expectedRepo, owner, repoName)
+			}
+		})
+	}
+}
+
 func Test_newPrBody(t *testing.T) {
 	tempDir := t.TempDir()
 
@@ -176,7 +211,7 @@ func Test_templateNameToApply_NonInteractiveAlwaysApplies(t *testing.T) {
 	}
 }
 
-func Test_prTemplateOptions(t *testing.T) {
+func Test_templateName_FindsFirstMatchInDirOrder(t *testing.T) {
 	tempDir := t.TempDir()
 
 	if err := os.MkdirAll(filepath.Join(tempDir, ".forgejo"), 0755); err != nil {
@@ -186,8 +221,13 @@ func Test_prTemplateOptions(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Written with the exact casing templateName checks first
+	// ("PULL_REQUEST_TEMPLATE.md" before any lowercase variant) so the
+	// expected path below is unambiguous even on a case-insensitive
+	// filesystem (macOS, Windows), where a lowercase-named file would also
+	// satisfy an os.Stat of the uppercase variant.
 	files := []string{
-		filepath.Join(".forgejo", "pull_request_template.md"),
+		filepath.Join(".forgejo", "PULL_REQUEST_TEMPLATE.md"),
 		filepath.Join("docs", "PULL_REQUEST_TEMPLATE.yaml"),
 	}
 	for _, file := range files {
@@ -196,47 +236,29 @@ func Test_prTemplateOptions(t *testing.T) {
 		}
 	}
 
-	// Not a recognized location/filename -- must not be picked up.
+	// Not a recognized location/filename -- must not be picked up, even
+	// though it would be checked first if it were.
 	if err := os.WriteFile(filepath.Join(tempDir, "pull_request_template.md"), []byte("content"), 0644); err != nil {
 		t.Fatal(err)
 	}
 
 	pr := &ForgejoPullRequest{GitRootDir: tempDir}
 
-	// Checked as a subset, not exact equality: on a case-insensitive
-	// filesystem (macOS, Windows), stat-ing both "pull_request_template.md"
-	// and "PULL_REQUEST_TEMPLATE.md" can each report the one file written as
-	// existing, adding a harmless duplicate to the result (prTemplateOptions
-	// only ever uses the first entry, so a duplicate changes nothing
-	// user-visible). What matters here is that both real files were found,
-	// and the unrecognized root-level file wasn't.
-	want := []string{
-		filepath.Join(tempDir, ".forgejo", "pull_request_template.md"),
-		filepath.Join(tempDir, "docs", "PULL_REQUEST_TEMPLATE.yaml"),
-	}
-	actual := pr.prTemplateOptions()
+	// .forgejo is checked before docs, so that's the one that must win even
+	// though both files exist.
+	expected := filepath.Join(tempDir, ".forgejo", "PULL_REQUEST_TEMPLATE.md")
+	actual := pr.templateName()
 
-	actualSet := make(map[string]bool, len(actual))
-	for _, path := range actual {
-		actualSet[path] = true
-	}
-	for _, path := range want {
-		if !actualSet[path] {
-			t.Errorf("expected %s to be found, got %v", path, actual)
-		}
-	}
-	if actualSet[filepath.Join(tempDir, "pull_request_template.md")] {
-		t.Errorf("root-level pull_request_template.md is not a recognized Forgejo template location, got %v", actual)
+	if actual != expected {
+		t.Errorf("expected %s, got %s", expected, actual)
 	}
 }
 
-func Test_prTemplateOptions_None(t *testing.T) {
+func Test_templateName_None(t *testing.T) {
 	pr := &ForgejoPullRequest{GitRootDir: t.TempDir()}
 
-	actual := pr.prTemplateOptions()
-
-	if len(actual) != 0 {
-		t.Errorf("expected no templates, got %v", actual)
+	if actual := pr.templateName(); actual != "" {
+		t.Errorf("expected no template, got %s", actual)
 	}
 }
 
