@@ -1,7 +1,6 @@
 package codeRequest
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -10,8 +9,8 @@ import (
 	"github.com/emmahsax/go-git-helper/internal/configfile"
 	"github.com/emmahsax/go-git-helper/internal/executor"
 	"github.com/emmahsax/go-git-helper/internal/git"
-	"github.com/emmahsax/go-git-helper/internal/githubPullRequest"
-	"github.com/emmahsax/go-git-helper/internal/gitlabMergeRequest"
+	"github.com/emmahsax/go-git-helper/internal/github"
+	"github.com/emmahsax/go-git-helper/internal/gitlab"
 	"github.com/emmahsax/go-git-helper/internal/utils"
 	"github.com/spf13/cobra"
 )
@@ -20,6 +19,32 @@ type CodeRequest struct {
 	Debug           bool
 	Executor        executor.ExecutorInterface
 	InteractiveMode bool
+
+	// gitClient and configFile memoize git()/config() for this invocation's
+	// lifetime: both are asked for more than once (detection, then again
+	// when actually creating the request), and each already caches its own
+	// underlying subprocess call / file read -- but only if the same
+	// instance is reused rather than reconstructed each time.
+	gitClient  *git.Git
+	configFile *configfile.ConfigFile
+}
+
+// git returns a *git.Git shared across this invocation.
+func (cr *CodeRequest) git() *git.Git {
+	if cr.gitClient == nil {
+		cr.gitClient = git.NewGit(cr.Debug, cr.Executor)
+	}
+
+	return cr.gitClient
+}
+
+// config returns a *configfile.ConfigFile shared across this invocation.
+func (cr *CodeRequest) config() *configfile.ConfigFile {
+	if cr.configFile == nil {
+		cr.configFile = configfile.NewConfigFile(cr.Debug)
+	}
+
+	return cr.configFile
 }
 
 func NewCommand() *cobra.Command {
@@ -53,68 +78,137 @@ func newCodeRequest(debug, interactiveMode bool, executor executor.ExecutorInter
 	}
 }
 
-func (cr *CodeRequest) execute() {
-	if cr.isGitHub() && cr.isGitLab() {
-		cr.askForClarification()
-	} else if cr.isGitHub() {
-		cr.createGitHub()
-	} else if cr.isGitLab() {
-		cr.createGitLab()
-	} else {
-		err := errors.New("could not locate GitHub or GitLab remote URLs")
-		utils.HandleError(err, cr.Debug, nil)
-		return
+// codeRequestProvider pairs a git host provider's remote-detection and
+// request-creation logic. Supporting a new provider (e.g. Bitbucket) only
+// requires a new entry in providers(), plus its own detection method and
+// createX method (mirroring isGitHub/createGitHub) -- execute() and
+// askForClarification() don't need to change.
+type codeRequestProvider struct {
+	Name    string
+	Matches func(cr *CodeRequest) bool
+	Create  func(cr *CodeRequest)
+}
+
+func (cr *CodeRequest) providers() []codeRequestProvider {
+	return []codeRequestProvider{
+		{Name: "GitHub", Matches: (*CodeRequest).isGitHub, Create: (*CodeRequest).createGitHub},
+		{Name: "GitLab", Matches: (*CodeRequest).isGitLab, Create: (*CodeRequest).createGitLab},
 	}
 }
 
-func (cr *CodeRequest) askForClarification() {
+func (cr *CodeRequest) matchingProviders() []codeRequestProvider {
+	var matched []codeRequestProvider
+
+	for _, p := range cr.providers() {
+		if p.Matches(cr) {
+			matched = append(matched, p)
+		}
+	}
+
+	return matched
+}
+
+func (cr *CodeRequest) execute() {
+	matched := cr.matchingProviders()
+
+	switch len(matched) {
+	case 0:
+		names := make([]string, len(cr.providers()))
+		for i, p := range cr.providers() {
+			names[i] = p.Name
+		}
+		err := fmt.Errorf("could not locate a git remote for a supported provider (%s)", strings.Join(names, " or "))
+		utils.HandleError(err, cr.Debug, nil)
+	case 1:
+		matched[0].Create(cr)
+	default:
+		cr.askForClarification(matched)
+	}
+}
+
+func (cr *CodeRequest) askForClarification(matched []codeRequestProvider) {
+	names := make([]string, len(matched))
+	for i, p := range matched {
+		names[i] = p.Name
+	}
+
 	var answer string
 
 	if cr.InteractiveMode {
-		answer = commandline.AskMultipleChoice("Found git remotes for both GitHub and GitLab. Choose one to proceed with:", []string{"GitHub", "GitLab"})
+		answer = commandline.AskMultipleChoice("Found git remotes for multiple supported providers. Choose one to proceed with:", names)
 	} else {
-		answer = "GitHub"
+		answer = names[0]
 	}
 
-	if answer == "GitHub" {
-		cr.createGitHub()
-	} else {
-		cr.createGitLab()
+	for _, p := range matched {
+		if p.Name == answer {
+			p.Create(cr)
+			return
+		}
 	}
 }
 
 func (cr *CodeRequest) createGitHub() {
+	host := cr.matchedGitHubHost()
+
 	options := make(map[string]string)
 	options["baseBranch"] = cr.baseBranch()
 	options["draft"] = cr.draft()
+	options["host"] = host
+	options["username"] = cr.chosenUsername("GitHub", cr.config().GitHubAccounts(host))
 	options["newPrTitle"] = cr.newPrTitle()
-	g := git.NewGit(cr.Debug, cr.Executor)
+	g := cr.git()
 	options["gitRootDir"] = g.GetGitRootDir()
 	options["localBranch"] = g.CurrentBranch()
 	options["localRepo"] = g.RepoName()
-	githubPullRequest.NewGitHubPullRequest(options, cr.Debug, cr.InteractiveMode).Create()
+	github.NewGitHubPullRequest(options, cr.Debug, cr.InteractiveMode).Create()
 }
 
 func (cr *CodeRequest) createGitLab() {
+	host := cr.matchedGitLabHost()
+
 	options := make(map[string]string)
 	options["baseBranch"] = cr.baseBranch()
 	options["draft"] = cr.draft()
+	options["host"] = host
+	options["username"] = cr.chosenUsername("GitLab", cr.config().GitLabAccounts(host))
 	options["newMrTitle"] = cr.newMrTitle()
-	g := git.NewGit(cr.Debug, cr.Executor)
+	g := cr.git()
 	options["gitRootDir"] = g.GetGitRootDir()
 	options["localBranch"] = g.CurrentBranch()
 	options["localProject"] = g.RepoName()
-	gitlabMergeRequest.NewGitLabMergeRequest(options, cr.Debug, cr.InteractiveMode).Create()
+	gitlab.NewGitLabMergeRequest(options, cr.Debug, cr.InteractiveMode).Create()
+}
+
+// chosenUsername disambiguates which account to use when more than one
+// candidate (as returned by configfile.GitHubAccounts/GitLabAccounts)
+// resolves to the same remote host -- e.g. a personal and a work account
+// that are both just the public github.com/gitlab.com, told apart only by
+// an SSH remote alias on one of them. Asks interactively when there's a
+// real choice to make; otherwise (including non-interactive mode, where
+// nothing can answer a prompt) returns "", leaving
+// configfile.ResolveAccount's default of the first configured account.
+func (cr *CodeRequest) chosenUsername(providerName string, candidates []configfile.Account) string {
+	if len(candidates) < 2 || !cr.InteractiveMode {
+		return ""
+	}
+
+	usernames := make([]string, len(candidates))
+	for i, a := range candidates {
+		usernames[i] = a.Username
+	}
+
+	return commandline.AskMultipleChoice("Found multiple "+providerName+" accounts for this remote. Choose one to use:", usernames)
 }
 
 func (cr *CodeRequest) baseBranch() string {
-	defaultBranch := git.NewGit(cr.Debug, cr.Executor).DefaultBranch()
+	defaultBranch := cr.git().DefaultBranch()
 
 	if !cr.InteractiveMode {
 		return defaultBranch
 	}
 
-	return commandline.AskOpenEndedQuestion("Base branch", defaultBranch, false)
+	return commandline.AskOpenEndedQuestion("Base branch", defaultBranch, false, true)
 }
 
 func (cr *CodeRequest) draft() string {
@@ -140,11 +234,11 @@ func (cr *CodeRequest) newPrTitle() string {
 		return autogeneratedTitle
 	}
 
-	return commandline.AskOpenEndedQuestion("Title", autogeneratedTitle, false)
+	return commandline.AskOpenEndedQuestion("Title", autogeneratedTitle, false, true)
 }
 
 func (cr *CodeRequest) autogeneratedTitle() string {
-	g := git.NewGit(cr.Debug, cr.Executor)
+	g := cr.git()
 	branchArr := strings.FieldsFunc(g.CurrentBranch(), func(r rune) bool {
 		return r == '-' || r == '_'
 	})
@@ -198,7 +292,7 @@ func (cr *CodeRequest) titleize(s string) string {
 }
 
 func (cr *CodeRequest) applySpecialCapitalization(title string) string {
-	cf := configfile.NewConfigFile(cr.Debug)
+	cf := cr.config()
 	capitalizationMap := cf.SpecialCapitalization()
 
 	if len(capitalizationMap) == 0 {
@@ -239,19 +333,61 @@ func (cr *CodeRequest) applySpecialCapitalization(title string) string {
 }
 
 func (cr *CodeRequest) isGitHub() bool {
-	return cr.containsSubstring(git.NewGit(cr.Debug, cr.Executor).Remotes(), "github.com")
+	return cr.matchedGitHubHost() != ""
 }
 
-func (cr *CodeRequest) isGitLab() bool {
-	return cr.containsSubstring(git.NewGit(cr.Debug, cr.Executor).Remotes(), "gitlab.com")
+// gitHubHosts is every host that counts as GitHub: the public github.com,
+// plus any self-hosted/Enterprise hosts from the "github" entries in
+// config.yml (there can be more than one, e.g. a public account alongside a
+// separate Enterprise one).
+func (cr *CodeRequest) gitHubHosts() []string {
+	return append([]string{github.PublicHost}, cr.config().GitHubHosts()...)
 }
 
-func (cr *CodeRequest) containsSubstring(strs []string, substring string) bool {
-	for _, str := range strs {
-		if strings.Contains(str, substring) {
-			return true
+// matchedGitHubHost returns whichever of gitHubHosts() matches one of the
+// repo's git remote hosts, or "" if none do. The result identifies which
+// configured GitHub account to use, since more than one may be configured.
+// Matching is exact (case-insensitively) and not substring-based:
+// "github.company.com" must not match "github.com", nor "git.example.com"
+// match "sub.git.example.com".
+func (cr *CodeRequest) matchedGitHubHost() string {
+	remoteHosts := cr.git().RemoteHosts()
+
+	for _, host := range cr.gitHubHosts() {
+		if utils.ContainsFold(remoteHosts, host) {
+			return host
 		}
 	}
 
-	return false
+	return ""
+}
+
+func (cr *CodeRequest) isGitLab() bool {
+	return cr.matchedGitLabHost() != ""
+}
+
+// gitLabHosts is every host that counts as GitLab: the public gitlab.com,
+// plus any self-hosted hosts from the "gitlab" entries in config.yml (there
+// can be more than one, e.g. a public account alongside a separate
+// self-hosted one).
+func (cr *CodeRequest) gitLabHosts() []string {
+	return append([]string{gitlab.PublicHost}, cr.config().GitLabHosts()...)
+}
+
+// matchedGitLabHost returns whichever of gitLabHosts() matches one of the
+// repo's git remote hosts, or "" if none do. The result identifies which
+// configured GitLab account to use, since more than one may be configured.
+// Matching is exact (case-insensitively) and not substring-based:
+// "gitlab.company.com" must not match "gitlab.com", nor "git.example.com"
+// match "sub.git.example.com".
+func (cr *CodeRequest) matchedGitLabHost() string {
+	remoteHosts := cr.git().RemoteHosts()
+
+	for _, host := range cr.gitLabHosts() {
+		if utils.ContainsFold(remoteHosts, host) {
+			return host
+		}
+	}
+
+	return ""
 }

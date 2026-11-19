@@ -1,4 +1,4 @@
-package githubPullRequest
+package github
 
 import (
 	"errors"
@@ -10,9 +10,8 @@ import (
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
-	"github.com/emmahsax/go-git-helper/internal/github"
 	"github.com/emmahsax/go-git-helper/internal/utils"
-	go_github "github.com/google/go-github/v91/github"
+	"github.com/google/go-github/v91/github"
 )
 
 type GitHubPullRequest struct {
@@ -20,10 +19,12 @@ type GitHubPullRequest struct {
 	Debug           bool
 	Draft           string
 	GitRootDir      string
+	Host            string
 	InteractiveMode bool
 	LocalBranch     string
 	LocalRepo       string
 	NewPrTitle      string
+	Username        string
 }
 
 func NewGitHubPullRequest(options map[string]string, debug, interactiveMode bool) *GitHubPullRequest {
@@ -32,16 +33,18 @@ func NewGitHubPullRequest(options map[string]string, debug, interactiveMode bool
 		Debug:           debug,
 		Draft:           options["draft"],
 		GitRootDir:      options["gitRootDir"],
+		Host:            options["host"],
 		InteractiveMode: interactiveMode,
 		LocalBranch:     options["localBranch"],
 		LocalRepo:       options["localRepo"],
 		NewPrTitle:      options["newPrTitle"],
+		Username:        options["username"],
 	}
 }
 
 func (pr *GitHubPullRequest) Create() {
 	d, _ := strconv.ParseBool(pr.Draft)
-	options := go_github.CreatePullRequest{
+	options := github.CreatePullRequest{
 		Base:                pr.BaseBranch,
 		Body:                new(pr.newPrBody()),
 		Draft:               new(d),
@@ -53,7 +56,7 @@ func (pr *GitHubPullRequest) Create() {
 	repo := strings.Split(pr.LocalRepo, "/")
 
 	fmt.Println("Creating pull request:", pr.NewPrTitle)
-	resp, err := pr.github().CreatePullRequest(repo[0], repo[1], &options)
+	resp, err := NewGitHub(pr.Host, pr.Username, pr.Debug).CreatePullRequest(repo[0], repo[1], &options)
 	if err != nil {
 		customErr := errors.New("could not create pull request: " + err.Error())
 		utils.HandleError(customErr, pr.Debug, nil)
@@ -169,8 +172,4 @@ func (pr *GitHubPullRequest) prTemplateOptions() []string {
 	}
 
 	return templateList
-}
-
-func (pr *GitHubPullRequest) github() *github.GitHub {
-	return github.NewGitHub(pr.Debug)
 }

@@ -3,6 +3,8 @@ package configfile
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/emmahsax/go-git-helper/internal/testutil"
@@ -98,7 +100,7 @@ func Test_ConfigFileExists(t *testing.T) {
 		t.Errorf("Expected ConfigFileExists to return false before the file is created")
 	}
 
-	testutil.WriteConfig(t, home, "github_username: testuser\n")
+	testutil.WriteConfig(t, home, "providers:\n  - name: github\n    username: testuser\n")
 
 	if !cf.ConfigFileExists() {
 		t.Errorf("Expected ConfigFileExists to return true, got false")
@@ -141,42 +143,248 @@ func createTestConfigFile(t *testing.T, content string) string {
 	return tempDir
 }
 
-func Test_GitHubUsername_NewFormat(t *testing.T) {
-	createTestConfigFile(t, "github_username: testuser\n")
+func Test_GitHubAndGitLab_BothConfigured(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: githubuser
+    token: ghp_token123
+  - name: gitlab
+    username: gitlabuser
+    token: glpat-token123
+    remote_hosts:
+      - gitlab.example.com
+`)
 
 	cf := NewConfigFile(false)
-	username := cf.GitHubUsername()
-	if username != "testuser" {
-		t.Errorf("Expected username 'testuser', got '%s'", username)
+
+	github := ResolveAccount(cf.GitHubAccounts("github.com"), "")
+	if github.Username != "githubuser" {
+		t.Errorf("Expected GitHub username 'githubuser', got '%s'", github.Username)
+	}
+	if github.Token != "ghp_token123" {
+		t.Errorf("Expected GitHub token 'ghp_token123', got '%s'", github.Token)
+	}
+
+	gitlab := ResolveAccount(cf.GitLabAccounts("gitlab.example.com"), "")
+	if gitlab.Username != "gitlabuser" {
+		t.Errorf("Expected GitLab username 'gitlabuser', got '%s'", gitlab.Username)
+	}
+	if gitlab.Token != "glpat-token123" {
+		t.Errorf("Expected GitLab token 'glpat-token123', got '%s'", gitlab.Token)
 	}
 }
 
-func Test_GitLabUsername_NewFormat(t *testing.T) {
-	createTestConfigFile(t, "gitlab_username: gitlabuser\n")
+func Test_GitHubHosts(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    token: public_token
+  - name: github
+    token: enterprise_token
+    remote_hosts:
+      - github.example.com
+      - git.internal.example.com
+`)
 
 	cf := NewConfigFile(false)
-	username := cf.GitLabUsername()
-	if username != "gitlabuser" {
-		t.Errorf("Expected username 'gitlabuser', got '%s'", username)
+	hosts := cf.GitHubHosts()
+
+	expected := []string{"github.example.com", "git.internal.example.com"}
+	if len(hosts) != len(expected) {
+		t.Fatalf("Expected hosts %v, got %v", expected, hosts)
+	}
+	for i := range expected {
+		if hosts[i] != expected[i] {
+			t.Errorf("Expected hosts %v, got %v", expected, hosts)
+		}
 	}
 }
 
-func Test_GitHubToken_NewFormat(t *testing.T) {
-	createTestConfigFile(t, "github_token: ghp_token123\n")
+func Test_GitHubAccounts_PublicAndEnterprise(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: public_user
+    token: public_token
+  - name: github
+    username: work_user
+    token: work_token
+    remote_hosts:
+      - github.example.com
+    api_host: github.example.com
+`)
 
 	cf := NewConfigFile(false)
-	token := cf.GitHubToken()
-	if token != "ghp_token123" {
-		t.Errorf("Expected token 'ghp_token123', got '%s'", token)
+
+	public := ResolveAccount(cf.GitHubAccounts("github.com"), "")
+	if public.Username != "public_user" || public.Token != "public_token" {
+		t.Errorf("Expected the public account for github.com, got (%q, %q)", public.Username, public.Token)
+	}
+	if public.APIHost != "" {
+		t.Errorf("Expected an empty APIHost for the public account, got %q", public.APIHost)
+	}
+
+	enterprise := ResolveAccount(cf.GitHubAccounts("github.example.com"), "")
+	if enterprise.Username != "work_user" || enterprise.Token != "work_token" {
+		t.Errorf("Expected the Enterprise account for github.example.com, got (%q, %q)", enterprise.Username, enterprise.Token)
+	}
+	if enterprise.APIHost != "github.example.com" {
+		t.Errorf("Expected APIHost 'github.example.com', got %q", enterprise.APIHost)
 	}
 }
-func Test_GitLabToken_NewFormat(t *testing.T) {
-	createTestConfigFile(t, "gitlab_token: glpat-token123\n")
+
+func Test_GitHubAccounts_SSHAliasKeepsPublicAPIHost(t *testing.T) {
+	// A host used only to tell two accounts apart in a remote (an SSH
+	// config alias) must not imply a different API server: api_host is
+	// absent here, even though Hosts is set.
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: personal_user
+    token: personal_token
+  - name: github
+    username: work_user
+    token: work_token
+    remote_hosts:
+      - github.com-work
+`)
 
 	cf := NewConfigFile(false)
-	token := cf.GitLabToken()
-	if token != "glpat-token123" {
-		t.Errorf("Expected token 'glpat-token123', got '%s'", token)
+
+	aliased := ResolveAccount(cf.GitHubAccounts("github.com-work"), "")
+	if aliased.Username != "work_user" {
+		t.Errorf("Expected the work account for the aliased remote, got %q", aliased.Username)
+	}
+	if aliased.APIHost != "" {
+		t.Errorf("Expected an empty APIHost for an SSH-alias-only account, got %q", aliased.APIHost)
+	}
+}
+
+func Test_GitHubAccounts_TwoAccountsSameHost(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: personal_user
+    token: personal_token
+  - name: github
+    username: work_user
+    token: work_token
+`)
+
+	cf := NewConfigFile(false)
+	accounts := cf.GitHubAccounts("github.com")
+
+	if len(accounts) != 2 {
+		t.Fatalf("Expected 2 tied accounts, got %d", len(accounts))
+	}
+
+	if ResolveAccount(accounts, "work_user").Username != "work_user" {
+		t.Errorf("Expected ResolveAccount to pick the account matching the given username")
+	}
+	if ResolveAccount(accounts, "").Username != "personal_user" {
+		t.Errorf("Expected ResolveAccount to default to the first account when no username is given")
+	}
+}
+
+func Test_GitHubAccounts_NoneConfigured(t *testing.T) {
+	testutil.IsolateHome(t)
+
+	cf := NewConfigFile(false)
+	if accounts := cf.GitHubAccounts("github.com"); len(accounts) != 0 {
+		t.Errorf("Expected no accounts, got %v", accounts)
+	}
+}
+
+func Test_ResolveAccount_EmptyCandidates(t *testing.T) {
+	if got := ResolveAccount(nil, "anything"); got != (Account{}) {
+		t.Errorf("Expected the zero Account, got %+v", got)
+	}
+}
+
+func Test_GitLabHosts(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: gitlab
+    token: public_token
+  - name: gitlab
+    token: self_hosted_token
+    remote_hosts:
+      - gitlab.example.com
+      - git.internal.example.com
+`)
+
+	cf := NewConfigFile(false)
+	hosts := cf.GitLabHosts()
+
+	expected := []string{"gitlab.example.com", "git.internal.example.com"}
+	if len(hosts) != len(expected) {
+		t.Fatalf("Expected hosts %v, got %v", expected, hosts)
+	}
+	for i := range expected {
+		if hosts[i] != expected[i] {
+			t.Errorf("Expected hosts %v, got %v", expected, hosts)
+		}
+	}
+}
+
+func Test_GitLabHosts_NoneConfigured(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: gitlab\n    token: glpat-token123\n")
+
+	cf := NewConfigFile(false)
+	if hosts := cf.GitLabHosts(); len(hosts) != 0 {
+		t.Errorf("Expected no hosts, got %v", hosts)
+	}
+}
+
+func Test_GitLabAccounts_PublicAccount(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: gitlab\n    username: public_user\n    token: public_token\n")
+
+	cf := NewConfigFile(false)
+	account := ResolveAccount(cf.GitLabAccounts("gitlab.com"), "")
+	if account.Username != "public_user" || account.Token != "public_token" {
+		t.Errorf("Expected ('public_user', 'public_token'), got (%q, %q)", account.Username, account.Token)
+	}
+}
+
+func Test_GitLabAccounts_PublicAndSelfHosted(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: gitlab
+    username: public_user
+    token: public_token
+  - name: gitlab
+    username: work_user
+    token: work_token
+    remote_hosts:
+      - gitlab.example.com
+      - git.internal.example.com
+    api_host: gitlab.example.com
+`)
+
+	cf := NewConfigFile(false)
+
+	if account := ResolveAccount(cf.GitLabAccounts("gitlab.com"), ""); account.Username != "public_user" || account.Token != "public_token" {
+		t.Errorf("Expected the public account for gitlab.com, got (%q, %q)", account.Username, account.Token)
+	}
+
+	if account := ResolveAccount(cf.GitLabAccounts("gitlab.example.com"), ""); account.Username != "work_user" || account.APIHost != "gitlab.example.com" {
+		t.Errorf("Expected the work account with APIHost 'gitlab.example.com', got (%q, %q)", account.Username, account.APIHost)
+	}
+
+	if account := ResolveAccount(cf.GitLabAccounts("git.internal.example.com"), ""); account.Username != "work_user" {
+		t.Errorf("Expected the work account for its second alias host, got %q", account.Username)
+	}
+}
+
+func Test_GitLabAccounts_NoneConfigured(t *testing.T) {
+	testutil.IsolateHome(t)
+
+	cf := NewConfigFile(false)
+	if accounts := cf.GitLabAccounts("gitlab.com"); len(accounts) != 0 {
+		t.Errorf("Expected no accounts, got %v", accounts)
+	}
+}
+
+func Test_GitLabHosts_ProviderNotConfigured(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: github\n    token: ghp_token123\n")
+
+	cf := NewConfigFile(false)
+	if hosts := cf.GitLabHosts(); len(hosts) != 0 {
+		t.Errorf("Expected no hosts, got %v", hosts)
 	}
 }
 
@@ -209,7 +417,7 @@ func Test_SpecialCapitalization(t *testing.T) {
 }
 
 func Test_SpecialCapitalization_Empty(t *testing.T) {
-	createTestConfigFile(t, "github_username: testuser\n")
+	createTestConfigFile(t, "providers:\n  - name: github\n    username: testuser\n")
 
 	cf := NewConfigFile(false)
 	caps := cf.SpecialCapitalization()
@@ -231,22 +439,360 @@ func Test_SpecialCapitalization_FileNotFound(t *testing.T) {
 	}
 }
 
-func Test_configFileContents_InvalidYAML(t *testing.T) {
-	// Skip this test as configFileContents calls HandleError which exits
-	t.Skip("Skipping test that would call os.Exit through HandleError")
-}
-
-func Test_configFileContents_ValidYAML(t *testing.T) {
-	createTestConfigFile(t, "github_username: testuser\ngithub_token: token123\n")
+func Test_GitHubAccounts_InvalidYAML(t *testing.T) {
+	createTestConfigFile(t, "providers: [this is not: valid: yaml\n")
 
 	cf := NewConfigFile(false)
-	contents := cf.configFileContents()
+	if accounts := cf.GitHubAccounts("github.com"); len(accounts) != 0 {
+		t.Errorf("Expected no accounts for invalid YAML, got %v", accounts)
+	}
+}
 
-	if contents["github_username"] != "testuser" {
-		t.Errorf("Expected 'testuser', got '%s'", contents["github_username"])
+func Test_GitHubAccounts_FileNotFound(t *testing.T) {
+	testutil.IsolateHome(t)
+
+	cf := NewConfigFile(false)
+	if accounts := cf.GitHubAccounts("github.com"); len(accounts) != 0 {
+		t.Errorf("Expected no accounts when the config file doesn't exist, got %v", accounts)
+	}
+}
+
+func Test_Usernames(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: personal_user
+  - name: github
+    username: work_user
+    remote_hosts:
+      - github.example.com
+  - name: gitlab
+    username: gitlab_user
+`)
+
+	cf := NewConfigFile(false)
+
+	if got := cf.Usernames("github"); len(got) != 2 || got[0] != "personal_user" || got[1] != "work_user" {
+		t.Errorf("Expected ['personal_user', 'work_user'], got %v", got)
 	}
 
-	if contents["github_token"] != "token123" {
-		t.Errorf("Expected 'token123', got '%s'", contents["github_token"])
+	if got := cf.Usernames("gitlab"); len(got) != 1 || got[0] != "gitlab_user" {
+		t.Errorf("Expected ['gitlab_user'], got %v", got)
+	}
+}
+
+func Test_Usernames_NoneConfigured(t *testing.T) {
+	testutil.IsolateHome(t)
+
+	cf := NewConfigFile(false)
+	if got := cf.Usernames("github"); len(got) != 0 {
+		t.Errorf("Expected no usernames, got %v", got)
+	}
+}
+
+func Test_AddAccount_PreservesExistingEntries(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: existing_user
+    token: existing_token
+special_capitalization:
+  api: API
+`)
+
+	cf := NewConfigFile(false)
+	if err := cf.AddAccount("github", "new_user", "new_token", []string{"github.com-work"}, ""); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// The pre-existing account must survive untouched.
+	existing := ResolveAccount(cf.GitHubAccounts("github.com"), "")
+	if existing.Username != "existing_user" || existing.Token != "existing_token" {
+		t.Errorf("expected the existing account to be preserved, got %+v", existing)
+	}
+
+	// The new account must be reachable by its remote_hosts entry.
+	added := ResolveAccount(cf.GitHubAccounts("github.com-work"), "")
+	if added.Username != "new_user" || added.Token != "new_token" {
+		t.Errorf("expected the new account to be added, got %+v", added)
+	}
+
+	// special_capitalization (an unrelated top-level key) must survive untouched.
+	if caps := cf.SpecialCapitalization(); caps["api"] != "API" {
+		t.Errorf("expected special_capitalization to be preserved, got %v", caps)
+	}
+
+	// The written file must match the rest of config.yml's 2-space indentation
+	// (yaml.Marshal's own default is 4 spaces).
+	data, err := os.ReadFile(cf.ConfigFile())
+	if err != nil {
+		t.Fatalf("expected to read back the config file, got error: %v", err)
+	}
+	if !strings.Contains(string(data), "\n  - name: github\n") {
+		t.Errorf("expected 2-space-indented list items, got:\n%s", data)
+	}
+	if !strings.Contains(string(data), "\n    remote_hosts:\n      - github.com-work\n") {
+		t.Errorf("expected 2-space-indented nested fields, got:\n%s", data)
+	}
+}
+
+func Test_AddAccount_CreatesFileWhenMissing(t *testing.T) {
+	testutil.IsolateHome(t)
+
+	cf := NewConfigFile(false)
+	if err := cf.AddAccount("gitlab", "first_user", "first_token", nil, ""); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	account := ResolveAccount(cf.GitLabAccounts("gitlab.com"), "")
+	if account.Username != "first_user" || account.Token != "first_token" {
+		t.Errorf("expected the new account to be added, got %+v", account)
+	}
+}
+
+func Test_UpdateAccount_ReplacesFieldsInPlace(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: alice
+    token: old_token
+  - name: github
+    username: bob
+    token: bob_token
+special_capitalization:
+  api: API
+`)
+
+	cf := NewConfigFile(false)
+	if err := cf.UpdateAccount("github", "alice", "alice2", "new_token", []string{"github.com-alice2"}, ""); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	updated := ResolveAccount(cf.GitHubAccounts("github.com-alice2"), "")
+	if updated.Username != "alice2" || updated.Token != "new_token" {
+		t.Errorf("expected the updated account, got %+v", updated)
+	}
+
+	// The old username must no longer resolve anything of its own --
+	// alice's entry was replaced, not duplicated alongside a new one.
+	if accounts := cf.GitHubAccounts("github.com"); len(accounts) != 1 || accounts[0].Username != "bob" {
+		t.Errorf("expected only bob left on the public host, got %+v", accounts)
+	}
+
+	// bob, an unrelated account, must survive untouched.
+	bob := ResolveAccount(cf.GitHubAccounts("github.com"), "bob")
+	if bob.Username != "bob" || bob.Token != "bob_token" {
+		t.Errorf("expected bob preserved, got %+v", bob)
+	}
+
+	if caps := cf.SpecialCapitalization(); caps["api"] != "API" {
+		t.Errorf("expected special_capitalization preserved, got %v", caps)
+	}
+}
+
+func Test_UpdateAccount_NotFound(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: github\n    username: alice\n    token: tok\n")
+
+	cf := NewConfigFile(false)
+	err := cf.UpdateAccount("github", "nonexistent", "new", "tok", nil, "")
+	if err == nil {
+		t.Fatal("expected an error updating a nonexistent account")
+	}
+}
+
+func Test_RemoveAccount_PreservesOtherEntries(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: alice
+    token: alice_token
+  - name: github
+    username: bob
+    token: bob_token
+special_capitalization:
+  api: API
+`)
+
+	cf := NewConfigFile(false)
+	if err := cf.RemoveAccount("github", "bob"); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if usernames := cf.Usernames("github"); len(usernames) != 1 || usernames[0] != "alice" {
+		t.Errorf("expected only alice left, got %v", usernames)
+	}
+
+	if caps := cf.SpecialCapitalization(); caps["api"] != "API" {
+		t.Errorf("expected special_capitalization preserved, got %v", caps)
+	}
+}
+
+func Test_RemoveAccount_NotFound(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: github\n    username: alice\n    token: tok\n")
+
+	cf := NewConfigFile(false)
+	err := cf.RemoveAccount("github", "nonexistent")
+	if err == nil {
+		t.Fatal("expected an error removing a nonexistent account")
+	}
+}
+
+// Regression: RemoveAccount must not corrupt cf.cachedContents.Providers
+// when writeContents fails partway through. The removal used to slice and
+// append over updated.Providers in place, which shares its backing array
+// with cf.cachedContents.Providers -- shifting elements there even before
+// the write (and thus the cache swap) completes.
+func Test_RemoveAccount_LeavesCacheIntactOnWriteFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file permissions are not enforced the same way on Windows")
+	}
+
+	// Removing the middle entry of three is what actually exercises the
+	// aliasing: append(s[:idx], s[idx+1:]...) only writes into the shared
+	// backing array when there's a tail to shift, i.e. idx isn't last.
+	tempDir := createTestConfigFile(t, `providers:
+  - name: github
+    username: alice
+    token: alice_token
+  - name: github
+    username: bob
+    token: bob_token
+  - name: github
+    username: carol
+    token: carol_token
+`)
+	configPath := filepath.Join(tempDir, ".git-helper", "config.yml")
+
+	cf := NewConfigFile(false)
+
+	// Prime the cache before the write ever fails.
+	if usernames := cf.Usernames("github"); len(usernames) != 3 {
+		t.Fatalf("expected 3 usernames before removal attempt, got %v", usernames)
+	}
+
+	if err := os.Chmod(configPath, 0400); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(configPath, 0600) })
+
+	if err := cf.RemoveAccount("github", "bob"); err == nil {
+		t.Fatal("expected a write error removing the account from a read-only file")
+	}
+
+	usernames := cf.Usernames("github")
+	want := []string{"alice", "bob", "carol"}
+	if len(usernames) != len(want) {
+		t.Fatalf("expected cache to still report all three accounts after a failed write, got %v", usernames)
+	}
+	for i, u := range want {
+		if usernames[i] != u {
+			t.Errorf("expected cache entry %d to be %q after a failed write, got %q (full: %v)", i, u, usernames[i], usernames)
+		}
+	}
+}
+
+// Regression: AddAccount/UpdateAccount/RemoveAccount must re-tighten an
+// already-existing config directory's permissions, the same as setup.go's
+// createOrUpdateConfig does -- MkdirAll alone is a no-op on an existing
+// directory, so it can't fix one left over from an older, looser version.
+func Test_AddAccount_TightensLooseDirectoryPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file modes are not enforced on Windows")
+	}
+
+	home := createTestConfigFile(t, "providers:\n  - name: github\n    username: alice\n    token: tok\n")
+
+	gitHelperDir := filepath.Join(home, ".git-helper")
+	if err := os.Chmod(gitHelperDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	cf := NewConfigFile(false)
+	if err := cf.AddAccount("github", "bob", "bob-token", nil, ""); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	info, err := os.Stat(gitHelperDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0700 {
+		t.Errorf("expected the config directory to be tightened to 0700, got %v", info.Mode().Perm())
+	}
+}
+
+// Regression: a malformed special_capitalization value must not blank the
+// providers list -- the two sections are parsed independently.
+func Test_GitHubAccounts_SurvivesMalformedSpecialCapitalization(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: alice
+    token: tok
+special_capitalization:
+  api: [not, a, string]
+`)
+
+	cf := NewConfigFile(false)
+	account := ResolveAccount(cf.GitHubAccounts("github.com"), "")
+	if account.Username != "alice" || account.Token != "tok" {
+		t.Errorf("expected providers to survive a malformed special_capitalization value, got %+v", account)
+	}
+}
+
+// Regression: a malformed providers entry must not blank
+// special_capitalization -- the two sections are parsed independently.
+func Test_SpecialCapitalization_SurvivesMalformedProviders(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: alice
+    token: [not, a, string]
+special_capitalization:
+  api: API
+`)
+
+	cf := NewConfigFile(false)
+	if caps := cf.SpecialCapitalization(); caps["api"] != "API" {
+		t.Errorf("expected special_capitalization to survive a malformed providers entry, got %v", caps)
+	}
+}
+
+// Regression: host matching must be case-insensitive, since hostnames are.
+func Test_GitHubAccounts_CaseInsensitiveHostMatch(t *testing.T) {
+	createTestConfigFile(t, `providers:
+  - name: github
+    username: work
+    token: work-token
+    remote_hosts:
+      - GitHub.Example.com
+`)
+
+	cf := NewConfigFile(false)
+	account := ResolveAccount(cf.GitHubAccounts("github.example.com"), "")
+	if account.Username != "work" {
+		t.Errorf("expected a case-insensitive match on remote_hosts, got %+v", account)
+	}
+}
+
+// Regression: contents() caches across calls on the same *ConfigFile, and a
+// write must refresh that cache rather than leaving it stale.
+func Test_contents_CachesAndRefreshesOnWrite(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: github\n    username: alice\n    token: tok\n")
+
+	cf := NewConfigFile(false)
+
+	// Prime the cache.
+	if got := ResolveAccount(cf.GitHubAccounts("github.com"), "").Username; got != "alice" {
+		t.Fatalf("expected alice before any write, got %q", got)
+	}
+
+	// A write through the same instance must be visible afterward, not
+	// masked by the primed cache.
+	if err := cf.AddAccount("github", "bob", "bob-token", nil, ""); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if got := ResolveAccount(cf.GitHubAccounts("github.com"), "bob").Username; got != "bob" {
+		t.Errorf("expected bob to be visible immediately after AddAccount on the same instance, got %q", got)
+	}
+
+	usernames := cf.Usernames("github")
+	if len(usernames) != 2 || usernames[0] != "alice" || usernames[1] != "bob" {
+		t.Errorf("expected [alice, bob], got %v", usernames)
 	}
 }

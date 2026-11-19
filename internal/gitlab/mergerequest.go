@@ -1,4 +1,4 @@
-package gitlabMergeRequest
+package gitlab
 
 import (
 	"errors"
@@ -9,9 +9,8 @@ import (
 	"strings"
 
 	"github.com/emmahsax/go-git-helper/internal/commandline"
-	"github.com/emmahsax/go-git-helper/internal/gitlab"
 	"github.com/emmahsax/go-git-helper/internal/utils"
-	go_gitlab "gitlab.com/gitlab-org/api/client-go/v3"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v3"
 )
 
 type GitLabMergeRequest struct {
@@ -19,10 +18,12 @@ type GitLabMergeRequest struct {
 	Debug           bool
 	Draft           string
 	GitRootDir      string
+	Host            string
 	LocalBranch     string
 	InteractiveMode bool
 	LocalProject    string
 	NewMrTitle      string
+	Username        string
 }
 
 func NewGitLabMergeRequest(options map[string]string, debug, interactiveMode bool) *GitLabMergeRequest {
@@ -31,17 +32,19 @@ func NewGitLabMergeRequest(options map[string]string, debug, interactiveMode boo
 		Debug:           debug,
 		Draft:           options["draft"],
 		GitRootDir:      options["gitRootDir"],
+		Host:            options["host"],
 		LocalBranch:     options["localBranch"],
 		InteractiveMode: interactiveMode,
 		LocalProject:    options["localProject"],
 		NewMrTitle:      options["newMrTitle"],
+		Username:        options["username"],
 	}
 }
 
 func (mr *GitLabMergeRequest) Create() {
 	t := mr.determineTitle()
 
-	options := go_gitlab.CreateMergeRequestOptions{
+	options := gitlab.CreateMergeRequestOptions{
 		Description:        new(mr.newMrBody()),
 		RemoveSourceBranch: new(true),
 		SourceBranch:       new(mr.LocalBranch),
@@ -51,7 +54,7 @@ func (mr *GitLabMergeRequest) Create() {
 	}
 
 	fmt.Println("Creating merge request:", t)
-	resp, err := mr.gitlab().CreateMergeRequest(mr.LocalProject, &options)
+	resp, err := NewGitLab(mr.Host, mr.Username, mr.Debug).CreateMergeRequest(mr.LocalProject, &options)
 	if err != nil {
 		customErr := errors.New("could not create merge request: " + err.Error())
 		utils.HandleError(customErr, mr.Debug, nil)
@@ -158,8 +161,4 @@ func (mr *GitLabMergeRequest) mrTemplateOptions() []string {
 	}
 
 	return templateList
-}
-
-func (mr *GitLabMergeRequest) gitlab() *gitlab.GitLab {
-	return gitlab.NewGitLab(mr.Debug)
 }

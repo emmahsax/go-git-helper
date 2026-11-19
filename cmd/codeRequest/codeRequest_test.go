@@ -7,23 +7,27 @@ import (
 )
 
 type MockExecutor struct {
-	Args    []string
-	Command string
-	Debug   bool
-	Output  []byte
+	Args      []string
+	Command   string
+	Debug     bool
+	Output    []byte
+	ExecCount int
 }
 
 func (me *MockExecutor) Exec(execType string, command string, args ...string) ([]byte, error) {
 	me.Command = command
 	me.Args = args
+	me.ExecCount++
 	return me.Output, nil
 }
 
 func setupTestConfig(t *testing.T) {
 	homeDir := testutil.IsolateHome(t)
 
-	testConfig := `github_username: test_user
-github_token: test_token
+	testConfig := `providers:
+  - name: github
+    username: test_user
+    token: test_token
 special_capitalization:
   api: API
   aws: AWS
@@ -261,6 +265,13 @@ origin  git@github.com:emmahsax/go-git-helper.git (push)`,
 origin  git@gitlab.com:emmahsax/github-project.git (push)`,
 			expected: false,
 		},
+		{
+			// Regression: a naive substring check would treat this as a
+			// match for "github.com".
+			remotes: `origin  git@github.company.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.company.com:emmahsax/go-git-helper.git (push)`,
+			expected: false,
+		},
 	}
 
 	for _, test := range tests {
@@ -274,6 +285,141 @@ origin  git@gitlab.com:emmahsax/github-project.git (push)`,
 		if resp != test.expected {
 			t.Fatalf(`should have been %v, but was %v`, test.expected, resp)
 		}
+	}
+}
+
+func Test_matchedGitHubHost_PublicAndEnterpriseConfigured(t *testing.T) {
+	homeDir := testutil.IsolateHome(t)
+	testutil.WriteConfig(t, homeDir, `providers:
+  - name: github
+    username: public-user
+    token: public-token
+  - name: github
+    username: work-user
+    token: work-token
+    remote_hosts:
+      - github.example.com
+`)
+
+	tests := []struct {
+		name     string
+		remotes  string
+		expected string
+	}{
+		{
+			name: "public github.com remote",
+			remotes: `origin  git@github.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.com:emmahsax/go-git-helper.git (push)`,
+			expected: "github.com",
+		},
+		{
+			name: "Enterprise remote",
+			remotes: `origin  git@github.example.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.example.com:emmahsax/go-git-helper.git (push)`,
+			expected: "github.example.com",
+		},
+		{
+			name: "unrelated remote",
+			remotes: `origin  git@gitlab.com:emmahsax/go-git-helper.git (fetch)
+origin  git@gitlab.com:emmahsax/go-git-helper.git (push)`,
+			expected: "",
+		},
+		{
+			// Regression: a naive substring check would treat this as the
+			// public github.com (since "github.company.com" contains
+			// "github.com"), and use the wrong account's credentials.
+			name: "Enterprise domain that contains the public domain as a substring",
+			remotes: `origin  git@github.company.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.company.com:emmahsax/go-git-helper.git (push)`,
+			expected: "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			executor := &MockExecutor{Debug: true, Output: []byte(test.remotes)}
+			cr := newCodeRequest(true, true, executor)
+
+			if got := cr.matchedGitHubHost(); got != test.expected {
+				t.Errorf("expected host %q, got %q", test.expected, got)
+			}
+
+			if got := cr.isGitHub(); got != (test.expected != "") {
+				t.Errorf("expected isGitHub() %v, got %v", test.expected != "", got)
+			}
+		})
+	}
+}
+
+// Regression: matching must only consider the origin remote. A repo with
+// origin on a self-hosted/Enterprise host and a different remote (e.g.
+// upstream) on the public host must resolve to origin's account, not
+// whichever remote's host happens to be checked first.
+func Test_matchedGitHubHost_IgnoresNonOriginRemotes(t *testing.T) {
+	homeDir := testutil.IsolateHome(t)
+	testutil.WriteConfig(t, homeDir, `providers:
+  - name: github
+    username: public-user
+    token: public-token
+  - name: github
+    username: work-user
+    token: work-token
+    remote_hosts:
+      - github.example.com
+`)
+
+	executor := &MockExecutor{Debug: true, Output: []byte(`origin  git@github.example.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.example.com:emmahsax/go-git-helper.git (push)
+upstream  git@github.com:upstream-org/go-git-helper.git (fetch)
+upstream  git@github.com:upstream-org/go-git-helper.git (push)`)}
+	cr := newCodeRequest(true, true, executor)
+
+	if got := cr.matchedGitHubHost(); got != "github.example.com" {
+		t.Errorf("expected origin's Enterprise host 'github.example.com', got %q", got)
+	}
+}
+
+// Regression: host matching must be case-insensitive. matchedGitHubHost
+// returns one of gitHubHosts()'s own (canonically-cased) entries on a
+// match, not the remote's literal casing -- so the meaningful assertion is
+// that a mixed-case remote still matches at all.
+func Test_matchedGitHubHost_CaseInsensitive(t *testing.T) {
+	executor := &MockExecutor{Debug: true, Output: []byte(`origin  git@GitHub.com:emmahsax/go-git-helper.git (fetch)
+origin  git@GitHub.com:emmahsax/go-git-helper.git (push)`)}
+	cr := newCodeRequest(true, true, executor)
+
+	if got := cr.matchedGitHubHost(); got != "github.com" {
+		t.Errorf("expected a case-insensitive match despite the remote's mixed-case host, got %q", got)
+	}
+	if !cr.isGitHub() {
+		t.Error("expected isGitHub() to be true for a mixed-case GitHub remote")
+	}
+}
+
+// git() and config() must be memoized: repeated calls within one
+// invocation must not re-invoke the git subprocess or re-read config.yml.
+func Test_git_and_config_AreMemoized(t *testing.T) {
+	setupTestConfig(t)
+
+	executor := &MockExecutor{Debug: true, Output: []byte(`origin  git@github.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.com:emmahsax/go-git-helper.git (push)`)}
+	cr := newCodeRequest(true, true, executor)
+
+	firstGit, secondGit := cr.git(), cr.git()
+	if firstGit != secondGit {
+		t.Error("expected git() to return the same *git.Git instance across calls")
+	}
+	firstConfig, secondConfig := cr.config(), cr.config()
+	if firstConfig != secondConfig {
+		t.Error("expected config() to return the same *configfile.ConfigFile instance across calls")
+	}
+
+	cr.matchedGitHubHost()
+	cr.matchedGitHubHost()
+	cr.isGitHub()
+
+	if executor.ExecCount != 1 {
+		t.Errorf("expected exactly 1 `git remote -v` call across repeated detection calls, got %d", executor.ExecCount)
 	}
 }
 
@@ -308,20 +454,160 @@ origin  git@github.com:emmahsax/gitlab-project.git (push)`,
 	}
 }
 
-func Test_containsSubstring(t *testing.T) {
-	executor := &MockExecutor{Debug: true}
-	cr := newCodeRequest(true, true, executor)
-	strs := []string{"string1", "string3", "string18"}
-	resp := cr.containsSubstring(strs, "string3")
+func Test_matchedGitLabHost_PublicAndSelfHostedConfigured(t *testing.T) {
+	homeDir := testutil.IsolateHome(t)
+	testutil.WriteConfig(t, homeDir, `providers:
+  - name: gitlab
+    username: public-user
+    token: public-token
+  - name: gitlab
+    username: work-user
+    token: work-token
+    remote_hosts:
+      - gitlab.example.com
+`)
 
-	if resp == false {
-		t.Fatalf(`string %v should be present in %v`, "string3", strs)
+	tests := []struct {
+		name     string
+		remotes  string
+		expected string
+	}{
+		{
+			name: "public gitlab.com remote",
+			remotes: `origin  git@gitlab.com:emmahsax/go-git-helper.git (fetch)
+origin  git@gitlab.com:emmahsax/go-git-helper.git (push)`,
+			expected: "gitlab.com",
+		},
+		{
+			name: "self-hosted remote",
+			remotes: `origin  git@gitlab.example.com:emmahsax/go-git-helper.git (fetch)
+origin  git@gitlab.example.com:emmahsax/go-git-helper.git (push)`,
+			expected: "gitlab.example.com",
+		},
+		{
+			name: "unrelated remote",
+			remotes: `origin  git@github.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.com:emmahsax/go-git-helper.git (push)`,
+			expected: "",
+		},
+		{
+			// Regression: a naive substring check would treat this as the
+			// public gitlab.com (since "gitlab.company.com" contains
+			// "gitlab.com"), and use the wrong account's credentials.
+			name: "self-hosted domain that contains the public domain as a substring",
+			remotes: `origin  git@gitlab.company.com:emmahsax/go-git-helper.git (fetch)
+origin  git@gitlab.company.com:emmahsax/go-git-helper.git (push)`,
+			expected: "",
+		},
 	}
 
-	resp = cr.containsSubstring(strs, "string2")
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			executor := &MockExecutor{Debug: true, Output: []byte(test.remotes)}
+			cr := newCodeRequest(true, true, executor)
 
-	if resp == true {
-		t.Fatalf(`string %v should not be present in %v`, "string2", strs)
+			if got := cr.matchedGitLabHost(); got != test.expected {
+				t.Errorf("expected host %q, got %q", test.expected, got)
+			}
+
+			if got := cr.isGitLab(); got != (test.expected != "") {
+				t.Errorf("expected isGitLab() %v, got %v", test.expected != "", got)
+			}
+		})
+	}
+}
+
+// Regression: when two self-hosted hosts are configured where one is a
+// textual substring of the other, a naive substring check would pick
+// whichever is checked first regardless of which one the remote actually
+// is. Exact host matching must pick the one that's actually configured for
+// the remote in hand.
+func Test_matchedGitLabHost_OneHostIsSubstringOfAnother(t *testing.T) {
+	homeDir := testutil.IsolateHome(t)
+	testutil.WriteConfig(t, homeDir, `providers:
+  - name: gitlab
+    username: short-user
+    token: short-token
+    remote_hosts:
+      - git.example.com
+  - name: gitlab
+    username: long-user
+    token: long-token
+    remote_hosts:
+      - sub.git.example.com
+`)
+
+	executor := &MockExecutor{Debug: true, Output: []byte(`origin  git@sub.git.example.com:emmahsax/go-git-helper.git (fetch)
+origin  git@sub.git.example.com:emmahsax/go-git-helper.git (push)`)}
+	cr := newCodeRequest(true, true, executor)
+
+	if got := cr.matchedGitLabHost(); got != "sub.git.example.com" {
+		t.Errorf("expected host 'sub.git.example.com', got %q", got)
+	}
+}
+
+func Test_providers(t *testing.T) {
+	executor := &MockExecutor{Debug: true}
+	cr := newCodeRequest(true, true, executor)
+	providers := cr.providers()
+
+	if len(providers) != 2 {
+		t.Fatalf("expected 2 registered providers, got %d", len(providers))
+	}
+
+	names := []string{providers[0].Name, providers[1].Name}
+	if names[0] != "GitHub" || names[1] != "GitLab" {
+		t.Fatalf("expected [GitHub GitLab], got %v", names)
+	}
+}
+
+func Test_matchingProviders(t *testing.T) {
+	tests := []struct {
+		name     string
+		remotes  string
+		expected []string
+	}{
+		{
+			name: "GitHub only",
+			remotes: `origin  git@github.com:emmahsax/go-git-helper.git (fetch)
+origin  git@github.com:emmahsax/go-git-helper.git (push)`,
+			expected: []string{"GitHub"},
+		},
+		{
+			name: "GitLab only",
+			remotes: `origin  git@gitlab.com:emmahsax/go-git-helper.git (fetch)
+origin  git@gitlab.com:emmahsax/go-git-helper.git (push)`,
+			expected: []string{"GitLab"},
+		},
+		{
+			name: "neither",
+			remotes: `origin  git@bitbucket.org:emmahsax/go-git-helper.git (fetch)
+origin  git@bitbucket.org:emmahsax/go-git-helper.git (push)`,
+			expected: nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			executor := &MockExecutor{Debug: true, Output: []byte(test.remotes)}
+			cr := newCodeRequest(true, true, executor)
+			matched := cr.matchingProviders()
+
+			names := make([]string, len(matched))
+			for i, p := range matched {
+				names[i] = p.Name
+			}
+
+			if len(names) != len(test.expected) {
+				t.Fatalf("expected %v, got %v", test.expected, names)
+			}
+
+			for i := range names {
+				if names[i] != test.expected[i] {
+					t.Fatalf("expected %v, got %v", test.expected, names)
+				}
+			}
+		})
 	}
 }
 

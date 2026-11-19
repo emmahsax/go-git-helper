@@ -1,4 +1,4 @@
-package githubPullRequest
+package github
 
 import (
 	"os"
