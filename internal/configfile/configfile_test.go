@@ -518,6 +518,145 @@ func Test_SpecialCapitalization_Empty(t *testing.T) {
 	}
 }
 
+// assertSingleCandidate fails unless candidates is exactly []string{expected}.
+func assertSingleCandidate(t *testing.T, candidates []string, expected string) {
+	t.Helper()
+
+	if len(candidates) != 1 || candidates[0] != expected {
+		t.Errorf("expected a single candidate %q, got %v", expected, candidates)
+	}
+}
+
+func Test_TicketBaseURLCandidates_NoneConfigured(t *testing.T) {
+	createTestConfigFile(t, "providers:\n  - name: github\n    username: testuser\n")
+
+	cf := NewConfigFile(false)
+	if candidates := cf.TicketBaseURLCandidates("owner/repo", "proj"); len(candidates) != 0 {
+		t.Errorf("Expected no candidates, got %v", candidates)
+	}
+}
+
+func Test_TicketBaseURLCandidates_DefaultOnly(t *testing.T) {
+	createTestConfigFile(t, `ticket_urls:
+  default: https://company.atlassian.net/browse
+`)
+
+	cf := NewConfigFile(false)
+	assertSingleCandidate(t, cf.TicketBaseURLCandidates("owner/repo", "proj"), "https://company.atlassian.net/browse")
+}
+
+func Test_TicketBaseURLCandidates_PrefixOverride(t *testing.T) {
+	createTestConfigFile(t, `ticket_urls:
+  default: https://company.atlassian.net/browse
+  overrides:
+    prefixes:
+      ENG: https://linear.app/company/issue
+`)
+
+	cf := NewConfigFile(false)
+
+	assertSingleCandidate(t, cf.TicketBaseURLCandidates("owner/repo", "eng"), "https://linear.app/company/issue")
+	assertSingleCandidate(t, cf.TicketBaseURLCandidates("owner/repo", "proj"), "https://company.atlassian.net/browse")
+}
+
+func Test_TicketBaseURLCandidates_RepositoryOverride(t *testing.T) {
+	createTestConfigFile(t, `ticket_urls:
+  default: https://company.atlassian.net/browse
+  overrides:
+    repositories:
+      owner/repo1: https://linear.app/company/issue
+`)
+
+	cf := NewConfigFile(false)
+
+	assertSingleCandidate(t, cf.TicketBaseURLCandidates("owner/repo1", "proj"), "https://linear.app/company/issue")
+	assertSingleCandidate(t, cf.TicketBaseURLCandidates("owner/repo2", "proj"), "https://company.atlassian.net/browse")
+}
+
+// Regression: a git remote's "owner/repo" casing isn't guaranteed to match
+// whatever casing a user typed into config.yml (e.g. copied from a
+// provider's web UI), so the repositories override must match
+// case-insensitively, same as the prefixes override already does.
+func Test_TicketBaseURLCandidates_RepositoryOverride_CaseInsensitive(t *testing.T) {
+	createTestConfigFile(t, `ticket_urls:
+  overrides:
+    repositories:
+      Your-Org/Repo1: https://linear.app/company/issue
+`)
+
+	cf := NewConfigFile(false)
+	assertSingleCandidate(t, cf.TicketBaseURLCandidates("your-org/repo1", "proj"), "https://linear.app/company/issue")
+}
+
+// Regression: a repositories override must win over a prefixes override
+// when both match -- a repo-wide pin is a more deliberate choice than a
+// prefix-based guess.
+func Test_TicketBaseURLCandidates_RepositoryOverrideWinsOverPrefixOverride(t *testing.T) {
+	createTestConfigFile(t, `ticket_urls:
+  default: https://company.atlassian.net/browse
+  overrides:
+    repositories:
+      owner/repo: https://trello.com/c
+    prefixes:
+      PROJ: https://linear.app/company/issue
+`)
+
+	cf := NewConfigFile(false)
+
+	assertSingleCandidate(t, cf.TicketBaseURLCandidates("owner/repo", "proj"), "https://trello.com/c")
+}
+
+// Regression: a prefix (or repo) genuinely used by more than one tracker
+// (e.g. "OPS" meaning both Jira and Linear) can list every candidate URL
+// instead of just one -- the scalar form stays the common case.
+func Test_TicketBaseURLCandidates_AmbiguousPrefix(t *testing.T) {
+	createTestConfigFile(t, `ticket_urls:
+  default: https://company.atlassian.net/browse
+  overrides:
+    prefixes:
+      ENG: https://linear.app/company/issue
+      OPS:
+        - https://company.atlassian.net/browse
+        - https://linear.app/company/issue
+`)
+
+	cf := NewConfigFile(false)
+
+	candidates := cf.TicketBaseURLCandidates("owner/repo", "ops")
+	expected := []string{"https://company.atlassian.net/browse", "https://linear.app/company/issue"}
+	if len(candidates) != len(expected) {
+		t.Fatalf("expected %v, got %v", expected, candidates)
+	}
+	for i := range expected {
+		if candidates[i] != expected[i] {
+			t.Errorf("expected %v, got %v", expected, candidates)
+		}
+	}
+}
+
+func Test_TicketBaseURLCandidates_AmbiguousRepository(t *testing.T) {
+	createTestConfigFile(t, `ticket_urls:
+  overrides:
+    repositories:
+      owner/repo:
+        - https://company.atlassian.net/browse
+        - https://linear.app/company/issue
+`)
+
+	cf := NewConfigFile(false)
+
+	candidates := cf.TicketBaseURLCandidates("owner/repo", "ops")
+	expected := []string{"https://company.atlassian.net/browse", "https://linear.app/company/issue"}
+	if len(candidates) != len(expected) {
+		t.Fatalf("expected %v, got %v", expected, candidates)
+	}
+	for i := range expected {
+		if candidates[i] != expected[i] {
+			t.Errorf("expected %v, got %v", expected, candidates)
+		}
+	}
+}
+
 func Test_SpecialCapitalization_FileNotFound(t *testing.T) {
 	// Use a temp directory without creating config file
 	testutil.IsolateHome(t)
@@ -622,6 +761,36 @@ special_capitalization:
 	}
 	if !strings.Contains(string(data), "\n    remote_hosts:\n      - github.com-work\n") {
 		t.Errorf("expected 2-space-indented nested fields, got:\n%s", data)
+	}
+}
+
+// Regression: writing the config file for an unrelated reason (adding an
+// account) must not inject an empty "overrides: {repositories: {},
+// prefixes: {}}" block under a configured ticket_urls that never had any
+// overrides -- yaml.v3's omitempty doesn't elide a nested struct just
+// because all its own fields are zero unless every field (including the
+// nested struct field itself) is explicitly tagged omitempty.
+func Test_AddAccount_DoesNotPolluteTicketURLsWithEmptyOverrides(t *testing.T) {
+	createTestConfigFile(t, `ticket_urls:
+  default: https://company.atlassian.net/browse
+`)
+
+	cf := NewConfigFile(false)
+	if err := cf.AddAccount("github", "new_user", "new_token", nil, ""); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	data, err := os.ReadFile(cf.ConfigFile())
+	if err != nil {
+		t.Fatalf("expected to read back the config file, got error: %v", err)
+	}
+	if strings.Contains(string(data), "overrides") {
+		t.Errorf("expected no empty overrides block to be written, got:\n%s", data)
+	}
+
+	// The default itself must still survive the round-trip.
+	if url := cf.TicketBaseURLCandidates("owner/repo", "proj"); len(url) != 1 || url[0] != "https://company.atlassian.net/browse" {
+		t.Errorf("expected the default URL to survive, got %v", url)
 	}
 }
 

@@ -1,6 +1,9 @@
 package codeRequest
 
-import "github.com/emmahsax/go-git-helper/internal/github"
+import (
+	"github.com/emmahsax/go-git-helper/internal/github"
+	"github.com/emmahsax/go-git-helper/internal/utils"
+)
 
 func (cr *CodeRequest) createGitHub() {
 	host := cr.matchedGitHubHost()
@@ -15,6 +18,7 @@ func (cr *CodeRequest) createGitHub() {
 	options["gitRootDir"] = g.GetGitRootDir()
 	options["localBranch"] = g.CurrentBranch()
 	options["localRepo"] = g.RepoName()
+	options["ticketBaseURLCandidates"] = utils.EncodeTicketBaseURLCandidates(cr.ticketBaseURLCandidates(options["newPrTitle"], options["localRepo"]))
 	github.NewGitHubPullRequest(options, cr.Debug, cr.InteractiveMode).Create()
 }
 

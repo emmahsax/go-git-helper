@@ -14,30 +14,32 @@ import (
 )
 
 type GitLabMergeRequest struct {
-	BaseBranch      string
-	Debug           bool
-	Draft           string
-	GitRootDir      string
-	Host            string
-	LocalBranch     string
-	InteractiveMode bool
-	LocalProject    string
-	NewMrTitle      string
-	Username        string
+	BaseBranch              string
+	Debug                   bool
+	Draft                   string
+	GitRootDir              string
+	Host                    string
+	LocalBranch             string
+	InteractiveMode         bool
+	LocalProject            string
+	NewMrTitle              string
+	TicketBaseURLCandidates []string
+	Username                string
 }
 
 func NewGitLabMergeRequest(options map[string]string, debug, interactiveMode bool) *GitLabMergeRequest {
 	return &GitLabMergeRequest{
-		BaseBranch:      options["baseBranch"],
-		Debug:           debug,
-		Draft:           options["draft"],
-		GitRootDir:      options["gitRootDir"],
-		Host:            options["host"],
-		LocalBranch:     options["localBranch"],
-		InteractiveMode: interactiveMode,
-		LocalProject:    options["localProject"],
-		NewMrTitle:      options["newMrTitle"],
-		Username:        options["username"],
+		BaseBranch:              options["baseBranch"],
+		Debug:                   debug,
+		Draft:                   options["draft"],
+		GitRootDir:              options["gitRootDir"],
+		Host:                    options["host"],
+		LocalBranch:             options["localBranch"],
+		InteractiveMode:         interactiveMode,
+		LocalProject:            options["localProject"],
+		NewMrTitle:              options["newMrTitle"],
+		TicketBaseURLCandidates: utils.DecodeTicketBaseURLCandidates(options["ticketBaseURLCandidates"]),
+		Username:                options["username"],
 	}
 }
 
@@ -76,17 +78,19 @@ func (mr *GitLabMergeRequest) determineTitle() string {
 }
 
 func (mr *GitLabMergeRequest) newMrBody() string {
-	templateName := mr.templateNameToApply()
-	if templateName != "" {
-		content, err := os.ReadFile(templateName)
+	var content string
+
+	if templateName := mr.templateNameToApply(); templateName != "" {
+		raw, err := os.ReadFile(templateName)
 		if err != nil {
 			utils.HandleError(err, mr.Debug, nil)
 			return ""
 		}
 
-		return string(content)
+		content = string(raw)
 	}
-	return ""
+
+	return utils.PrependTicketLink(content, mr.NewMrTitle, "merge request", mr.TicketBaseURLCandidates, mr.InteractiveMode)
 }
 
 func (mr *GitLabMergeRequest) templateNameToApply() string {

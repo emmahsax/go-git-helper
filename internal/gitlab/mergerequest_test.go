@@ -105,6 +105,51 @@ func Test_newMrBody(t *testing.T) {
 	}
 }
 
+// Regression: a ticket reference in the title must be linked even with no
+// template at all -- the feature doesn't require a template to exist.
+func Test_newMrBody_NoTemplate_WithTicketReference(t *testing.T) {
+	mr := NewGitLabMergeRequest(
+		map[string]string{
+			"gitRootDir":              t.TempDir(),
+			"newMrTitle":              "proj-123 something",
+			"ticketBaseURLCandidates": "https://example.com/browse",
+		},
+		false,
+		false,
+	)
+
+	expected := "### [proj-123](https://example.com/browse/proj-123)\n\n"
+	actual := mr.newMrBody()
+
+	if expected != actual {
+		t.Errorf("expected %q, got %q", expected, actual)
+	}
+}
+
+// Regression: with no ticketBaseURLCandidates configured, the feature does nothing
+// at all, even though the title has a ticket reference.
+// Regression: with no ticketBaseURLCandidates configured, the bare reference is
+// still inserted -- a base URL only upgrades it into a real link, it
+// never gates whether the reference appears at all (so platforms with
+// their own autolinking still get it).
+func Test_newMrBody_NoTemplate_NoBaseURL_InsertsBareReference(t *testing.T) {
+	mr := NewGitLabMergeRequest(
+		map[string]string{
+			"gitRootDir": t.TempDir(),
+			"newMrTitle": "proj-123 something",
+		},
+		false,
+		false,
+	)
+
+	expected := "### [proj-123]\n\n"
+	actual := mr.newMrBody()
+
+	if expected != actual {
+		t.Errorf("expected %q, got %q", expected, actual)
+	}
+}
+
 func Test_templateNameToApply(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "gitlab")
 	if err != nil {

@@ -14,30 +14,32 @@ import (
 )
 
 type ForgejoPullRequest struct {
-	BaseBranch      string
-	Debug           bool
-	Draft           string
-	GitRootDir      string
-	Host            string
-	InteractiveMode bool
-	LocalBranch     string
-	LocalRepo       string
-	NewPrTitle      string
-	Username        string
+	BaseBranch              string
+	Debug                   bool
+	Draft                   string
+	GitRootDir              string
+	Host                    string
+	InteractiveMode         bool
+	LocalBranch             string
+	LocalRepo               string
+	NewPrTitle              string
+	TicketBaseURLCandidates []string
+	Username                string
 }
 
 func NewForgejoPullRequest(options map[string]string, debug, interactiveMode bool) *ForgejoPullRequest {
 	return &ForgejoPullRequest{
-		BaseBranch:      options["baseBranch"],
-		Debug:           debug,
-		Draft:           options["draft"],
-		GitRootDir:      options["gitRootDir"],
-		Host:            options["host"],
-		InteractiveMode: interactiveMode,
-		LocalBranch:     options["localBranch"],
-		LocalRepo:       options["localRepo"],
-		NewPrTitle:      options["newPrTitle"],
-		Username:        options["username"],
+		BaseBranch:              options["baseBranch"],
+		Debug:                   debug,
+		Draft:                   options["draft"],
+		GitRootDir:              options["gitRootDir"],
+		Host:                    options["host"],
+		InteractiveMode:         interactiveMode,
+		LocalBranch:             options["localBranch"],
+		LocalRepo:               options["localRepo"],
+		NewPrTitle:              options["newPrTitle"],
+		TicketBaseURLCandidates: utils.DecodeTicketBaseURLCandidates(options["ticketBaseURLCandidates"]),
+		Username:                options["username"],
 	}
 }
 
@@ -113,18 +115,19 @@ func (pr *ForgejoPullRequest) determineTitle() string {
 }
 
 func (pr *ForgejoPullRequest) newPrBody() string {
-	templateName := pr.templateNameToApply()
-	if templateName != "" {
-		content, err := os.ReadFile(templateName)
+	var content string
+
+	if templateName := pr.templateNameToApply(); templateName != "" {
+		raw, err := os.ReadFile(templateName)
 		if err != nil {
 			utils.HandleError(err, pr.Debug, nil)
 			return ""
 		}
 
-		return string(content)
+		content = string(raw)
 	}
 
-	return ""
+	return utils.PrependTicketLink(content, pr.NewPrTitle, "pull request", pr.TicketBaseURLCandidates, pr.InteractiveMode)
 }
 
 // templateNameToApply returns the repo's pull request template, after

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -15,30 +14,32 @@ import (
 )
 
 type GitHubPullRequest struct {
-	BaseBranch      string
-	Debug           bool
-	Draft           string
-	GitRootDir      string
-	Host            string
-	InteractiveMode bool
-	LocalBranch     string
-	LocalRepo       string
-	NewPrTitle      string
-	Username        string
+	BaseBranch              string
+	Debug                   bool
+	Draft                   string
+	GitRootDir              string
+	Host                    string
+	InteractiveMode         bool
+	LocalBranch             string
+	LocalRepo               string
+	NewPrTitle              string
+	TicketBaseURLCandidates []string
+	Username                string
 }
 
 func NewGitHubPullRequest(options map[string]string, debug, interactiveMode bool) *GitHubPullRequest {
 	return &GitHubPullRequest{
-		BaseBranch:      options["baseBranch"],
-		Debug:           debug,
-		Draft:           options["draft"],
-		GitRootDir:      options["gitRootDir"],
-		Host:            options["host"],
-		InteractiveMode: interactiveMode,
-		LocalBranch:     options["localBranch"],
-		LocalRepo:       options["localRepo"],
-		NewPrTitle:      options["newPrTitle"],
-		Username:        options["username"],
+		BaseBranch:              options["baseBranch"],
+		Debug:                   debug,
+		Draft:                   options["draft"],
+		GitRootDir:              options["gitRootDir"],
+		Host:                    options["host"],
+		InteractiveMode:         interactiveMode,
+		LocalBranch:             options["localBranch"],
+		LocalRepo:               options["localRepo"],
+		NewPrTitle:              options["newPrTitle"],
+		TicketBaseURLCandidates: utils.DecodeTicketBaseURLCandidates(options["ticketBaseURLCandidates"]),
+		Username:                options["username"],
 	}
 }
 
@@ -67,37 +68,19 @@ func (pr *GitHubPullRequest) Create() {
 }
 
 func (pr *GitHubPullRequest) newPrBody() string {
-	templateName := pr.templateNameToApply()
-	if templateName != "" {
-		content, err := os.ReadFile(templateName)
+	var content string
+
+	if templateName := pr.templateNameToApply(); templateName != "" {
+		raw, err := os.ReadFile(templateName)
 		if err != nil {
 			utils.HandleError(err, pr.Debug, nil)
 			return ""
 		}
 
-		re := regexp.MustCompile(`[A-Za-z]+-\d+`)
-		match := re.FindString(pr.NewPrTitle)
-
-		if match != "" {
-			var includeJiraLink bool
-
-			if pr.InteractiveMode {
-				includeJiraLink = commandline.AskYesNoQuestion(
-					fmt.Sprintf("Include a link to the Jira ticket (%s) in the beginning of the pull request body?", match),
-				)
-			} else {
-				includeJiraLink = true
-			}
-
-			if includeJiraLink {
-				return "### [" + match + "]\n\n" + string(content)
-			}
-		}
-
-		return string(content)
+		content = string(raw)
 	}
 
-	return ""
+	return utils.PrependTicketLink(content, pr.NewPrTitle, "pull request", pr.TicketBaseURLCandidates, pr.InteractiveMode)
 }
 
 func (pr *GitHubPullRequest) templateNameToApply() string {
